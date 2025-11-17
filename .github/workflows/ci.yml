@@ -1,0 +1,24 @@
+name: R-Type CI
+
+'on':
+  push:
+    branches:
+      - 'main'
+      - 'dev'
+  pull_request:
+    branches:
+      - main
+      - dev
+jobs:
+  build:
+    name: Build project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Compile
+        run: cmake --build build --parallel
