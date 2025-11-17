@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/r-type_server.dir/link.d "CMakeFiles/r-type_server.dir/src/server/main.cpp.o" -o r-type_server
