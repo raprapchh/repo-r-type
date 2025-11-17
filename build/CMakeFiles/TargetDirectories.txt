@@ -1,0 +1,4 @@
+/home/rchanliongco/Delivery/TEK3/CPP/repo-r-type/build/CMakeFiles/r-type_client.dir
+/home/rchanliongco/Delivery/TEK3/CPP/repo-r-type/build/CMakeFiles/r-type_server.dir
+/home/rchanliongco/Delivery/TEK3/CPP/repo-r-type/build/CMakeFiles/edit_cache.dir
+/home/rchanliongco/Delivery/TEK3/CPP/repo-r-type/build/CMakeFiles/rebuild_cache.dir
