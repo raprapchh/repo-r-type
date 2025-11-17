@@ -12,15 +12,13 @@ jobs:
 
     if: github.repository != 'EpitechPGE3-2025/G-CPP-500-PAR-5-2-rtype-3.git' && github.ref == 'refs/heads/main'
     steps:
-      
-name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      
-name: Mirroring to the repository
-      uses: pixta-dev/repository-mirroring-action@v1
-      with:
-        ssh_private_key: ${{ secrets.GIT_SSH_PRIVATE_KEY }}
-        target_repo_url: ${{ env.MIRROR_URL }}
+      - name: Mirroring to the repository
+        uses: pixta-dev/repository-mirroring-action@v1
+        with:
+          ssh_private_key: ${{ secrets.GIT_SSH_PRIVATE_KEY }}
+          target_repo_url: ${{ env.MIRROR_URL }}
