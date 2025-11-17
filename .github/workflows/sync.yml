@@ -1,16 +1,18 @@
 name: mirror
 
-on: push
+'on':
+  push:
+    branches:
+      - '*'
+      - '**'
 
 env:
-  MIRROR_URL: "git@github.com:EpitechPGE3-2025/G-CPP-500-PAR-5-2-rtype-3.git"
+  MIRROR_URL: git@github.com:EpitechPGE3-2025/G-CPP-500-PAR-5-2-rtype-3.git
 
 jobs:
   push_to_mirror:
     name: Push to mirror
     runs-on: ubuntu-latest
-
-    if: github.repository != 'EpitechPGE3-2025/G-CPP-500-PAR-5-2-rtype-3.git' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
