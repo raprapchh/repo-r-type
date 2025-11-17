@@ -7,8 +7,8 @@ name: r-type ci
       - 'dev'
   pull_request:
     branches:
-      - main
-      - dev
+      - 'main'
+      - 'dev'
 jobs:
   build:
     name: Build project
