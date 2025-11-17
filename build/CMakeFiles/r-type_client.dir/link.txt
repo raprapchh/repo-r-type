@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/r-type_client.dir/link.d "CMakeFiles/r-type_client.dir/src/client/main.cpp.o" -o r-type_client
