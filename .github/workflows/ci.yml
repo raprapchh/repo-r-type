@@ -1,4 +1,4 @@
-name: R-Type CI
+name: r-type ci
 
 'on':
   push:
