@@ -1,0 +1,9 @@
+{
+    "enemy_hp": 100,
+    "enemy_speed": 2.5,
+    "waves": [1, 3, 5, 10, 20],
+    "bullets": {
+        "speed": 8.5,
+        "damage": 20
+    }
+}
