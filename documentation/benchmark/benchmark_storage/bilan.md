@@ -5,8 +5,8 @@ JSON was chosen because it is more reliable, easier to maintain, and better supp
 Results :
 
 ```
-➜  bench_stockage git:(dev) ✗ ./bench_yaml
+➜  bench_stockage git:(main) ✗ ./bench_yaml
 YAML parse time: 0.185474 ms
-➜  bench_stockage git:(dev) ✗ ./bench_json
+➜  bench_stockage git:(main) ✗ ./bench_json
 JSON parse time: 0.060645 ms
 ```
