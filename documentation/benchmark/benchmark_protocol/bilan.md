@@ -1,10 +1,10 @@
-Conclusion protocol benchmark :
+Protocol Benchmark Conclusion:
 
 UDP was chosen because it sends immediately, requires no connection, and fits real-time updates where outdated data must be overwritten instantly. A minimal benchmark confirmed this: UDP averaged ~5.9 µs per send and ~22.4 µs round-trip, with no connection cost. TCP averaged ~6.6 µs per send, ~22.2 µs round-trip, but added a ~262 µs connection time.
 TCP was not retained because its connection step and ordered delivery introduce blocking that breaks real-time gameplay.
 UDP is therefore the better fit for our project.
 
-Results :
+Results:
 
 ```
 ➜  benchmark_protocol git:(main) ✗ ./documentation/benchmark/benchmark_protocol/bench_protocol udp
