@@ -54,10 +54,35 @@ jobs:
           echo "Linting commits from $FROM_REF to $GITHUB_SHA"
           npx commitlint --from="$FROM_REF" --to="$GITHUB_SHA"
 
+  clang_format:
+    name: Check clang-format
+    runs-on: ubuntu-latest
+    needs: commitlint
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+
+      - name: Validate formatting
+        shell: bash
+        run: |
+          FILES=$(git ls-files -- '*.c' '*.cc' '*.cxx' '*.cpp' '*.h' '*.hh' '*.hpp')
+          if [ -z "$FILES" ]; then
+            echo "No C/C++ files to format."
+            exit 0
+          fi
+          echo "Checking formatting on the following files:"
+          echo "$FILES"
+          clang-format --dry-run --Werror $FILES
+
   build:
     name: Build project
     runs-on: ubuntu-latest
-    needs: commitlint
+    needs:
+      - commitlint
+      - clang_format
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
