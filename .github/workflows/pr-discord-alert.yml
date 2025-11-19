@@ -8,7 +8,8 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Send Discord notification
+      - name: Generate Discord payload
+        id: payload
         run: |
           payload=$(cat <<EOF
           {
@@ -16,8 +17,13 @@ jobs:
           }
           EOF
           )
+          echo "payload<<EOF" >> $GITHUB_OUTPUT
+          echo "$payload" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
+      - name: Send Discord notification
+        run: |
           curl -X POST \
             -H "Content-Type: application/json" \
-            -d "$payload" \
-            ${{ secrets.DISCORD_WEBHOOK }}
+            -d '${{ steps.payload.outputs.payload }}' \
+            "${{ secrets.DISCORD_WEBHOOK }}"
