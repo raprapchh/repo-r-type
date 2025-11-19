@@ -1,28 +1,28 @@
-# Benchmark Réseau pour R-Type
+# Network Benchmark for R-Type
 
-## Contexte
+## Context
 
-Le sujet R-Type nécessite un **système réseau performant** pour gérer le multijoueur en temps réel. Ce benchmark compare quatre solutions : ASIO, raw sockets, ENet et SDL_net.
+The R-Type subject requires a **high-performance networking system** to manage multiplayer in real-time. This benchmark compares four solutions: ASIO, raw sockets, ENet, and SDL_net.
 
-## Comparaison
+## Comparison
 
 ### ASIO (Boost.Asio / standalone)
-- **Avantages** : Async I/O puissant, cross-platform, header-only (standalone), très utilisé (industrie)
-- **Inconvénients** : API complexe au début, verbeux pour cas simples
+- **Advantages**: Powerful async I/O, cross-platform, header-only (standalone), widely used (industry)
+- **Disadvantages**: Complex API initially, verbose for simple cases
 
 ### Raw Sockets (POSIX)
-- **Avantages** : Performance maximale, contrôle total, zéro dépendance
-- **Inconvénients** : Pas cross-platform, beaucoup de code boilerplate, gestion manuelle des erreurs
+- **Advantages**: Maximum performance, total control, zero dependencies
+- **Disadvantages**: Not cross-platform, lots of boilerplate code, manual error handling
 
 ### ENet
-- **Avantages** : Fiable UDP (reliable + sequencing), API simple, optimisé pour jeux
-- **Inconvénients** : Moins flexible, overhead pour reliable UDP, dépendance supplémentaire
+- **Advantages**: Reliable UDP (reliable + sequencing), simple API, optimized for games
+- **Disadvantages**: Less flexible, overhead for reliable UDP, additional dependency
 
 ### SDL_net
-- **Avantages** : Simple, intégré avec SDL, bon pour prototypes
-- **Inconvénients** : Pas async natif, performance limitée, moins de contrôle
+- **Advantages**: Simple, integrated with SDL, good for prototypes
+- **Disadvantages**: No native async, limited performance, less control
 
-## Résultats (10,000 paquets UDP 64 bytes, localhost)
+## Results (10,000 UDP packets 64 bytes, localhost)
 
 ```
 ASIO:        ~15 ms
@@ -31,39 +31,39 @@ ENet:        ~20 ms
 SDL_net:     ~25 ms
 ```
 
-Raw sockets est le plus rapide, mais ASIO offre le meilleur ratio **performance/maintenabilité/features**.
+Raw sockets is the fastest, but ASIO offers the best ratio **performance/maintainability/features**.
 
-## Recommandation
+## Recommendation
 
-**✅ ASIO** est recommandé pour R-Type car :
-- **Async I/O** : gère multiples clients sans bloquer (essentiel pour serveur)
-- **Cross-platform** : Windows (IOCP), Linux (epoll), macOS (kqueue)
-- **Header-only** (standalone) : pas de link, facile à intégrer
-- **Scalabilité** : peut gérer des centaines de connexions simultanées
-- **UDP + TCP** : flexibilité pour game state (UDP) et lobby/chat (TCP)
-- **Utilisé en production** : beaucoup de jeux et serveurs réels
+**✅ ASIO** is recommended for R-Type because:
+- **Async I/O**: handles multiple clients without blocking (essential for server)
+- **Cross-platform**: Windows (IOCP), Linux (epoll), macOS (kqueue)
+- **Header-only** (standalone): no linking, easy to integrate
+- **Scalability**: can handle hundreds of simultaneous connections
+- **UDP + TCP**: flexibility for game state (UDP) and lobby/chat (TCP)
+- **Production-ready**: used by many real games and servers
 
 ## Installation
 
 ```bash
-# Standalone ASIO (recommandé, pas besoin de Boost)
+# Standalone ASIO (recommended, no need for Boost)
 git clone https://github.com/chriskohlhoff/asio.git
-# Header-only : asio/asio/include/
+# Header-only: asio/asio/include/
 
-# Ou via vcpkg
+# Or via vcpkg
 vcpkg install asio
 
-# Ou via conan
+# Or via conan
 conan install asio/1.28.0
 ```
 
-## Exemple d'utilisation R-Type
+## R-Type Usage Example
 
 ```cpp
 #include <asio.hpp>
 using asio::ip::udp;
 
-// Serveur UDP async
+// Async UDP server
 class UdpServer {
     asio::io_context& io_context_;
     udp::socket socket_;
@@ -82,15 +82,15 @@ public:
             asio::buffer(recv_buffer_), remote_endpoint_,
             [this](std::error_code ec, std::size_t bytes) {
                 if (!ec) {
-                    // Traiter le paquet (player input, etc.)
+                    // Process packet (player input, etc.)
                     handle_packet(recv_buffer_.data(), bytes);
-                    start_receive(); // Continuer à recevoir
+                    start_receive(); // Continue receiving
                 }
             });
     }
 
     void handle_packet(const char* data, size_t size) {
-        // Parser et traiter les inputs des joueurs
+        // Parse and process player inputs
     }
 };
 
@@ -101,16 +101,16 @@ int main() {
 }
 ```
 
-## Comment tester
+## How to Test
 
 ```bash
 chmod +x test.sh
 ./test.sh
 ```
 
-Le script compile et exécute tous les benchmarks. Raw sockets fonctionne toujours, les autres nécessitent leurs bibliothèques respectives.
+The script compiles and executes all benchmarks. Raw sockets always works, the others require their respective libraries.
 
-## Références
+## References
 
 - [ASIO Documentation](https://think-async.com/Asio/)
 - [ASIO GitHub](https://github.com/chriskohlhoff/asio)
