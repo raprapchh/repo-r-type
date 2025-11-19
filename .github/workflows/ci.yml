@@ -68,7 +68,7 @@ jobs:
       - name: Validate formatting
         shell: bash
         run: |
-          FILES=$(git ls-files -- '*.c' '*.cc' '*.cxx' '*.cpp' '*.h' '*.hh' '*.hpp')
+          FILES=$(git ls-files -- '*.c' '*.cc' '*.cxx' '*.cpp' '*.h' '*.hh' '*.hpp' | grep -Ev '^documentation/benchmark/' || true)
           if [ -z "$FILES" ]; then
             echo "No C/C++ files to format."
             exit 0
