@@ -65,7 +65,7 @@ fi
 
 if [ "$RAYLIB_AVAILABLE" = true ]; then
     echo "=== Compilation Raylib ==="
-    g++ -std=c++17 -O3 bench_raylib.cpp -lraylib -lGL -lm -lpthread -ldl -lrt -lX11 -o bench_raylib 2>/dev/null
+    g++ -std=c++17 -O3 bench_raylib.cpp $(pkg-config --cflags --libs raylib) -o bench_raylib 2>/dev/null
     if [ $? -eq 0 ]; then
         echo "✅ Compilation réussie"
         echo ""
@@ -73,7 +73,7 @@ if [ "$RAYLIB_AVAILABLE" = true ]; then
         timeout 5s ./bench_raylib
         echo ""
     else
-        echo "❌ Erreur de compilation Raylib (bibliothèque non installée)"
+        echo "❌ Erreur de compilation Raylib"
     fi
 fi
 
