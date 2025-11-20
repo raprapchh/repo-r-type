@@ -7,6 +7,25 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
+set(ASIO_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/external/asio/asio/include")
+
+if(NOT EXISTS "${ASIO_INCLUDE_DIR}/asio.hpp")
+    message(STATUS "ASIO not found. Downloading...")
+    find_package(Git REQUIRED)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} clone https://github.com/chriskohlhoff/asio.git ${CMAKE_SOURCE_DIR}/external/asio
+        RESULT_VARIABLE GIT_RESULT
+    )
+    if(NOT GIT_RESULT EQUAL "0")
+        message(FATAL_ERROR "Failed to clone ASIO repository")
+    endif()
+    message(STATUS "ASIO downloaded successfully")
+else()
+    message(STATUS "ASIO found at ${ASIO_INCLUDE_DIR}")
+endif()
+
+include_directories(${ASIO_INCLUDE_DIR})
+
 #
 # ECS
 #
@@ -52,3 +71,7 @@ target_include_directories(r-type_server PRIVATE
 target_link_libraries(r-type_server
     PRIVATE rtype_ecs rtype_shared
 )
+
+if(UNIX AND NOT APPLE)
+    target_link_libraries(r-type_server PRIVATE pthread)
+endif()
