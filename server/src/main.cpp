@@ -1,6 +1,6 @@
 #include "Server.hpp"
-#include <iostream>
 #include <csignal>
+#include <iostream>
 
 std::unique_ptr<rtype::server::Server> g_server;
 
