@@ -90,7 +90,7 @@ void Server::game_loop() {
             if (!connected_clients.empty()) {
                 rtype::net::Serializer serializer;
                 rtype::net::Packet state_packet(static_cast<uint16_t>(rtype::net::MessageType::GameState),
-                                               serializer.get_data());
+                                                serializer.get_data());
                 auto packet_data = state_packet.serialize();
 
                 for (const auto& [key, client] : connected_clients) {
