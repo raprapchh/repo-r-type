@@ -8,7 +8,8 @@
 
 namespace rtype::server {
 
-class UdpServer {
+class UdpServer
+{
 public:
     using message_callback =
         std::function<void(const std::string&, uint16_t, const std::vector<uint8_t>&)>;

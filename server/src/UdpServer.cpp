@@ -4,7 +4,8 @@
 namespace rtype::server {
 
 UdpServer::UdpServer(asio::io_context& io_ctx, uint16_t port)
-    : io_context_(io_ctx), running_(false) {
+    : io_context_(io_ctx), running_(false)
+{
     try {
         socket_ = std::make_unique<asio::ip::udp::socket>(
             io_context_, asio::ip::udp::endpoint(asio::ip::udp::v4(), port));
@@ -13,7 +14,10 @@ UdpServer::UdpServer(asio::io_context& io_ctx, uint16_t port)
     }
 }
 
-UdpServer::~UdpServer() { stop(); }
+UdpServer::~UdpServer()
+{
+    stop();
+}
 
 void UdpServer::start() {
     if (!socket_ || socket_->is_open() == false) {
@@ -31,7 +35,8 @@ void UdpServer::stop() {
 }
 
 void UdpServer::send(const std::string& client_ip, uint16_t client_port,
-                     const std::vector<uint8_t>& data) {
+                     const std::vector<uint8_t>& data)
+{
     if (!socket_ || !running_) {
         return;
     }
@@ -44,7 +49,10 @@ void UdpServer::send(const std::string& client_ip, uint16_t client_port,
     }
 }
 
-void UdpServer::set_message_handler(message_callback handler) { handler_ = handler; }
+void UdpServer::set_message_handler(message_callback handler)
+{
+    handler_ = handler;
+}
 
 void UdpServer::start_receive() {
     if (!socket_ || !running_) {
@@ -58,7 +66,8 @@ void UdpServer::start_receive() {
         });
 }
 
-void UdpServer::handle_receive(const asio::error_code& error, size_t bytes_transferred) {
+void UdpServer::handle_receive(const asio::error_code& error, size_t bytes_transferred)
+{
     if (!error && bytes_transferred > 0) {
         std::vector<uint8_t> buffer(recv_buffer_.begin(),
                                     recv_buffer_.begin() + bytes_transferred);

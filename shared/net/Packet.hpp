@@ -11,16 +11,22 @@ struct PacketHeader {
     uint16_t payload_size;
 };
 
-struct Packet {
+struct Packet
+{
     PacketHeader header;
     std::vector<uint8_t> body;
 
-    Packet() : header{0, 0} {}
+    Packet() : header{0, 0}
+    {
+    }
 
     Packet(uint16_t msg_type, const std::vector<uint8_t>& data)
-        : header{msg_type, static_cast<uint16_t>(data.size())}, body(data) {}
+        : header{msg_type, static_cast<uint16_t>(data.size())}, body(data)
+    {
+    }
 
-    std::vector<uint8_t> serialize() const {
+    std::vector<uint8_t> serialize() const
+    {
         std::vector<uint8_t> result;
         result.reserve(sizeof(PacketHeader) + body.size());
 
@@ -32,7 +38,8 @@ struct Packet {
         return result;
     }
 
-    static Packet deserialize(const std::vector<uint8_t>& data) {
+    static Packet deserialize(const std::vector<uint8_t>& data)
+    {
         Packet pkt;
         if (data.size() >= sizeof(PacketHeader)) {
             std::memcpy(&pkt.header, data.data(), sizeof(PacketHeader));
