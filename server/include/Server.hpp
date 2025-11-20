@@ -3,9 +3,14 @@
 #include "../shared/net/Packet.hpp"
 #include "../shared/net/Protocol.hpp"
 #include "UdpServer.hpp"
+#include <atomic>
+#include <chrono>
 #include <map>
 #include <memory>
+#include <mutex>
+#include <optional>
 #include <string>
+#include <thread>
 
 namespace rtype::server {
 
@@ -31,13 +36,22 @@ class Server {
     void handle_player_move(const std::string& client_ip, uint16_t client_port, const std::vector<uint8_t>& data);
     void broadcast_message(const std::vector<uint8_t>& data, const std::string& exclude_ip = "",
                            uint16_t exclude_port = 0);
+    void game_loop();
+    void network_loop();
 
     uint16_t port_;
     std::unique_ptr<asio::io_context> io_context_;
     std::unique_ptr<UdpServer> udp_server_;
     std::map<std::string, ClientInfo> clients_;
+    std::mutex clients_mutex_;
     uint32_t next_player_id_;
-    bool running_;
+    std::atomic<bool> running_;
+    std::thread game_thread_;
+    std::thread network_thread_;
+    std::optional<asio::executor_work_guard<asio::io_context::executor_type>> work_guard_;
+    static constexpr double TARGET_TICK_RATE = 60.0;
+    static constexpr std::chrono::milliseconds TICK_DURATION{
+        static_cast<int>(1000.0 / TARGET_TICK_RATE)};
 };
 
 } // namespace rtype::server
