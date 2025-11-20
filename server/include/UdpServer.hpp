@@ -8,22 +8,19 @@
 
 namespace rtype::server {
 
-class UdpServer
-{
-public:
-    using message_callback =
-        std::function<void(const std::string&, uint16_t, const std::vector<uint8_t>&)>;
+class UdpServer {
+  public:
+    using message_callback = std::function<void(const std::string&, uint16_t, const std::vector<uint8_t>&)>;
 
     UdpServer(asio::io_context& io_ctx, uint16_t port);
     ~UdpServer();
 
     void start();
     void stop();
-    void send(const std::string& client_ip, uint16_t client_port,
-              const std::vector<uint8_t>& data);
+    void send(const std::string& client_ip, uint16_t client_port, const std::vector<uint8_t>& data);
     void set_message_handler(message_callback handler);
 
-private:
+  private:
     void start_receive();
     void handle_receive(const asio::error_code& error, size_t bytes_transferred);
 
