@@ -15,7 +15,7 @@ Server::~Server() {
 }
 
 void Server::start() {
-    if (running_) {
+    if (running_.load()) {
         return;
     }
 
@@ -29,14 +29,85 @@ void Server::start() {
 }
 
 void Server::stop() {
+    if (!running_.load()) {
+        return;
+    }
+
     running_ = false;
+
     if (udp_server_) {
         udp_server_->stop();
+    }
+
+    if (work_guard_.has_value()) {
+        work_guard_->reset();
+        work_guard_.reset();
+    }
+
+    if (io_context_) {
+        io_context_->stop();
+    }
+
+    if (game_thread_.joinable()) {
+        game_thread_.join();
+    }
+
+    if (network_thread_.joinable()) {
+        network_thread_.join();
     }
 }
 
 void Server::run() {
     start();
+
+    work_guard_.emplace(asio::make_work_guard(*io_context_));
+
+    game_thread_ = std::thread(&Server::game_loop, this);
+    network_thread_ = std::thread(&Server::network_loop, this);
+
+    game_thread_.join();
+    network_thread_.join();
+}
+
+void Server::game_loop() {
+    auto last_tick = std::chrono::steady_clock::now();
+
+    while (running_.load()) {
+        auto current_time = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_tick);
+
+        if (elapsed >= TICK_DURATION) {
+            auto connected_clients = std::vector<std::pair<std::string, ClientInfo>>();
+            {
+                std::lock_guard<std::mutex> lock(clients_mutex_);
+                for (const auto& [key, client] : clients_) {
+                    if (client.is_connected) {
+                        connected_clients.emplace_back(key, client);
+                    }
+                }
+            }
+
+            if (!connected_clients.empty()) {
+                rtype::net::Serializer serializer;
+                rtype::net::Packet state_packet(static_cast<uint16_t>(rtype::net::MessageType::GameState),
+                                               serializer.get_data());
+                auto packet_data = state_packet.serialize();
+
+                for (const auto& [key, client] : connected_clients) {
+                    if (udp_server_) {
+                        udp_server_->send(client.ip, client.port, packet_data);
+                    }
+                }
+            }
+
+            last_tick = current_time;
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
+}
+
+void Server::network_loop() {
     if (io_context_) {
         io_context_->run();
     }
@@ -72,22 +143,27 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
 void Server::handle_player_join(const std::string& client_ip, uint16_t client_port) {
     std::string client_key = client_ip + ":" + std::to_string(client_port);
 
-    if (clients_.find(client_key) != clients_.end()) {
-        return;
+    uint32_t player_id;
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        if (clients_.find(client_key) != clients_.end()) {
+            return;
+        }
+
+        ClientInfo info;
+        info.ip = client_ip;
+        info.port = client_port;
+        info.player_id = next_player_id_++;
+        info.is_connected = true;
+        player_id = info.player_id;
+
+        clients_[client_key] = info;
     }
 
-    ClientInfo info;
-    info.ip = client_ip;
-    info.port = client_port;
-    info.player_id = next_player_id_++;
-    info.is_connected = true;
-
-    clients_[client_key] = info;
-
-    std::cout << "Player " << info.player_id << " joined from " << client_ip << ":" << client_port << std::endl;
+    std::cout << "Player " << player_id << " joined from " << client_ip << ":" << client_port << std::endl;
 
     rtype::net::Serializer serializer;
-    serializer.write(info.player_id);
+    serializer.write(player_id);
 
     rtype::net::Packet response(static_cast<uint16_t>(rtype::net::MessageType::PlayerJoin), serializer.get_data());
 
@@ -98,18 +174,35 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
 void Server::handle_player_move(const std::string& client_ip, uint16_t client_port, const std::vector<uint8_t>& data) {
     std::string client_key = client_ip + ":" + std::to_string(client_port);
 
-    auto it = clients_.find(client_key);
-    if (it == clients_.end()) {
-        return;
+    bool is_connected = false;
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        auto it = clients_.find(client_key);
+        if (it == clients_.end() || !it->second.is_connected) {
+            return;
+        }
+        is_connected = true;
     }
 
-    broadcast_message(data, client_ip, client_port);
+    if (is_connected) {
+        broadcast_message(data, client_ip, client_port);
+    }
 }
 
 void Server::broadcast_message(const std::vector<uint8_t>& data, const std::string& exclude_ip, uint16_t exclude_port) {
-    for (const auto& [key, client] : clients_) {
-        if (client.is_connected && (client.ip != exclude_ip || client.port != exclude_port)) {
-            udp_server_->send(client.ip, client.port, data);
+    std::vector<std::pair<std::string, uint16_t>> recipients;
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        for (const auto& [key, client] : clients_) {
+            if (client.is_connected && (client.ip != exclude_ip || client.port != exclude_port)) {
+                recipients.emplace_back(client.ip, client.port);
+            }
+        }
+    }
+
+    for (const auto& [ip, port] : recipients) {
+        if (udp_server_) {
+            udp_server_->send(ip, port, data);
         }
     }
 }
