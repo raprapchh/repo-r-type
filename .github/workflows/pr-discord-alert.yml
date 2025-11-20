@@ -13,7 +13,7 @@ jobs:
         run: |
           payload=$(cat <<EOF
           {
-            "content": "@everyon 📣 A new pull request has been opened on **${GITHUB_REPOSITORY}**!\n**Title:** ${{ github.event.pull_request.title }}\n**Author:** ${{ github.event.pull_request.user.login }}\n**Link:** ${{ github.event.pull_request.html_url }}"
+            "content": "@everyone 📣 A new pull request has been opened on **${GITHUB_REPOSITORY}**!\n**Title:** ${{ github.event.pull_request.title }}\n**Author:** ${{ github.event.pull_request.user.login }}\n**Link:** ${{ github.event.pull_request.html_url }}"
           }
           EOF
           )
