@@ -9,16 +9,12 @@
 
 namespace rtype::net {
 
-class Deserializer
-{
-public:
-    Deserializer(const std::vector<uint8_t>& buffer) : data(buffer), offset(0)
-    {
+class Deserializer {
+  public:
+    Deserializer(const std::vector<uint8_t>& buffer) : data(buffer), offset(0) {
     }
 
-    template <typename T>
-    typename std::enable_if<std::is_pod_v<T>, T>::type read()
-    {
+    template <typename T> typename std::enable_if<std::is_pod_v<T>, T>::type read() {
         if (offset + sizeof(T) > data.size()) {
             throw std::runtime_error("Deserializer: not enough data");
         }
@@ -28,8 +24,7 @@ public:
         return value;
     }
 
-    std::vector<uint8_t> read_bytes(size_t count)
-    {
+    std::vector<uint8_t> read_bytes(size_t count) {
         if (offset + count > data.size()) {
             throw std::runtime_error("Deserializer: not enough data");
         }
@@ -38,8 +33,7 @@ public:
         return result;
     }
 
-    std::string read_string()
-    {
+    std::string read_string() {
         uint32_t size = read<uint32_t>();
         if (offset + size > data.size()) {
             throw std::runtime_error("Deserializer: not enough data for string");
@@ -49,22 +43,19 @@ public:
         return result;
     }
 
-    bool has_data(size_t count = 1) const
-    {
+    bool has_data(size_t count = 1) const {
         return offset + count <= data.size();
     }
 
-    size_t get_offset() const
-    {
+    size_t get_offset() const {
         return offset;
     }
 
-    void reset()
-    {
+    void reset() {
         offset = 0;
     }
 
-private:
+  private:
     const std::vector<uint8_t>& data;
     size_t offset;
 };
