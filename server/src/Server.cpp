@@ -6,14 +6,19 @@
 namespace rtype::server {
 
 Server::Server(uint16_t port)
-    : port_(port), next_player_id_(1), running_(false) {
+    : port_(port), next_player_id_(1), running_(false)
+{
     io_context_ = std::make_unique<asio::io_context>();
     udp_server_ = std::make_unique<UdpServer>(*io_context_, port_);
 }
 
-Server::~Server() { stop(); }
+Server::~Server()
+{
+    stop();
+}
 
-void Server::start() {
+void Server::start()
+{
     if (running_) {
         return;
     }
@@ -43,7 +48,8 @@ void Server::run() {
 }
 
 void Server::handle_client_message(const std::string& client_ip, uint16_t client_port,
-                                   const std::vector<uint8_t>& data) {
+                                   const std::vector<uint8_t>& data)
+{
     rtype::net::Packet packet = rtype::net::Packet::deserialize(data);
 
     std::string client_key = client_ip + ":" + std::to_string(client_port);
@@ -71,7 +77,8 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
     }
 }
 
-void Server::handle_player_join(const std::string& client_ip, uint16_t client_port) {
+void Server::handle_player_join(const std::string& client_ip, uint16_t client_port)
+{
     std::string client_key = client_ip + ":" + std::to_string(client_port);
 
     if (clients_.find(client_key) != clients_.end()) {
@@ -100,7 +107,8 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
 }
 
 void Server::handle_player_move(const std::string& client_ip, uint16_t client_port,
-                                const std::vector<uint8_t>& data) {
+                                const std::vector<uint8_t>& data)
+{
     std::string client_key = client_ip + ":" + std::to_string(client_port);
 
     auto it = clients_.find(client_key);
@@ -111,8 +119,9 @@ void Server::handle_player_move(const std::string& client_ip, uint16_t client_po
     broadcast_message(data, client_ip, client_port);
 }
 
-void Server::broadcast_message(const std::vector<uint8_t>& data, const std::string& exclude_ip,
-                               uint16_t exclude_port) {
+void Server::broadcast_message(const std::vector<uint8_t>& data,
+                               const std::string& exclude_ip, uint16_t exclude_port)
+{
     for (const auto& [key, client] : clients_) {
         if (client.is_connected &&
             (client.ip != exclude_ip || client.port != exclude_port)) {

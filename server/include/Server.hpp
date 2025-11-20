@@ -16,7 +16,8 @@ struct ClientInfo {
     bool is_connected;
 };
 
-class Server {
+class Server
+{
 public:
     Server(uint16_t port = 4242);
     ~Server();
@@ -31,8 +32,8 @@ private:
     void handle_player_join(const std::string& client_ip, uint16_t client_port);
     void handle_player_move(const std::string& client_ip, uint16_t client_port,
                             const std::vector<uint8_t>& data);
-    void broadcast_message(const std::vector<uint8_t>& data, const std::string& exclude_ip = "",
-                           uint16_t exclude_port = 0);
+    void broadcast_message(const std::vector<uint8_t>& data,
+                           const std::string& exclude_ip = "", uint16_t exclude_port = 0);
 
     uint16_t port_;
     std::unique_ptr<asio::io_context> io_context_;
