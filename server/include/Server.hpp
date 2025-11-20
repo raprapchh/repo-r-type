@@ -50,8 +50,7 @@ class Server {
     std::thread network_thread_;
     std::optional<asio::executor_work_guard<asio::io_context::executor_type>> work_guard_;
     static constexpr double TARGET_TICK_RATE = 60.0;
-    static constexpr std::chrono::milliseconds TICK_DURATION{
-        static_cast<int>(1000.0 / TARGET_TICK_RATE)};
+    static constexpr std::chrono::milliseconds TICK_DURATION{static_cast<int>(1000.0 / TARGET_TICK_RATE)};
 };
 
 } // namespace rtype::server
