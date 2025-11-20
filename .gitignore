@@ -2,3 +2,4 @@ build/
 B-CPP-500_rtype.pdf
 ./r-type_client
 ./r-type_server
+external/
