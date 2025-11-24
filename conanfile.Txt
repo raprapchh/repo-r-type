@@ -1,6 +1,0 @@
-[requires]
-entt/3.13.0
-
-[generators]
-CMakeToolchain
-CMakeDeps

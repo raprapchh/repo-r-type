@@ -14,7 +14,7 @@ fi
 
 cd "${BUILD_DIR}"
 
-cmake ..
+cmake .. -DCMAKE_BUILD_TYPE=Release
 
 case "${TARGET}" in
     server)
