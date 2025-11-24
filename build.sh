@@ -14,11 +14,7 @@ fi
 
 cd "${BUILD_DIR}"
 
-conan install .. --build=missing --output-folder=.
-if [ -f "../CMakeUserPresets.json" ]; then
-    mv "../CMakeUserPresets.json" .
-fi
-cmake .. -DCMAKE_TOOLCHAIN_FILE=conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=.
+cmake .. -DCMAKE_BUILD_TYPE=Release
 
 case "${TARGET}" in
     server)
