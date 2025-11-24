@@ -1,6 +1,10 @@
 #include "Server.hpp"
 #include "../shared/net/Deserializer.hpp"
 #include "../shared/net/Serializer.hpp"
+#include "../../ecs/include/components/Position.hpp"
+#include "../../ecs/include/components/Velocity.hpp"
+#include "../../ecs/include/components/Health.hpp"
+#include "../../ecs/include/components/Tag.hpp"
 #include <iostream>
 
 namespace rtype::server {
@@ -8,6 +12,11 @@ namespace rtype::server {
 Server::Server(uint16_t port) : port_(port), next_player_id_(1), running_(false) {
     io_context_ = std::make_unique<asio::io_context>();
     udp_server_ = std::make_unique<UdpServer>(*io_context_, port_);
+
+    registry_.register_component<rtype::ecs::component::Position>();
+    registry_.register_component<rtype::ecs::component::Velocity>();
+    registry_.register_component<rtype::ecs::component::Health>();
+    registry_.register_component<rtype::ecs::component::Tag>();
 }
 
 Server::~Server() {
