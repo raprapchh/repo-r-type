@@ -29,8 +29,12 @@ include_directories(${ASIO_INCLUDE_DIR})
 #
 # ECS
 #
-add_library(rtype_ecs INTERFACE)
-target_include_directories(rtype_ecs INTERFACE
+file(GLOB_RECURSE ECS_SRC
+    ${CMAKE_SOURCE_DIR}/ecs/src/*.cpp
+)
+
+add_library(rtype_ecs STATIC ${ECS_SRC})
+target_include_directories(rtype_ecs PUBLIC
     ${CMAKE_SOURCE_DIR}/ecs/include
 )
 
