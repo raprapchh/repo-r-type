@@ -1,84 +1,50 @@
 #pragma once
 
-#include <any>
-#include <functional>
-#include <memory>
-#include <typeindex>
-#include <unordered_map>
-#include <vector>
-#include "Entity.hpp"
-#include "SparseArray.hpp"
+#include <entt/entt.hpp>
+#include <stdexcept>
+#include "../../shared/interfaces/ecs/IEntityRegistry.hpp"
 
-namespace rtype::ecs {
+namespace GameEngine {
 
-class Registry {
-public:
-    Registry() = default;
+    class Registry : public IEntityRegistry {
+      public:
+        Registry() = default;
+        ~Registry() override = default;
 
-    template <class Component>
-    SparseArray<Component>& register_component() {
-        auto type_index = std::type_index(typeid(Component));
-        if (_components_arrays.find(type_index) == _components_arrays.end()) {
-            _components_arrays[type_index] = std::make_any<SparseArray<Component>>();
-            _erasers[type_index] = [this](Entity const& e) {
-                get_components<Component>().erase(e);
-            };
+        // --- IEntityRegistry Implementation ---
+        entity_t createEntity() override;
+        void destroyEntity(entity_t entity) override;
+        bool isValid(entity_t entity) const override;
+
+        // Constructs component T in-place using forwarded args
+        template <typename T, typename... Args> 
+        T& addComponent(entity_t entity, Args&&... args) {
+            auto enttEntity = static_cast<entt::entity>(entity);
+            return _registry.emplace<T>(enttEntity, std::forward<Args>(args)...);
         }
-        return std::any_cast<SparseArray<Component>&>(_components_arrays[type_index]);
-    }
 
-    template <class Component>
-    SparseArray<Component>& get_components() {
-        auto type_index = std::type_index(typeid(Component));
-        return std::any_cast<SparseArray<Component>&>(_components_arrays.at(type_index));
-    }
-
-    template <class Component>
-    const SparseArray<Component>& get_components() const {
-        auto type_index = std::type_index(typeid(Component));
-        return std::any_cast<const SparseArray<Component>&>(_components_arrays.at(type_index));
-    }
-
-    Entity spawn_entity() {
-        if (!_dead_entities.empty()) {
-            Entity e = _dead_entities.back();
-            _dead_entities.pop_back();
-            return e;
+        // Returns component T (Throws if missing)
+        template <typename T> 
+        T& getComponent(entity_t entity) {
+            auto enttEntity = static_cast<entt::entity>(entity);
+            if (!_registry.all_of<T>(enttEntity)) {
+                throw std::runtime_error("Entity does not have the requested component");
+            }
+            return _registry.get<T>(enttEntity);
         }
-        return _next_entity_id++;
-    }
 
-    Entity entity_from_index(std::size_t idx) {
-        return idx;
-    }
-
-    void kill_entity(Entity const& e) {
-        for (auto& [type, eraser] : _erasers) {
-            eraser(e);
+        template <typename T> 
+        void removeComponent(entity_t entity) {
+            _registry.remove<T>(static_cast<entt::entity>(entity));
         }
-        _dead_entities.push_back(e);
-    }
 
-    template <typename Component>
-    typename SparseArray<Component>::reference_type add_component(Entity const& to, Component&& c) {
-        return get_components<Component>().insert_at(to, std::forward<Component>(c));
-    }
+        template <typename T> 
+        bool hasComponent(entity_t entity) const {
+            return _registry.all_of<T>(static_cast<entt::entity>(entity));
+        }
 
-    template <typename Component, typename... Params>
-    typename SparseArray<Component>::reference_type emplace_component(Entity const& to, Params&&... p) {
-        return get_components<Component>().emplace_at(to, std::forward<Params>(p)...);
-    }
+      private:
+        entt::registry _registry;
+    };
 
-    template <typename Component>
-    void remove_component(Entity const& from) {
-        get_components<Component>().erase(from);
-    }
-
-private:
-    std::unordered_map<std::type_index, std::any> _components_arrays;
-    std::unordered_map<std::type_index, std::function<void(Entity const&)>> _erasers;
-    std::size_t _next_entity_id = 0;
-    std::vector<Entity> _dead_entities;
-};
-
-} // namespace rtype::ecs
+} // namespace GameEngine

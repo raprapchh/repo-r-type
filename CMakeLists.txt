@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 set(ASIO_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/external/asio/asio/include")
@@ -36,8 +38,11 @@ file(GLOB_RECURSE ECS_SRC
 )
 
 add_library(rtype_ecs ${ECS_SRC})
-target_include_directories(rtype_ecs PUBLIC
-    ${CMAKE_SOURCE_DIR}/ecs/include
+target_include_directories(rtype_ecs 
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/ecs/include
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/ecs/include
 )
 target_link_libraries(rtype_ecs PUBLIC EnTT::EnTT)
 
