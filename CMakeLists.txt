@@ -26,6 +26,15 @@ endif()
 
 include_directories(${ASIO_INCLUDE_DIR})
 
+include(FetchContent)
+
+FetchContent_Declare(
+    entt
+    GIT_REPOSITORY https://github.com/skypjack/entt.git
+    GIT_TAG v3.13.0
+)
+FetchContent_MakeAvailable(entt)
+
 #
 # ECS
 #
@@ -37,6 +46,7 @@ add_library(rtype_ecs STATIC ${ECS_SRC})
 target_include_directories(rtype_ecs PUBLIC
     ${CMAKE_SOURCE_DIR}/ecs/include
 )
+target_link_libraries(rtype_ecs INTERFACE EnTT::EnTT)
 
 #
 # SHARED
