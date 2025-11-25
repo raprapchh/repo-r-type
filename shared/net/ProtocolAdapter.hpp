@@ -55,4 +55,3 @@ class ProtocolAdapter : public IProtocolAdapter {
 };
 
 } // namespace rtype::net
-
