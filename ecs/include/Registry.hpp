@@ -39,6 +39,10 @@ class Registry : public IEntityRegistry {
         return _registry.all_of<T>(static_cast<entt::entity>(entity));
     }
 
+    template <typename... Components> auto view() {
+        return _registry.view<Components...>();
+    }
+
   private:
     entt::registry _registry;
 };
