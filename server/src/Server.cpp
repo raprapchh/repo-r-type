@@ -2,6 +2,7 @@
 #include "../shared/net/Serializer.hpp"
 #include "../shared/net/Packet.hpp"
 #include "../shared/net/Protocol.hpp"
+#include "../shared/net/ProtocolAdapter.hpp"
 
 #include <iostream>
 
@@ -10,6 +11,7 @@ namespace rtype::server {
 Server::Server(uint16_t port) : port_(port), next_player_id_(1), running_(false) {
     io_context_ = std::make_unique<asio::io_context>();
     udp_server_ = std::make_unique<UdpServer>(*io_context_, port_);
+    protocol_adapter_ = std::make_unique<rtype::net::ProtocolAdapter>();
 }
 
 Server::~Server() {
@@ -89,11 +91,11 @@ void Server::game_loop() {
                 }
             }
 
-            if (!connected_clients.empty()) {
+            if (!connected_clients.empty() && protocol_adapter_) {
                 rtype::net::Serializer serializer;
                 rtype::net::Packet state_packet(static_cast<uint16_t>(rtype::net::MessageType::GameState),
                                                 serializer.get_data());
-                auto packet_data = state_packet.serialize();
+                auto packet_data = protocol_adapter_->serialize(state_packet);
 
                 for (const auto& [key, client] : connected_clients) {
                     if (udp_server_) {
@@ -117,7 +119,15 @@ void Server::network_loop() {
 
 void Server::handle_client_message(const std::string& client_ip, uint16_t client_port,
                                    const std::vector<uint8_t>& data) {
-    rtype::net::Packet packet = rtype::net::Packet::deserialize(data);
+    if (!protocol_adapter_) {
+        return;
+    }
+
+    if (!protocol_adapter_->validate(data)) {
+        return;
+    }
+
+    rtype::net::Packet packet = protocol_adapter_->deserialize(data);
 
     std::string client_key = client_ip + ":" + std::to_string(client_port);
 
@@ -134,7 +144,7 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
         rtype::net::Serializer serializer;
         serializer.write(static_cast<uint16_t>(rtype::net::MessageType::Pong));
         rtype::net::Packet pong_packet(static_cast<uint16_t>(rtype::net::MessageType::Pong), serializer.get_data());
-        udp_server_->send(client_ip, client_port, pong_packet.serialize());
+        udp_server_->send(client_ip, client_port, protocol_adapter_->serialize(pong_packet));
     } break;
 
     default:
@@ -164,13 +174,18 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
 
     std::cout << "Player " << player_id << " joined from " << client_ip << ":" << client_port << std::endl;
 
+    if (!protocol_adapter_) {
+        return;
+    }
+
     rtype::net::Serializer serializer;
     serializer.write(player_id);
 
     rtype::net::Packet response(static_cast<uint16_t>(rtype::net::MessageType::PlayerJoin), serializer.get_data());
 
-    udp_server_->send(client_ip, client_port, response.serialize());
-    broadcast_message(response.serialize(), client_ip, client_port);
+    auto response_data = protocol_adapter_->serialize(response);
+    udp_server_->send(client_ip, client_port, response_data);
+    broadcast_message(response_data, client_ip, client_port);
 }
 
 void Server::handle_player_move(const std::string& client_ip, uint16_t client_port, const std::vector<uint8_t>& data) {
