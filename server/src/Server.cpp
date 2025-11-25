@@ -1,6 +1,8 @@
 #include "Server.hpp"
-#include "../shared/net/Deserializer.hpp"
 #include "../shared/net/Serializer.hpp"
+#include "../shared/net/Packet.hpp"
+#include "../shared/net/Protocol.hpp"
+
 #include <iostream>
 
 namespace rtype::server {
