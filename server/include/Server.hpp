@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../shared/net/Packet.hpp"
-#include "../shared/net/Protocol.hpp"
 #include "UdpServer.hpp"
 #include "../../ecs/include/Registry.hpp"
 #include <atomic>
@@ -51,9 +49,10 @@ class Server {
     std::thread network_thread_;
     std::optional<asio::executor_work_guard<asio::io_context::executor_type>> work_guard_;
     static constexpr double TARGET_TICK_RATE = 60.0;
-    static constexpr std::chrono::milliseconds TICK_DURATION{static_cast<int>(1000.0 / TARGET_TICK_RATE)};
+    static constexpr std::chrono::milliseconds TICK_DURATION =
+        std::chrono::milliseconds(static_cast<long>(1000.0 / TARGET_TICK_RATE));
 
-    rtype::ecs::Registry registry_;
+    GameEngine::Registry registry_;
 };
 
 } // namespace rtype::server

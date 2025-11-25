@@ -3,13 +3,11 @@
 #include <vector>
 #include <optional>
 #include <algorithm>
-#include "Entity.hpp"
 
 namespace rtype::ecs {
 
-template <typename Component>
-class SparseArray {
-public:
+template <typename Component> class SparseArray {
+  public:
     using value_type = std::optional<Component>;
     using reference_type = value_type&;
     using const_reference_type = const value_type&;
@@ -40,15 +38,29 @@ public:
         return _data[idx];
     }
 
-    iterator begin() { return _data.begin(); }
-    const_iterator begin() const { return _data.begin(); }
-    const_iterator cbegin() const { return _data.cbegin(); }
+    iterator begin() {
+        return _data.begin();
+    }
+    const_iterator begin() const {
+        return _data.begin();
+    }
+    const_iterator cbegin() const {
+        return _data.cbegin();
+    }
 
-    iterator end() { return _data.end(); }
-    const_iterator end() const { return _data.end(); }
-    const_iterator cend() const { return _data.cend(); }
+    iterator end() {
+        return _data.end();
+    }
+    const_iterator end() const {
+        return _data.end();
+    }
+    const_iterator cend() const {
+        return _data.cend();
+    }
 
-    size_type size() const { return _data.size(); }
+    size_type size() const {
+        return _data.size();
+    }
 
     reference_type insert_at(size_type pos, const Component& component) {
         if (pos >= _data.size()) {
@@ -66,8 +78,7 @@ public:
         return _data[pos];
     }
 
-    template <class... Params>
-    reference_type emplace_at(size_type pos, Params&&... params) {
+    template <class... Params> reference_type emplace_at(size_type pos, Params&&... params) {
         if (pos >= _data.size()) {
             _data.resize(pos + 1);
         }
@@ -85,7 +96,7 @@ public:
         return &val - &_data[0];
     }
 
-private:
+  private:
     container_t _data;
     static const value_type _null_opt;
 };
