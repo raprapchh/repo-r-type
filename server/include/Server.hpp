@@ -2,6 +2,8 @@
 
 #include "UdpServer.hpp"
 #include "../../ecs/include/Registry.hpp"
+#include "../../shared/interfaces/network/IProtocolAdapter.hpp"
+#include "../../shared/net/ProtocolAdapter.hpp"
 #include <atomic>
 #include <chrono>
 #include <map>
@@ -41,6 +43,7 @@ class Server {
     uint16_t port_;
     std::unique_ptr<asio::io_context> io_context_;
     std::unique_ptr<UdpServer> udp_server_;
+    std::unique_ptr<rtype::net::IProtocolAdapter> protocol_adapter_;
     std::map<std::string, ClientInfo> clients_;
     std::mutex clients_mutex_;
     uint32_t next_player_id_;
