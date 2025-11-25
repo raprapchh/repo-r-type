@@ -46,7 +46,7 @@ endif()
 include_directories(${ENTT_INCLUDE_DIR})
 
 #
-# ECS
+#ECS
 #
 file(GLOB_RECURSE ECS_SRC
     ${CMAKE_SOURCE_DIR}/ecs/src/*.cpp
