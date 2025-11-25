@@ -24,7 +24,7 @@ struct ClientInfo {
 
 class Server {
   public:
-    Server(uint16_t port = 4242);
+    Server(GameEngine::Registry& registry, uint16_t port = 4242);
     ~Server();
 
     void start();
@@ -55,7 +55,7 @@ class Server {
     static constexpr std::chrono::milliseconds TICK_DURATION =
         std::chrono::milliseconds(static_cast<long>(1000.0 / TARGET_TICK_RATE));
 
-    GameEngine::Registry registry_;
+    GameEngine::Registry& registry_;
 };
 
 } // namespace rtype::server
