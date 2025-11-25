@@ -8,7 +8,8 @@
 
 namespace rtype::server {
 
-Server::Server(uint16_t port) : port_(port), next_player_id_(1), running_(false) {
+Server::Server(GameEngine::Registry& registry, uint16_t port)
+    : port_(port), next_player_id_(1), running_(false), registry_(registry) {
     io_context_ = std::make_unique<asio::io_context>();
     udp_server_ = std::make_unique<UdpServer>(*io_context_, port_);
     protocol_adapter_ = std::make_unique<rtype::net::ProtocolAdapter>();
@@ -81,6 +82,8 @@ void Server::game_loop() {
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_tick);
 
         if (elapsed >= TICK_DURATION) {
+            // [ECS] Logic Update
+            // std::cout << "[ECS] Update Tick" << std::endl;
             auto connected_clients = std::vector<std::pair<std::string, ClientInfo>>();
             {
                 std::lock_guard<std::mutex> lock(clients_mutex_);

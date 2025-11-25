@@ -57,7 +57,6 @@ target_include_directories(rtype_ecs
     PUBLIC
         ${CMAKE_SOURCE_DIR}/ecs/include
         ${ENTT_INCLUDE_DIR}
-    PRIVATE
         ${CMAKE_SOURCE_DIR}/ecs/include
 )
 
