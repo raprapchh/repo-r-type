@@ -24,10 +24,19 @@ class Instance {
     explicit Instance(std::string name = "default_room");
     ~Instance();
     const std::string& name() const noexcept;
+    std::optional<GameEngine::entity_t> addPlayer(uint32_t playerId, const std::string& ip, uint16_t port);
+    bool removePlayer(uint32_t playerId);
+    bool hasPlayer(uint32_t playerId) const;
+    std::optional<RoomPlayer> getPlayer(uint32_t playerId) const;
+    std::vector<RoomPlayer> listPlayers() const;
+    GameEngine::entity_t createEntity();
+    void destroyEntity(GameEngine::entity_t entity);
     GameEngine::Registry& registry() noexcept;
 
   private:
     std::string name_;
+    mutable std::mutex players_mutex_;
+    std::map<uint32_t, RoomPlayer> players_;
     GameEngine::Registry registry_;
 };
 
