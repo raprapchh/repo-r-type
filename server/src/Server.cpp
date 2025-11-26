@@ -1,8 +1,7 @@
 #include "Server.hpp"
-#include "../shared/net/Serializer.hpp"
-#include "../shared/net/Packet.hpp"
 #include "../shared/net/Protocol.hpp"
 #include "../shared/net/ProtocolAdapter.hpp"
+#include "../shared/net/MessageSerializer.hpp"
 
 #include <iostream>
 
@@ -13,6 +12,7 @@ Server::Server(GameEngine::Registry& registry, uint16_t port)
     io_context_ = std::make_unique<asio::io_context>();
     udp_server_ = std::make_unique<UdpServer>(*io_context_, port_);
     protocol_adapter_ = std::make_unique<rtype::net::ProtocolAdapter>();
+    message_serializer_ = std::make_unique<rtype::net::MessageSerializer>();
 }
 
 Server::~Server() {
@@ -140,14 +140,20 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
         break;
 
     case rtype::net::MessageType::PlayerMove:
-        handle_player_move(client_ip, client_port, packet.body);
+        handle_player_move(client_ip, client_port, packet);
+        break;
+
+    case rtype::net::MessageType::PlayerShoot:
+        handle_player_shoot(client_ip, client_port, packet);
         break;
 
     case rtype::net::MessageType::Ping: {
-        rtype::net::Serializer serializer;
-        serializer.write(static_cast<uint16_t>(rtype::net::MessageType::Pong));
-        rtype::net::Packet pong_packet(static_cast<uint16_t>(rtype::net::MessageType::Pong), serializer.get_data());
-        udp_server_->send(client_ip, client_port, protocol_adapter_->serialize(pong_packet));
+        if (message_serializer_) {
+            auto ping_data = message_serializer_->deserialize_ping_pong(packet);
+            rtype::net::PingPongData pong_data(ping_data.timestamp);
+            rtype::net::Packet pong_packet = message_serializer_->serialize_pong(pong_data);
+            udp_server_->send(client_ip, client_port, protocol_adapter_->serialize(pong_packet));
+        }
     } break;
 
     default:
@@ -177,21 +183,19 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
 
     std::cout << "Player " << player_id << " joined from " << client_ip << ":" << client_port << std::endl;
 
-    if (!protocol_adapter_) {
+    if (!protocol_adapter_ || !message_serializer_) {
         return;
     }
 
-    rtype::net::Serializer serializer;
-    serializer.write(player_id);
-
-    rtype::net::Packet response(static_cast<uint16_t>(rtype::net::MessageType::PlayerJoin), serializer.get_data());
+    rtype::net::PlayerJoinData join_data(player_id);
+    rtype::net::Packet response = message_serializer_->serialize_player_join(join_data);
 
     auto response_data = protocol_adapter_->serialize(response);
     udp_server_->send(client_ip, client_port, response_data);
     broadcast_message(response_data, client_ip, client_port);
 }
 
-void Server::handle_player_move(const std::string& client_ip, uint16_t client_port, const std::vector<uint8_t>& data) {
+void Server::handle_player_move(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet) {
     std::string client_key = client_ip + ":" + std::to_string(client_port);
 
     bool is_connected = false;
@@ -204,8 +208,42 @@ void Server::handle_player_move(const std::string& client_ip, uint16_t client_po
         is_connected = true;
     }
 
-    if (is_connected) {
-        broadcast_message(data, client_ip, client_port);
+    if (!is_connected || !protocol_adapter_ || !message_serializer_) {
+        return;
+    }
+
+    try {
+        rtype::net::PlayerMoveData move_data = message_serializer_->deserialize_player_move(packet);
+        auto serialized_packet = protocol_adapter_->serialize(packet);
+        broadcast_message(serialized_packet, client_ip, client_port);
+    } catch (const std::exception& e) {
+        std::cerr << "Error handling player move: " << e.what() << std::endl;
+    }
+}
+
+void Server::handle_player_shoot(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet) {
+    std::string client_key = client_ip + ":" + std::to_string(client_port);
+
+    bool is_connected = false;
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        auto it = clients_.find(client_key);
+        if (it == clients_.end() || !it->second.is_connected) {
+            return;
+        }
+        is_connected = true;
+    }
+
+    if (!is_connected || !protocol_adapter_ || !message_serializer_) {
+        return;
+    }
+
+    try {
+        rtype::net::PlayerShootData shoot_data = message_serializer_->deserialize_player_shoot(packet);
+        auto serialized_packet = protocol_adapter_->serialize(packet);
+        broadcast_message(serialized_packet, client_ip, client_port);
+    } catch (const std::exception& e) {
+        std::cerr << "Error handling player shoot: " << e.what() << std::endl;
     }
 }
 
