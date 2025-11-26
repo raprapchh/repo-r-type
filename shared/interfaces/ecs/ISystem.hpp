@@ -14,7 +14,7 @@ class ISystem {
      * @brief Executes system logic.
      * @param registry The entity registry.
      */
-    virtual void update(GameEngine::Registry& registry) = 0;
+    virtual void update(GameEngine::Registry& registry, double dt) = 0;
 };
 
 } // namespace rtype::ecs
