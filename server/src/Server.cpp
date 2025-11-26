@@ -2,6 +2,7 @@
 #include "../shared/net/Protocol.hpp"
 #include "../shared/net/ProtocolAdapter.hpp"
 #include "../shared/net/MessageSerializer.hpp"
+#include "../../ecs/include/Systems.hpp"
 
 #include <iostream>
 
@@ -81,9 +82,12 @@ void Server::game_loop() {
         auto current_time = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_tick);
 
+        // Call of different systems
         if (elapsed >= TICK_DURATION) {
-            // [ECS] Logic Update
-            // std::cout << "[ECS] Update Tick" << std::endl;
+            double dt = elapsed.count() / 1000.0;
+            rtype::ecs::MovementSystem movement_system;
+            movement_system.update(registry_, dt);
+
             auto connected_clients = std::vector<std::pair<std::string, ClientInfo>>();
             {
                 std::lock_guard<std::mutex> lock(clients_mutex_);
