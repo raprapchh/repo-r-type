@@ -126,8 +126,7 @@ struct GameStateData {
     uint8_t game_state;
     uint8_t padding[3];
 
-    GameStateData()
-        : game_time(0), wave_number(0), enemies_remaining(0), score(0), game_state(0), padding{0, 0, 0} {
+    GameStateData() : game_time(0), wave_number(0), enemies_remaining(0), score(0), game_state(0), padding{0, 0, 0} {
     }
 
     GameStateData(uint32_t time, uint16_t wave, uint16_t enemies, uint32_t game_score, uint8_t state)
