@@ -3,7 +3,8 @@
 #include "UdpServer.hpp"
 #include "../../ecs/include/Registry.hpp"
 #include "../../shared/interfaces/network/IProtocolAdapter.hpp"
-#include "../../shared/net/ProtocolAdapter.hpp"
+#include "../../shared/interfaces/network/IMessageSerializer.hpp"
+#include "../../shared/net/Packet.hpp"
 #include <atomic>
 #include <chrono>
 #include <map>
@@ -34,7 +35,8 @@ class Server {
   private:
     void handle_client_message(const std::string& client_ip, uint16_t client_port, const std::vector<uint8_t>& data);
     void handle_player_join(const std::string& client_ip, uint16_t client_port);
-    void handle_player_move(const std::string& client_ip, uint16_t client_port, const std::vector<uint8_t>& data);
+    void handle_player_move(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
+    void handle_player_shoot(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
     void broadcast_message(const std::vector<uint8_t>& data, const std::string& exclude_ip = "",
                            uint16_t exclude_port = 0);
     void game_loop();
@@ -44,6 +46,7 @@ class Server {
     std::unique_ptr<asio::io_context> io_context_;
     std::unique_ptr<UdpServer> udp_server_;
     std::unique_ptr<rtype::net::IProtocolAdapter> protocol_adapter_;
+    std::unique_ptr<rtype::net::IMessageSerializer> message_serializer_;
     std::map<std::string, ClientInfo> clients_;
     std::mutex clients_mutex_;
     uint32_t next_player_id_;
