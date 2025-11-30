@@ -14,7 +14,7 @@ fi
 
 cd "${BUILD_DIR}"
 
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 case "${TARGET}" in
     server)
