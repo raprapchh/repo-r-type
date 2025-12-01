@@ -1,2 +1,45 @@
+# Build directories
 build/
-B-CPP-500_rtype.pdf
+cmake-build-*/
+Testing/
+bin/
+lib/
+
+# Executables
+r-type_client
+r-type_server
+unit_tests
+*.exe
+*.out
+*.app
+
+# Object files and libraries
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+
+# CMake
+CMakeUserPresets.json
+compile_commands.json
+.cmake/
+
+# VCPKG
+vcpkg/
+vcpkg_installed/
+.vcpkg-root
+
+# IDE & Editors
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# Documentation / External
+subject/
+external/
+.cache/
