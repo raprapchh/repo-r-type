@@ -90,25 +90,12 @@ void Server::game_loop() {
             rtype::ecs::MovementSystem movement_system;
             movement_system.update(instance_.registry(), dt);
 
+            rtype::ecs::BoundarySystem boundary_system;
+            boundary_system.update(instance_.registry(), dt);
+
             auto players = instance_.listPlayers();
 
             if (!players.empty() && protocol_adapter_) {
-            movement_system.update(registry_, dt);
-
-            rtype::ecs::BoundarySystem boundary_system;
-            boundary_system.update(registry_, dt);
-
-            auto connected_clients = std::vector<std::pair<std::string, ClientInfo>>();
-            {
-                std::lock_guard<std::mutex> lock(clients_mutex_);
-                for (const auto& [key, client] : clients_) {
-                    if (client.is_connected) {
-                        connected_clients.emplace_back(key, client);
-                    }
-                }
-            }
-
-            if (!connected_clients.empty() && protocol_adapter_) {
                 rtype::net::Serializer serializer;
                 rtype::net::Packet state_packet(static_cast<uint16_t>(rtype::net::MessageType::GameState),
                                                 serializer.get_data());
