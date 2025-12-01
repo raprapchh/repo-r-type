@@ -101,3 +101,7 @@ target_link_libraries(r-type_server
 if(UNIX AND NOT APPLE)
     target_link_libraries(r-type_server PRIVATE pthread)
 endif()
+
+enable_testing()
+add_subdirectory(tests)
+

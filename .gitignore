@@ -1,12 +1,14 @@
 # Build directories
 build/
 cmake-build-*/
+Testing/
 bin/
 lib/
 
 # Executables
 r-type_client
 r-type_server
+unit_tests
 *.exe
 *.out
 *.app
