@@ -4,6 +4,7 @@
 #include "../shared/net/MessageSerializer.hpp"
 #include "../../ecs/include/systems/MovementSystem.hpp"
 #include "../../ecs/include/systems/BoundarySystem.hpp"
+#include "../../ecs/include/systems/CollisionSystem.hpp"
 
 #include <iostream>
 
@@ -92,6 +93,9 @@ void Server::game_loop() {
 
             rtype::ecs::BoundarySystem boundary_system;
             boundary_system.update(instance_.registry(), dt);
+
+            rtype::ecs::CollisionSystem collision_system;
+            collision_system.update(instance_.registry(), dt);
 
             auto players = instance_.listPlayers();
 
