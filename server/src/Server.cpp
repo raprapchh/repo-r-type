@@ -2,7 +2,8 @@
 #include "../shared/net/Protocol.hpp"
 #include "../shared/net/ProtocolAdapter.hpp"
 #include "../shared/net/MessageSerializer.hpp"
-#include "../../ecs/include/Systems.hpp"
+#include "../../ecs/include/systems/MovementSystem.hpp"
+#include "../../ecs/include/systems/BoundarySystem.hpp"
 
 #include <iostream>
 
@@ -85,8 +86,12 @@ void Server::game_loop() {
         // Call of different systems
         if (elapsed >= TICK_DURATION) {
             double dt = elapsed.count() / 1000.0;
+
             rtype::ecs::MovementSystem movement_system;
             movement_system.update(instance_.registry(), dt);
+
+            rtype::ecs::BoundarySystem boundary_system;
+            boundary_system.update(instance_.registry(), dt);
 
             auto players = instance_.listPlayers();
 
