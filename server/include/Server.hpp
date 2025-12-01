@@ -1,7 +1,7 @@
 #pragma once
 
 #include "UdpServer.hpp"
-#include "../../ecs/include/Registry.hpp"
+#include "Instance.hpp"
 #include "../../shared/interfaces/network/IProtocolAdapter.hpp"
 #include "../../shared/interfaces/network/IMessageSerializer.hpp"
 #include "../../shared/net/Packet.hpp"
@@ -25,7 +25,7 @@ struct ClientInfo {
 
 class Server {
   public:
-    Server(GameEngine::Registry& registry, uint16_t port = 4242);
+    Server(Instance& instance, uint16_t port = 4242);
     ~Server();
 
     void start();
@@ -58,7 +58,7 @@ class Server {
     static constexpr std::chrono::milliseconds TICK_DURATION =
         std::chrono::milliseconds(static_cast<long>(1000.0 / TARGET_TICK_RATE));
 
-    GameEngine::Registry& registry_;
+    Instance& instance_;
 };
 
 } // namespace rtype::server
