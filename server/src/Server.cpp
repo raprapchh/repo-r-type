@@ -9,8 +9,8 @@
 
 namespace rtype::server {
 
-Server::Server(GameEngine::Registry& registry, uint16_t port)
-    : port_(port), next_player_id_(1), running_(false), registry_(registry) {
+Server::Server(Instance& instance, uint16_t port)
+    : port_(port), next_player_id_(1), running_(false), instance_(instance) {
     io_context_ = std::make_unique<asio::io_context>();
     udp_server_ = std::make_unique<UdpServer>(*io_context_, port_);
     protocol_adapter_ = std::make_unique<rtype::net::ProtocolAdapter>();
@@ -88,6 +88,11 @@ void Server::game_loop() {
             double dt = elapsed.count() / 1000.0;
 
             rtype::ecs::MovementSystem movement_system;
+            movement_system.update(instance_.registry(), dt);
+
+            auto players = instance_.listPlayers();
+
+            if (!players.empty() && protocol_adapter_) {
             movement_system.update(registry_, dt);
 
             rtype::ecs::BoundarySystem boundary_system;
@@ -109,9 +114,9 @@ void Server::game_loop() {
                                                 serializer.get_data());
                 auto packet_data = protocol_adapter_->serialize(state_packet);
 
-                for (const auto& [key, client] : connected_clients) {
-                    if (udp_server_) {
-                        udp_server_->send(client.ip, client.port, packet_data);
+                for (const auto& player : players) {
+                    if (player.is_connected && udp_server_) {
+                        udp_server_->send(player.ip, player.port, packet_data);
                     }
                 }
             }
@@ -180,14 +185,25 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
             return;
         }
 
+        player_id = next_player_id_++;
+
         ClientInfo info;
         info.ip = client_ip;
         info.port = client_port;
-        info.player_id = next_player_id_++;
+        info.player_id = player_id;
         info.is_connected = true;
-        player_id = info.player_id;
 
         clients_[client_key] = info;
+    }
+
+    auto entity_opt = instance_.addPlayer(player_id, client_ip, client_port);
+    if (!entity_opt.has_value()) {
+        std::cerr << "Failed to add player " << player_id << " to instance" << std::endl;
+        {
+            std::lock_guard<std::mutex> lock(clients_mutex_);
+            clients_.erase(client_key);
+        }
+        return;
     }
 
     std::cout << "Player " << player_id << " joined from " << client_ip << ":" << client_port << std::endl;
@@ -257,19 +273,13 @@ void Server::handle_player_shoot(const std::string& client_ip, uint16_t client_p
 }
 
 void Server::broadcast_message(const std::vector<uint8_t>& data, const std::string& exclude_ip, uint16_t exclude_port) {
-    std::vector<std::pair<std::string, uint16_t>> recipients;
-    {
-        std::lock_guard<std::mutex> lock(clients_mutex_);
-        for (const auto& [key, client] : clients_) {
-            if (client.is_connected && (client.ip != exclude_ip || client.port != exclude_port)) {
-                recipients.emplace_back(client.ip, client.port);
-            }
-        }
-    }
+    auto players = instance_.listPlayers();
 
-    for (const auto& [ip, port] : recipients) {
-        if (udp_server_) {
-            udp_server_->send(ip, port, data);
+    for (const auto& player : players) {
+        if (player.is_connected && (player.ip != exclude_ip || player.port != exclude_port)) {
+            if (udp_server_) {
+                udp_server_->send(player.ip, player.port, data);
+            }
         }
     }
 }
