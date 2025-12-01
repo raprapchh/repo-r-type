@@ -2,7 +2,7 @@
 #include "../shared/net/Protocol.hpp"
 #include "../shared/net/ProtocolAdapter.hpp"
 #include "../shared/net/MessageSerializer.hpp"
-#include "../../ecs/include/Systems.hpp"
+#include "../../ecs/include/systems/MovementSystem.hpp"
 
 #include <iostream>
 
