@@ -1,7 +1,6 @@
-#include "../include/Systems.hpp"
-#include "../include/components/Position.hpp"
-#include "../include/components/Velocity.hpp"
-#include "../include/Registry.hpp"
+#include "../../include/systems/MovementSystem.hpp"
+#include "../../include/components/Position.hpp"
+#include "../../include/components/Velocity.hpp"
 
 namespace rtype::ecs {
 
