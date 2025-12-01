@@ -168,7 +168,7 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         }
 
         player_id = next_player_id_++;
-        
+
         ClientInfo info;
         info.ip = client_ip;
         info.port = client_port;
@@ -256,7 +256,7 @@ void Server::handle_player_shoot(const std::string& client_ip, uint16_t client_p
 
 void Server::broadcast_message(const std::vector<uint8_t>& data, const std::string& exclude_ip, uint16_t exclude_port) {
     auto players = instance_.listPlayers();
-    
+
     for (const auto& player : players) {
         if (player.is_connected && (player.ip != exclude_ip || player.port != exclude_port)) {
             if (udp_server_) {
