@@ -7,7 +7,7 @@ int main() {
         client.connect();
 
         std::cout << "Press Enter to disconnect...\n";
-        std::cin.get(); //Call render function
+        std::cin.get(); // Call render function
 
         client.disconnect();
     } catch (const std::exception& e) {
