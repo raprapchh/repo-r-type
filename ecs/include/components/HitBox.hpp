@@ -6,9 +6,11 @@ struct HitBox {
     float width;
     float height;
 
-    HitBox() : width(0.0f), height(0.0f) {}
+    HitBox() : width(0.0f), height(0.0f) {
+    }
 
-    HitBox(float w, float h) : width(w), height(h) {}
+    HitBox(float w, float h) : width(w), height(h) {
+    }
 };
 
 } // namespace rtype::ecs::component

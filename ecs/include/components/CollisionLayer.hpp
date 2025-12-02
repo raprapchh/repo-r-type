@@ -18,9 +18,11 @@ struct Collidable {
     CollisionLayer layer;
     bool is_active;
 
-    Collidable() : layer(CollisionLayer::None), is_active(true) {}
+    Collidable() : layer(CollisionLayer::None), is_active(true) {
+    }
 
-    Collidable(CollisionLayer l) : layer(l), is_active(true) {}
+    Collidable(CollisionLayer l) : layer(l), is_active(true) {
+    }
 };
 
 } // namespace rtype::ecs::component

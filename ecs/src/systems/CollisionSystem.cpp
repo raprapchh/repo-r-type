@@ -41,8 +41,8 @@ void CollisionSystem::update(GameEngine::Registry& registry, double dt) {
                 continue;
             }
 
-            if (CheckAABBCollision(pos1.x, pos1.y, hitbox1.width, hitbox1.height,
-                                   pos2.x, pos2.y, hitbox2.width, hitbox2.height)) {
+            if (CheckAABBCollision(pos1.x, pos1.y, hitbox1.width, hitbox1.height, pos2.x, pos2.y, hitbox2.width,
+                                   hitbox2.height)) {
                 HandleCollision(registry, entity1, entity2, collidable1.layer, collidable2.layer);
             }
         }
@@ -92,8 +92,7 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
                                       component::CollisionLayer layer2) {
     using CL = component::CollisionLayer;
 
-    if ((layer1 == CL::Player && layer2 == CL::Enemy) ||
-        (layer1 == CL::Enemy && layer2 == CL::Player)) {
+    if ((layer1 == CL::Player && layer2 == CL::Enemy) || (layer1 == CL::Enemy && layer2 == CL::Player)) {
         auto player_entity = (layer1 == CL::Player) ? entity1 : entity2;
 
         if (registry.hasComponent<component::Health>(player_entity)) {
@@ -140,8 +139,7 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
         }
     }
 
-    if ((layer1 == CL::Player && layer2 == CL::PowerUp) ||
-        (layer1 == CL::PowerUp && layer2 == CL::Player)) {
+    if ((layer1 == CL::Player && layer2 == CL::PowerUp) || (layer1 == CL::PowerUp && layer2 == CL::Player)) {
         auto powerup_entity = (layer1 == CL::PowerUp) ? entity1 : entity2;
         auto player_entity = (layer1 == CL::Player) ? entity1 : entity2;
 
