@@ -23,11 +23,10 @@ int main(int argc, char* argv[]) {
     std::signal(SIGINT, signal_handler);
 
     try {
-        uint16_t port = 4242;
-        if (argc > 1) {
-            port = static_cast<uint16_t>(std::stoi(argv[1]));
+        unsigned int port = 4242;
+        if (argc > 1 && std::stoi(argv[1]) < 65535) {
+            port = static_cast<unsigned int>(std::stoi(argv[1]));
         }
-
         g_instance = std::make_unique<rtype::server::Instance>("main_room");
         g_server = std::make_unique<rtype::server::Server>(*g_instance, port);
         g_server->run();
