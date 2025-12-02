@@ -79,9 +79,18 @@ add_executable(r-type_client ${CLIENT_SRC})
 target_include_directories(r-type_client PRIVATE
     ${CMAKE_SOURCE_DIR}/client/include
 )
-target_link_libraries(r-type_client
-    PRIVATE rtype_ecs rtype_shared
-)
+
+find_package(SFML 2.5 COMPONENTS graphics window system QUIET)
+if(SFML_FOUND)
+    target_link_libraries(r-type_client
+        PRIVATE rtype_ecs rtype_shared sfml-graphics sfml-window sfml-system
+    )
+else()
+    message(WARNING "SFML not found. Client will compile without graphics support.")
+    target_link_libraries(r-type_client
+        PRIVATE rtype_ecs rtype_shared
+    )
+endif()
 
 #
 # SERVER
