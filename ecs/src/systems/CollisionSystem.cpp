@@ -49,12 +49,9 @@ void CollisionSystem::update(GameEngine::Registry& registry, double dt) {
     }
 }
 
-bool CollisionSystem::CheckAABBCollision(float x1, float y1, float w1, float h1,
-                                         float x2, float y2, float w2, float h2) {
-    return (x1 < x2 + w2 &&
-            x1 + w1 > x2 &&
-            y1 < y2 + h2 &&
-            y1 + h1 > y2);
+bool CollisionSystem::CheckAABBCollision(float x1, float y1, float w1, float h1, float x2, float y2, float w2,
+                                         float h2) {
+    return (x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2);
 }
 
 bool CollisionSystem::ShouldCollide(component::CollisionLayer layer1, component::CollisionLayer layer2) {
@@ -64,27 +61,34 @@ bool CollisionSystem::ShouldCollide(component::CollisionLayer layer1, component:
         return false;
     }
 
-    if (layer1 == CL::Player && layer2 == CL::Enemy) return true;
-    if (layer1 == CL::Enemy && layer2 == CL::Player) return true;
+    if (layer1 == CL::Player && layer2 == CL::Enemy)
+        return true;
+    if (layer1 == CL::Enemy && layer2 == CL::Player)
+        return true;
 
-    if (layer1 == CL::Player && layer2 == CL::EnemyProjectile) return true;
-    if (layer1 == CL::EnemyProjectile && layer2 == CL::Player) return true;
+    if (layer1 == CL::Player && layer2 == CL::EnemyProjectile)
+        return true;
+    if (layer1 == CL::EnemyProjectile && layer2 == CL::Player)
+        return true;
 
-    if (layer1 == CL::Enemy && layer2 == CL::PlayerProjectile) return true;
-    if (layer1 == CL::PlayerProjectile && layer2 == CL::Enemy) return true;
+    if (layer1 == CL::Enemy && layer2 == CL::PlayerProjectile)
+        return true;
+    if (layer1 == CL::PlayerProjectile && layer2 == CL::Enemy)
+        return true;
 
-    if (layer1 == CL::Player && layer2 == CL::PowerUp) return true;
-    if (layer1 == CL::PowerUp && layer2 == CL::Player) return true;
+    if (layer1 == CL::Player && layer2 == CL::PowerUp)
+        return true;
+    if (layer1 == CL::PowerUp && layer2 == CL::Player)
+        return true;
 
-    if (layer1 == CL::Obstacle || layer2 == CL::Obstacle) return true;
+    if (layer1 == CL::Obstacle || layer2 == CL::Obstacle)
+        return true;
 
     return false;
 }
 
-void CollisionSystem::HandleCollision(GameEngine::Registry& registry,
-                                      GameEngine::entity_t entity1,
-                                      GameEngine::entity_t entity2,
-                                      component::CollisionLayer layer1,
+void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine::entity_t entity1,
+                                      GameEngine::entity_t entity2, component::CollisionLayer layer1,
                                       component::CollisionLayer layer2) {
     using CL = component::CollisionLayer;
 
