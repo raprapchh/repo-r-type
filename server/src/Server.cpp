@@ -81,8 +81,6 @@ void Server::game_loop() {
     while (running_.load()) {
         auto current_time = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_tick);
-
-        // Call of different systems
         if (elapsed >= TICK_DURATION) {
             double dt = elapsed.count() / 1000.0;
             rtype::ecs::MovementSystem movement_system;
@@ -99,9 +97,9 @@ void Server::game_loop() {
             }
 
             if (!connected_clients.empty() && protocol_adapter_) {
-                rtype::net::Serializer serializer;
-                rtype::net::Packet state_packet(static_cast<uint16_t>(rtype::net::MessageType::GameState),
-                                                serializer.get_data());
+                rtype::net::GameStateData game_state_data(static_cast<uint32_t>(elapsed.count()), 1, 0, 100, rtype::net::GameState::PLAYING);
+
+                rtype::net::Packet state_packet = message_serializer_->serialize_game_state(game_state_data);
                 auto packet_data = protocol_adapter_->serialize(state_packet);
 
                 for (const auto& [key, client] : connected_clients) {
@@ -196,7 +194,14 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
 
     auto response_data = protocol_adapter_->serialize(response);
     udp_server_->send(client_ip, client_port, response_data);
-    broadcast_message(response_data, client_ip, client_port);
+
+    float start_x = 100.0f;
+    float start_y = 100.0f + (player_id * 50);
+    rtype::net::EntitySpawnData spawn_data(player_id, rtype::net::EntityType::PLAYER, 0, start_x, start_y, 0.0f, 0.0f);
+    rtype::net::Packet spawn_packet = message_serializer_->serialize_entity_spawn(spawn_data);
+    auto spawn_packet_data = protocol_adapter_->serialize(spawn_packet);
+
+    broadcast_message(spawn_packet_data, "", 0);
 }
 
 void Server::handle_player_move(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet) {
