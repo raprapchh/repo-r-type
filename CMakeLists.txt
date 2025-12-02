@@ -5,6 +5,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+add_definitions(-DASIO_STANDALONE)
+add_compile_options(-Wall -Wextra -Wpedantic)
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 set(ASIO_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/external/asio/asio/include")
@@ -79,9 +82,18 @@ add_executable(r-type_client ${CLIENT_SRC})
 target_include_directories(r-type_client PRIVATE
     ${CMAKE_SOURCE_DIR}/client/include
 )
-target_link_libraries(r-type_client
-    PRIVATE rtype_ecs rtype_shared
-)
+
+find_package(SFML 2.5 COMPONENTS graphics window system QUIET)
+if(SFML_FOUND)
+    target_link_libraries(r-type_client
+        PRIVATE rtype_ecs rtype_shared sfml-graphics sfml-window sfml-system
+    )
+else()
+    message(WARNING "SFML not found. Client will compile without graphics support.")
+    target_link_libraries(r-type_client
+        PRIVATE rtype_ecs rtype_shared
+    )
+endif()
 
 #
 # SERVER
@@ -104,4 +116,3 @@ endif()
 
 enable_testing()
 add_subdirectory(tests)
-
