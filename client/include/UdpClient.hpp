@@ -10,7 +10,7 @@
 namespace rtype::client {
 
 class UdpClient {
-public:
+  public:
     using message_callback = std::function<void(const asio::error_code&, std::size_t, const std::vector<uint8_t>&)>;
 
     UdpClient(asio::io_context& io_context, const std::string& host, uint16_t port);
@@ -22,7 +22,7 @@ public:
 
     void set_message_handler(message_callback handler);
 
-private:
+  private:
     void handle_receive(const asio::error_code& error, std::size_t bytes_transferred);
 
     asio::io_context& io_context_;

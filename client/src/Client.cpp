@@ -6,8 +6,7 @@
 namespace rtype::client {
 
 Client::Client(const std::string& host, uint16_t port, Renderer& renderer)
-    : host_(host), port_(port), connected_(false), player_id_(0), renderer_(renderer)
-{
+    : host_(host), port_(port), connected_(false), player_id_(0), renderer_(renderer) {
     io_context_ = std::make_unique<asio::io_context>();
     udp_client_ = std::make_unique<UdpClient>(*io_context_, host_, port_);
     udp_client_->set_message_handler(
@@ -81,8 +80,8 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
     rtype::net::MessageSerializer serializer;
 
     std::cout << "Handling message type: " << static_cast<int>(packet.header.message_type)
-              << ", Announced body size: " << packet.header.payload_size
-              << ", Actual body size: " << packet.body.size() << std::endl;
+              << ", Announced body size: " << packet.header.payload_size << ", Actual body size: " << packet.body.size()
+              << std::endl;
 
     if (packet.header.payload_size != packet.body.size()) {
         std::cerr << "Error: Malformed packet received. Announced body size (" << packet.header.payload_size
@@ -90,7 +89,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
         return;
     }
 
-   switch (static_cast<rtype::net::MessageType>(packet.header.message_type)) {
+    switch (static_cast<rtype::net::MessageType>(packet.header.message_type)) {
     case rtype::net::MessageType::PlayerJoin: {
         try {
             auto join_data = serializer.deserialize_player_join(packet);
@@ -156,7 +155,8 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
         break;
     }
     default:
-        std::cerr << "Warning: Unknown message type received: " << static_cast<int>(packet.header.message_type) << std::endl;
+        std::cerr << "Warning: Unknown message type received: " << static_cast<int>(packet.header.message_type)
+                  << std::endl;
         break;
     }
 }

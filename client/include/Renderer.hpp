@@ -19,7 +19,7 @@ struct Entity {
 };
 
 class Renderer {
-public:
+  public:
     Renderer(uint32_t width = 1280, uint32_t height = 720);
     ~Renderer();
 
@@ -41,15 +41,25 @@ public:
 
     sf::Vector2f get_player_position(uint32_t player_id) const;
 
-    bool is_moving_up() const { return keys_[sf::Keyboard::Up]; }
-    bool is_moving_down() const { return keys_[sf::Keyboard::Down]; }
-    bool is_moving_left() const { return keys_[sf::Keyboard::Left]; }
-    bool is_moving_right() const { return keys_[sf::Keyboard::Right]; }
-    bool is_shooting() const { return keys_[sf::Keyboard::Space]; }
+    bool is_moving_up() const {
+        return keys_[sf::Keyboard::Up];
+    }
+    bool is_moving_down() const {
+        return keys_[sf::Keyboard::Down];
+    }
+    bool is_moving_left() const {
+        return keys_[sf::Keyboard::Left];
+    }
+    bool is_moving_right() const {
+        return keys_[sf::Keyboard::Right];
+    }
+    bool is_shooting() const {
+        return keys_[sf::Keyboard::Space];
+    }
 
     sf::Vector2f get_shoot_direction() const;
 
-private:
+  private:
     void load_sprites();
     void load_texture(const std::string& path, const std::string& name);
     sf::Sprite create_sprite(const Entity& entity);

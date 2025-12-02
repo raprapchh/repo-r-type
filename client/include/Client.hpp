@@ -14,7 +14,7 @@
 namespace rtype::client {
 
 class Client {
-public:
+  public:
     Client(const std::string& host, uint16_t port, Renderer& renderer);
     ~Client();
 
@@ -24,10 +24,10 @@ public:
     void send_move(int8_t dx, int8_t dy);
     void send_shoot(int32_t x, int32_t y);
 
-private:
+  private:
     void handle_server_message(const std::vector<uint8_t>& data);
     void handle_udp_receive(const asio::error_code& error, std::size_t bytes_transferred,
-                           const std::vector<uint8_t>& data);
+                            const std::vector<uint8_t>& data);
 
     std::string host_;
     uint16_t port_;

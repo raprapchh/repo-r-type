@@ -23,13 +23,17 @@ int main() {
             }
             renderer.handle_input();
 
-            if (renderer.is_moving_up() || renderer.is_moving_down() || 
-                renderer.is_moving_left() || renderer.is_moving_right()) {
+            if (renderer.is_moving_up() || renderer.is_moving_down() || renderer.is_moving_left() ||
+                renderer.is_moving_right()) {
                 int8_t dx = 0, dy = 0;
-                if (renderer.is_moving_left()) dx = -1;
-                if (renderer.is_moving_right()) dx = 1;
-                if (renderer.is_moving_up()) dy = -1;
-                if (renderer.is_moving_down()) dy = 1;
+                if (renderer.is_moving_left())
+                    dx = -1;
+                if (renderer.is_moving_right())
+                    dx = 1;
+                if (renderer.is_moving_up())
+                    dy = -1;
+                if (renderer.is_moving_down())
+                    dy = 1;
                 client.send_move(dx, dy);
             }
 
