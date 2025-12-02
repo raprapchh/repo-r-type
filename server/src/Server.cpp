@@ -99,10 +99,18 @@ void Server::game_loop() {
             rtype::ecs::CollisionSystem collision_system;
             collision_system.update(registry_, dt);
 
-            if (protocol_adapter_) {
-                rtype::net::Serializer serializer;
-                rtype::net::Packet state_packet(static_cast<uint16_t>(rtype::net::MessageType::GameState),
-                                                serializer.get_data());
+            if (protocol_adapter_ && message_serializer_) {
+                rtype::net::GameStateData game_state_data;
+                game_state_data.game_time = static_cast<uint32_t>(elapsed.count());
+                game_state_data.wave_number = 1;
+                game_state_data.enemies_remaining = 0;
+                game_state_data.score = 0;
+                game_state_data.game_state = 0;
+                game_state_data.padding[0] = 0;
+                game_state_data.padding[1] = 0;
+                game_state_data.padding[2] = 0;
+
+                rtype::net::Packet state_packet = message_serializer_->serialize_game_state(game_state_data);
                 auto packet_data = protocol_adapter_->serialize(state_packet);
 
                 std::lock_guard<std::mutex> lock(clients_mutex_);
