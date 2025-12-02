@@ -21,6 +21,7 @@ struct ClientInfo {
     uint16_t port;
     uint32_t player_id;
     bool is_connected;
+    GameEngine::entity_t entity_id;
 };
 
 class Server {

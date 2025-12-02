@@ -2,7 +2,11 @@
 #include "../shared/net/Protocol.hpp"
 #include "../shared/net/ProtocolAdapter.hpp"
 #include "../shared/net/MessageSerializer.hpp"
-#include "../../ecs/include/Systems.hpp"
+#include "../../ecs/include/systems/MovementSystem.hpp"
+#include "../../ecs/include/systems/BoundarySystem.hpp"
+#include "../../ecs/include/systems/CollisionSystem.hpp"
+#include "../../ecs/include/components/Position.hpp"
+#include "../../ecs/include/components/Velocity.hpp"
 
 #include <iostream>
 
@@ -81,29 +85,29 @@ void Server::game_loop() {
     while (running_.load()) {
         auto current_time = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_tick);
+
+        // Call of different systems
         if (elapsed >= TICK_DURATION) {
             double dt = elapsed.count() / 1000.0;
+
             rtype::ecs::MovementSystem movement_system;
             movement_system.update(registry_, dt);
 
-            auto connected_clients = std::vector<std::pair<std::string, ClientInfo>>();
-            {
-                std::lock_guard<std::mutex> lock(clients_mutex_);
-                for (const auto& [key, client] : clients_) {
-                    if (client.is_connected) {
-                        connected_clients.emplace_back(key, client);
-                    }
-                }
-            }
+            rtype::ecs::BoundarySystem boundary_system;
+            boundary_system.update(registry_, dt);
 
-            if (!connected_clients.empty() && protocol_adapter_) {
-                rtype::net::GameStateData game_state_data(static_cast<uint32_t>(elapsed.count()), 1, 0, 100, rtype::net::GameState::PLAYING);
+            rtype::ecs::CollisionSystem collision_system;
+            collision_system.update(registry_, dt);
 
-                rtype::net::Packet state_packet = message_serializer_->serialize_game_state(game_state_data);
+            if (protocol_adapter_) {
+                rtype::net::Serializer serializer;
+                rtype::net::Packet state_packet(static_cast<uint16_t>(rtype::net::MessageType::GameState),
+                                                serializer.get_data());
                 auto packet_data = protocol_adapter_->serialize(state_packet);
 
-                for (const auto& [key, client] : connected_clients) {
-                    if (udp_server_) {
+                std::lock_guard<std::mutex> lock(clients_mutex_);
+                for (const auto& [key, client] : clients_) {
+                    if (client.is_connected && udp_server_) {
                         udp_server_->send(client.ip, client.port, packet_data);
                     }
                 }
@@ -173,12 +177,18 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
             return;
         }
 
+        player_id = next_player_id_++;
+
+        GameEngine::entity_t entity = registry_.createEntity();
+        registry_.addComponent<rtype::ecs::component::Position>(entity, 100.0f, 100.0f);
+        registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
+
         ClientInfo info;
         info.ip = client_ip;
         info.port = client_port;
-        info.player_id = next_player_id_++;
+        info.player_id = player_id;
         info.is_connected = true;
-        player_id = info.player_id;
+        info.entity_id = entity;
 
         clients_[client_key] = info;
     }
@@ -194,14 +204,7 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
 
     auto response_data = protocol_adapter_->serialize(response);
     udp_server_->send(client_ip, client_port, response_data);
-
-    float start_x = 100.0f;
-    float start_y = 100.0f + (player_id * 50);
-    rtype::net::EntitySpawnData spawn_data(player_id, rtype::net::EntityType::PLAYER, 0, start_x, start_y, 0.0f, 0.0f);
-    rtype::net::Packet spawn_packet = message_serializer_->serialize_entity_spawn(spawn_data);
-    auto spawn_packet_data = protocol_adapter_->serialize(spawn_packet);
-
-    broadcast_message(spawn_packet_data, "", 0);
+    broadcast_message(response_data, client_ip, client_port);
 }
 
 void Server::handle_player_move(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet) {
@@ -257,19 +260,12 @@ void Server::handle_player_shoot(const std::string& client_ip, uint16_t client_p
 }
 
 void Server::broadcast_message(const std::vector<uint8_t>& data, const std::string& exclude_ip, uint16_t exclude_port) {
-    std::vector<std::pair<std::string, uint16_t>> recipients;
-    {
-        std::lock_guard<std::mutex> lock(clients_mutex_);
-        for (const auto& [key, client] : clients_) {
-            if (client.is_connected && (client.ip != exclude_ip || client.port != exclude_port)) {
-                recipients.emplace_back(client.ip, client.port);
+    std::lock_guard<std::mutex> lock(clients_mutex_);
+    for (const auto& [key, client] : clients_) {
+        if (client.is_connected && (client.ip != exclude_ip || client.port != exclude_port)) {
+            if (udp_server_) {
+                udp_server_->send(client.ip, client.port, data);
             }
-        }
-    }
-
-    for (const auto& [ip, port] : recipients) {
-        if (udp_server_) {
-            udp_server_->send(ip, port, data);
         }
     }
 }
