@@ -22,6 +22,7 @@ int main() {
                 }
             }
             renderer.handle_input();
+            client.update();
 
             if (renderer.is_moving_up() || renderer.is_moving_down() || renderer.is_moving_left() ||
                 renderer.is_moving_right()) {
