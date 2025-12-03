@@ -59,12 +59,19 @@ class Renderer {
 
     sf::Vector2f get_shoot_direction() const;
 
+    void draw_text(const sf::Text& text);
+    void draw_rectangle(const sf::RectangleShape& rectangle);
+    sf::Vector2u get_window_size() const;
+    sf::Vector2f get_mouse_position() const;
+    void handle_resize(uint32_t width, uint32_t height);
+
   private:
     void load_sprites();
     void load_texture(const std::string& path, const std::string& name);
     sf::Sprite create_sprite(const Entity& entity);
 
     std::unique_ptr<sf::RenderWindow> window_;
+    sf::View view_;
     std::unordered_map<std::string, sf::Texture> textures_;
     std::unordered_map<uint32_t, Entity> entities_;
 

@@ -15,6 +15,14 @@ Client::Client(const std::string& host, uint16_t port, Renderer& renderer)
         });
 }
 
+void Client::set_game_start_callback(GameStartCallback callback) {
+    game_start_callback_ = callback;
+}
+
+void Client::set_player_join_callback(PlayerJoinCallback callback) {
+    player_join_callback_ = callback;
+}
+
 Client::~Client() {
     disconnect();
 }
@@ -99,9 +107,25 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 std::cout << "Successfully connected to server. My Player ID is " << player_id_ << std::endl;
             } else {
                 std::cout << "Player " << join_data.player_id << " has joined the game." << std::endl;
+                if (player_join_callback_) {
+                    player_join_callback_(join_data.player_id);
+                }
             }
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing PlayerJoin packet: " << e.what() << std::endl;
+        }
+        break;
+    }
+    case rtype::net::MessageType::GameStart: {
+        try {
+            auto game_start_data = serializer.deserialize_game_start(packet);
+            std::cout << "Game starting! Session: " << game_start_data.session_id
+                      << ", Players: " << static_cast<int>(game_start_data.player_count) << std::endl;
+            if (game_start_callback_) {
+                game_start_callback_();
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error deserializing GameStart packet: " << e.what() << std::endl;
         }
         break;
     }
@@ -115,6 +139,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
         break;
     }
     case rtype::net::MessageType::PlayerMove: {
+        network_system_.push_packet(packet);
         try {
             auto move_data = serializer.deserialize_player_move(packet);
             rtype::client::Entity moved_entity;
@@ -129,6 +154,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
         break;
     }
     case rtype::net::MessageType::EntitySpawn: {
+        network_system_.push_packet(packet);
         try {
             auto spawn_data = serializer.deserialize_entity_spawn(packet);
             rtype::client::Entity new_entity;
@@ -141,6 +167,17 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             renderer_.spawn_entity(new_entity);
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing EntitySpawn packet: " << e.what() << std::endl;
+        }
+        break;
+    }
+
+    case rtype::net::MessageType::EntityDestroy: {
+        network_system_.push_packet(packet);
+        try {
+            auto destroy_data = serializer.deserialize_entity_destroy(packet);
+            renderer_.remove_entity(destroy_data.entity_id);
+        } catch (const std::exception& e) {
+            std::cerr << "Error deserializing EntityDestroy packet: " << e.what() << std::endl;
         }
         break;
     }
@@ -192,6 +229,10 @@ void Client::send_shoot(int32_t x, int32_t y) {
     rtype::net::Packet shoot_packet = serializer.serialize_player_shoot(shoot_data);
     std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(shoot_packet);
     udp_client_->send(packet_data);
+}
+
+void Client::update() {
+    network_system_.update(registry_);
 }
 
 } // namespace rtype::client

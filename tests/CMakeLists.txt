@@ -8,9 +8,19 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(Catch2)
 
-add_executable(unit_tests TestMovement.cpp TestWeapon.cpp)
+add_executable(unit_tests
+    TestMovement.cpp
+    TestNetworkSystem.cpp
+    ${CMAKE_SOURCE_DIR}/client/src/NetworkSystem.cpp
+    TestWeapon.cpp
+)
 
-target_link_libraries(unit_tests PRIVATE rtype_ecs Catch2::Catch2WithMain)
+target_link_libraries(unit_tests PRIVATE rtype_ecs rtype_shared Catch2::Catch2WithMain)
+target_include_directories(unit_tests PRIVATE
+    ${CMAKE_SOURCE_DIR}/client/include
+    ${CMAKE_SOURCE_DIR}/shared
+    ${CMAKE_SOURCE_DIR}/ecs/include
+)
 
 include(CTest)
 include(Catch)
