@@ -58,7 +58,7 @@ class Client {
     std::unique_ptr<std::thread> network_thread_;
     GameStartCallback game_start_callback_;
     PlayerJoinCallback player_join_callback_;
-  
+
     GameEngine::Registry registry_;
     NetworkSystem network_system_;
 };
