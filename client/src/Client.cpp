@@ -115,6 +115,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
         break;
     }
     case rtype::net::MessageType::PlayerMove: {
+        network_system_.push_packet(packet);
         try {
             auto move_data = serializer.deserialize_player_move(packet);
             rtype::client::Entity moved_entity;
@@ -129,6 +130,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
         break;
     }
     case rtype::net::MessageType::EntitySpawn: {
+        network_system_.push_packet(packet);
         try {
             auto spawn_data = serializer.deserialize_entity_spawn(packet);
             rtype::client::Entity new_entity;
@@ -141,6 +143,17 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             renderer_.spawn_entity(new_entity);
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing EntitySpawn packet: " << e.what() << std::endl;
+        }
+        break;
+    }
+
+    case rtype::net::MessageType::EntityDestroy: {
+        network_system_.push_packet(packet);
+        try {
+            auto destroy_data = serializer.deserialize_entity_destroy(packet);
+            renderer_.remove_entity(destroy_data.entity_id);
+        } catch (const std::exception& e) {
+            std::cerr << "Error deserializing EntityDestroy packet: " << e.what() << std::endl;
         }
         break;
     }
@@ -192,6 +205,10 @@ void Client::send_shoot(int32_t x, int32_t y) {
     rtype::net::Packet shoot_packet = serializer.serialize_player_shoot(shoot_data);
     std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(shoot_packet);
     udp_client_->send(packet_data);
+}
+
+void Client::update() {
+    network_system_.update(registry_);
 }
 
 } // namespace rtype::client
