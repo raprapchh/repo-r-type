@@ -9,6 +9,10 @@ Renderer::Renderer(uint32_t width, uint32_t height)
       ,
       background_x_(0.0f) {
     window_->setFramerateLimit(60);
+    window_->setKeyRepeatEnabled(false);
+    view_.setSize(static_cast<float>(width), static_cast<float>(height));
+    view_.setCenter(static_cast<float>(width) / 2.0f, static_cast<float>(height) / 2.0f);
+    window_->setView(view_);
     std::fill(std::begin(keys_), std::end(keys_), false);
     load_sprites();
 }
@@ -149,6 +153,28 @@ sf::Vector2f Renderer::get_player_position(uint32_t player_id) const {
         return {it->second.x, it->second.y};
     }
     return {0.0f, 0.0f};
+}
+
+void Renderer::draw_text(const sf::Text& text) {
+    window_->draw(text);
+}
+
+void Renderer::draw_rectangle(const sf::RectangleShape& rectangle) {
+    window_->draw(rectangle);
+}
+
+sf::Vector2u Renderer::get_window_size() const {
+    return window_->getSize();
+}
+
+sf::Vector2f Renderer::get_mouse_position() const {
+    return window_->mapPixelToCoords(sf::Mouse::getPosition(*window_));
+}
+
+void Renderer::handle_resize(uint32_t width, uint32_t height) {
+    view_.setSize(static_cast<float>(width), static_cast<float>(height));
+    view_.setCenter(static_cast<float>(width) / 2.0f, static_cast<float>(height) / 2.0f);
+    window_->setView(view_);
 }
 
 } // namespace rtype::client
