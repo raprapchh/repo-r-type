@@ -34,4 +34,3 @@ class MenuState : public IState {
 };
 
 } // namespace rtype::client
-

@@ -42,4 +42,3 @@ StateType StateManager::get_current_state_type() const {
 }
 
 } // namespace rtype::client
-

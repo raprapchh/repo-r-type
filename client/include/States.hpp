@@ -6,11 +6,7 @@
 
 namespace rtype::client {
 
-enum class StateType {
-    Menu,
-    Lobby,
-    Game
-};
+enum class StateType { Menu, Lobby, Game };
 
 class StateManager;
 
@@ -50,4 +46,3 @@ class StateManager {
 };
 
 } // namespace rtype::client
-

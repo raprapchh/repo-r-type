@@ -15,7 +15,9 @@ LobbyState::LobbyState() : font_loaded_(false), player_count_(0), game_started_(
 
 void LobbyState::setup_ui() {
     if (!font_.loadFromFile("client/fonts/Ethnocentric-Regular.otf")) {
-        std::cerr << "Warning: Could not load font from client/fonts/Ethnocentric-Regular.otf. UI will not display text." << std::endl;
+        std::cerr
+            << "Warning: Could not load font from client/fonts/Ethnocentric-Regular.otf. UI will not display text."
+            << std::endl;
         font_loaded_ = false;
         return;
     }
@@ -112,8 +114,8 @@ void LobbyState::add_player(uint32_t player_id) {
 }
 
 void LobbyState::remove_player(uint32_t player_id) {
-    connected_players_.erase(
-        std::remove(connected_players_.begin(), connected_players_.end(), player_id), connected_players_.end());
+    connected_players_.erase(std::remove(connected_players_.begin(), connected_players_.end(), player_id),
+                             connected_players_.end());
     update_player_display();
 }
 
@@ -141,7 +143,6 @@ void LobbyState::update_player_display() {
     }
 }
 
-
 void LobbyState::update_positions(const sf::Vector2u& window_size) {
     float title_y = window_size.y * 0.1f;
     float waiting_y = window_size.y * 0.35f;
@@ -155,4 +156,3 @@ void LobbyState::update_positions(const sf::Vector2u& window_size) {
 }
 
 } // namespace rtype::client
-

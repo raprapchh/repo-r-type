@@ -49,4 +49,3 @@ void GameState::render(Renderer& renderer) {
 }
 
 } // namespace rtype::client
-

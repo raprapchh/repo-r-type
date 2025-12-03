@@ -11,7 +11,9 @@ MenuState::MenuState() : font_loaded_(false) {
 
 void MenuState::setup_ui() {
     if (!font_.loadFromFile("client/fonts/Ethnocentric-Regular.otf")) {
-        std::cerr << "Warning: Could not load font from client/fonts/Ethnocentric-Regular.otf. UI will not display text." << std::endl;
+        std::cerr
+            << "Warning: Could not load font from client/fonts/Ethnocentric-Regular.otf. UI will not display text."
+            << std::endl;
         font_loaded_ = false;
         return;
     }
@@ -137,4 +139,3 @@ void MenuState::update_positions(const sf::Vector2u& window_size) {
 }
 
 } // namespace rtype::client
-

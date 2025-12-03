@@ -20,4 +20,3 @@ class GameState : public IState {
 };
 
 } // namespace rtype::client
-

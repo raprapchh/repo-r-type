@@ -43,4 +43,3 @@ class LobbyState : public IState {
 };
 
 } // namespace rtype::client
-
