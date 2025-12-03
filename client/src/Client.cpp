@@ -15,6 +15,14 @@ Client::Client(const std::string& host, uint16_t port, Renderer& renderer)
         });
 }
 
+void Client::set_game_start_callback(GameStartCallback callback) {
+    game_start_callback_ = callback;
+}
+
+void Client::set_player_join_callback(PlayerJoinCallback callback) {
+    player_join_callback_ = callback;
+}
+
 Client::~Client() {
     disconnect();
 }
@@ -99,9 +107,25 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 std::cout << "Successfully connected to server. My Player ID is " << player_id_ << std::endl;
             } else {
                 std::cout << "Player " << join_data.player_id << " has joined the game." << std::endl;
+                if (player_join_callback_) {
+                    player_join_callback_(join_data.player_id);
+                }
             }
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing PlayerJoin packet: " << e.what() << std::endl;
+        }
+        break;
+    }
+    case rtype::net::MessageType::GameStart: {
+        try {
+            auto game_start_data = serializer.deserialize_game_start(packet);
+            std::cout << "Game starting! Session: " << game_start_data.session_id
+                      << ", Players: " << static_cast<int>(game_start_data.player_count) << std::endl;
+            if (game_start_callback_) {
+                game_start_callback_();
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error deserializing GameStart packet: " << e.what() << std::endl;
         }
         break;
     }
