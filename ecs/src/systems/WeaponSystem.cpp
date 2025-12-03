@@ -16,8 +16,8 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
 
         if (weapon.isShooting && weapon.timeSinceLastFire >= weapon.fireRate) {
             auto projectile = registry.createEntity();
-            
-            float spawnX = pos.x + 20.0f; 
+
+            float spawnX = pos.x + 20.0f;
             float spawnY = pos.y;
 
             registry.addComponent<component::Position>(projectile, spawnX, spawnY);

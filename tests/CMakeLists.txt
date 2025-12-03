@@ -11,8 +11,8 @@ FetchContent_MakeAvailable(Catch2)
 add_executable(unit_tests
     TestMovement.cpp
     TestNetworkSystem.cpp
-    ${CMAKE_SOURCE_DIR}/client/src/NetworkSystem.cpp
     TestWeapon.cpp
+    ${CMAKE_SOURCE_DIR}/client/src/NetworkSystem.cpp
 )
 
 target_link_libraries(unit_tests PRIVATE rtype_ecs rtype_shared Catch2::Catch2WithMain)
