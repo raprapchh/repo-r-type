@@ -1,4 +1,6 @@
 #include "../include/GameState.hpp"
+#include <thread>
+#include <chrono>
 
 namespace rtype::client {
 
@@ -6,6 +8,10 @@ GameState::GameState() {
 }
 
 void GameState::on_enter(Renderer& renderer, Client& client) {
+    if (!client.is_connected()) {
+        client.connect();
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
 }
 
 void GameState::on_exit(Renderer& renderer, Client& client) {
