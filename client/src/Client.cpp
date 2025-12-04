@@ -42,9 +42,7 @@ void Client::connect() {
 }
 
 void Client::disconnect() {
-    if (!connected_.load()) {
-        return;
-    }
+    bool was_connected = connected_.load();
     connected_ = false;
 
     if (io_context_) {
@@ -58,11 +56,16 @@ void Client::disconnect() {
     if (udp_client_) {
         udp_client_->stop();
     }
-    std::cout << "Disconnected from server." << std::endl;
+    
+    if (was_connected) {
+        std::cout << "Disconnected from server." << std::endl;
+    }
 }
 
 void Client::run() {
-    network_thread_ = std::make_unique<std::thread>([this]() { io_context_->run(); });
+    if (!network_thread_ || !network_thread_->joinable()) {
+        network_thread_ = std::make_unique<std::thread>([this]() { io_context_->run(); });
+    }
 }
 
 void Client::handle_udp_receive(const asio::error_code& error, std::size_t bytes_transferred,
