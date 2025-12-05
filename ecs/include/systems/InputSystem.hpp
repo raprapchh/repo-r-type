@@ -20,4 +20,3 @@ class InputSystem : public ISystem {
 };
 
 } // namespace rtype::ecs
-

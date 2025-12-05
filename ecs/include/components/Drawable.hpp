@@ -12,8 +12,7 @@ struct Drawable {
     float scale_x;
     float scale_y;
 
-    Drawable()
-        : texture_name(""), sprite_index(0), animation_frame(0), scale_x(1.0f), scale_y(1.0f) {
+    Drawable() : texture_name(""), sprite_index(0), animation_frame(0), scale_x(1.0f), scale_y(1.0f) {
     }
 
     Drawable(const std::string& name, uint32_t index, uint32_t frame = 0, float sx = 1.0f, float sy = 1.0f)
@@ -22,4 +21,3 @@ struct Drawable {
 };
 
 } // namespace rtype::ecs::component
-

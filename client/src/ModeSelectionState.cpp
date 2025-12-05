@@ -143,7 +143,7 @@ void ModeSelectionState::update_positions(const sf::Vector2u& window_size) {
 
     float button_width = std::min(300.0f, window_size.x * 0.25f);
     float button_height = std::min(60.0f, window_size.y * 0.08f);
-    
+
     solo_button_.setSize(sf::Vector2f(button_width, button_height));
     solo_button_.setPosition((window_size.x - button_width) / 2.0f, button_start_y);
     solo_button_text_.setPosition(
@@ -154,7 +154,8 @@ void ModeSelectionState::update_positions(const sf::Vector2u& window_size) {
     multiplayer_button_.setPosition((window_size.x - button_width) / 2.0f, button_start_y + button_spacing);
     multiplayer_button_text_.setPosition(
         multiplayer_button_.getPosition().x + (button_width - multiplayer_button_text_.getLocalBounds().width) / 2.0f,
-        multiplayer_button_.getPosition().y + (button_height - multiplayer_button_text_.getLocalBounds().height) / 2.0f - 5.0f);
+        multiplayer_button_.getPosition().y +
+            (button_height - multiplayer_button_text_.getLocalBounds().height) / 2.0f - 5.0f);
 
     back_button_.setSize(sf::Vector2f(button_width, button_height));
     back_button_.setPosition((window_size.x - button_width) / 2.0f, button_start_y + button_spacing * 2);
@@ -164,4 +165,3 @@ void ModeSelectionState::update_positions(const sf::Vector2u& window_size) {
 }
 
 } // namespace rtype::client
-

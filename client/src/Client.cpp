@@ -61,7 +61,7 @@ void Client::disconnect() {
     if (udp_client_) {
         udp_client_->stop();
     }
-    
+
     if (was_connected) {
         std::cout << "Disconnected from server." << std::endl;
     }
@@ -114,13 +114,14 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 network_system_.set_player_id(player_id_);
                 connected_ = true;
                 std::cout << "Successfully connected to server. My Player ID is " << player_id_ << std::endl;
-                
+
                 auto entity = registry_.createEntity();
                 registry_.addComponent<rtype::ecs::component::NetworkId>(entity, player_id_);
                 registry_.addComponent<rtype::ecs::component::Position>(entity, 100.0f, 100.0f);
                 registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
                 uint32_t sprite_index = (player_id_ - 1) % 4;
-                registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index, 0, 2.0f, 2.0f);
+                registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index, 0, 2.0f,
+                                                                        2.0f);
                 registry_.addComponent<rtype::ecs::component::Controllable>(entity, true);
             } else {
                 std::cout << "Player " << join_data.player_id << " has joined the game." << std::endl;

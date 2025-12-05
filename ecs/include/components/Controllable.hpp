@@ -13,4 +13,3 @@ struct Controllable {
 };
 
 } // namespace rtype::ecs::component
-

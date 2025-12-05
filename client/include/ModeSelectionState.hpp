@@ -36,4 +36,3 @@ class ModeSelectionState : public IState {
 };
 
 } // namespace rtype::client
-

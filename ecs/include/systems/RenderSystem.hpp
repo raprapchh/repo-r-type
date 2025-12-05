@@ -18,4 +18,3 @@ class RenderSystem : public ISystem {
 };
 
 } // namespace rtype::ecs
-

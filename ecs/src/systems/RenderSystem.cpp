@@ -29,12 +29,7 @@ void RenderSystem::update(GameEngine::Registry& registry, double /* dt */) {
         uint32_t row = drawable.sprite_index;
         uint32_t col = drawable.animation_frame % 5;
 
-        sf::IntRect texture_rect(
-            col * sprite_width,
-            row * sprite_height,
-            sprite_width,
-            sprite_height
-        );
+        sf::IntRect texture_rect(col * sprite_width, row * sprite_height, sprite_width, sprite_height);
 
         sf::Sprite sprite(texture, texture_rect);
         sprite.setPosition(pos.x, pos.y);
@@ -45,4 +40,3 @@ void RenderSystem::update(GameEngine::Registry& registry, double /* dt */) {
 }
 
 } // namespace rtype::ecs
-

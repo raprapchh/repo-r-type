@@ -38,13 +38,8 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
 
     GameEngine::Registry& registry = client.get_registry();
 
-    rtype::ecs::InputSystem input_system(
-        renderer.is_moving_up(),
-        renderer.is_moving_down(),
-        renderer.is_moving_left(),
-        renderer.is_moving_right(),
-        200.0f
-    );
+    rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(), renderer.is_moving_left(),
+                                         renderer.is_moving_right(), 200.0f);
     input_system.update(registry, delta_time);
 
     rtype::ecs::MovementSystem movement_system;
@@ -53,13 +48,17 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
     auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
     for (auto entity : view) {
         auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
-        
+
         int8_t dx = 0, dy = 0;
-        if (vel.vx < 0) dx = -1;
-        else if (vel.vx > 0) dx = 1;
-        if (vel.vy < 0) dy = -1;
-        else if (vel.vy > 0) dy = 1;
-        
+        if (vel.vx < 0)
+            dx = -1;
+        else if (vel.vx > 0)
+            dx = 1;
+        if (vel.vy < 0)
+            dy = -1;
+        else if (vel.vy > 0)
+            dy = 1;
+
         if (dx != 0 || dy != 0) {
             client.send_move(dx, dy);
         }
