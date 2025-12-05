@@ -4,13 +4,18 @@
 #include "../shared/net/MessageSerializer.hpp"
 #include "../../ecs/include/systems/MovementSystem.hpp"
 #include "../../ecs/include/systems/BoundarySystem.hpp"
+#include "../../ecs/include/systems/CollisionSystem.hpp"
+#include "../../ecs/include/systems/WeaponSystem.hpp"
+#include "../../ecs/include/components/Position.hpp"
+#include "../../ecs/include/components/Velocity.hpp"
+#include "../../ecs/include/components/Weapon.hpp"
 
 #include <iostream>
 
 namespace rtype::server {
 
-Server::Server(Instance& instance, uint16_t port)
-    : port_(port), next_player_id_(1), running_(false), instance_(instance) {
+Server::Server(GameEngine::Registry& registry, uint16_t port)
+    : port_(port), next_player_id_(1), running_(false), registry_(registry) {
     io_context_ = std::make_unique<asio::io_context>();
     udp_server_ = std::make_unique<UdpServer>(*io_context_, port_);
     protocol_adapter_ = std::make_unique<rtype::net::ProtocolAdapter>();
@@ -88,22 +93,35 @@ void Server::game_loop() {
             double dt = elapsed.count() / 1000.0;
 
             rtype::ecs::MovementSystem movement_system;
-            movement_system.update(instance_.registry(), dt);
+            movement_system.update(registry_, dt);
 
             rtype::ecs::BoundarySystem boundary_system;
-            boundary_system.update(instance_.registry(), dt);
+            boundary_system.update(registry_, dt);
 
-            auto players = instance_.listPlayers();
+            rtype::ecs::CollisionSystem collision_system;
+            collision_system.update(registry_, dt);
 
-            if (!players.empty() && protocol_adapter_) {
-                rtype::net::Serializer serializer;
-                rtype::net::Packet state_packet(static_cast<uint16_t>(rtype::net::MessageType::GameState),
-                                                serializer.get_data());
+            rtype::ecs::WeaponSystem weapon_system;
+            weapon_system.update(registry_, dt);
+
+            if (protocol_adapter_ && message_serializer_) {
+                rtype::net::GameStateData game_state_data;
+                game_state_data.game_time = static_cast<uint32_t>(elapsed.count());
+                game_state_data.wave_number = 1;
+                game_state_data.enemies_remaining = 0;
+                game_state_data.score = 0;
+                game_state_data.game_state = 0;
+                game_state_data.padding[0] = 0;
+                game_state_data.padding[1] = 0;
+                game_state_data.padding[2] = 0;
+
+                rtype::net::Packet state_packet = message_serializer_->serialize_game_state(game_state_data);
                 auto packet_data = protocol_adapter_->serialize(state_packet);
 
-                for (const auto& player : players) {
-                    if (player.is_connected && udp_server_) {
-                        udp_server_->send(player.ip, player.port, packet_data);
+                std::lock_guard<std::mutex> lock(clients_mutex_);
+                for (const auto& [key, client] : clients_) {
+                    if (client.is_connected && udp_server_) {
+                        udp_server_->send(client.ip, client.port, packet_data);
                     }
                 }
             }
@@ -174,23 +192,19 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
 
         player_id = next_player_id_++;
 
+        GameEngine::entity_t entity = registry_.createEntity();
+        registry_.addComponent<rtype::ecs::component::Position>(entity, 100.0f, 100.0f);
+        registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
+        registry_.addComponent<rtype::ecs::component::Weapon>(entity);
+
         ClientInfo info;
         info.ip = client_ip;
         info.port = client_port;
         info.player_id = player_id;
         info.is_connected = true;
+        info.entity_id = entity;
 
         clients_[client_key] = info;
-    }
-
-    auto entity_opt = instance_.addPlayer(player_id, client_ip, client_port);
-    if (!entity_opt.has_value()) {
-        std::cerr << "Failed to add player " << player_id << " to instance" << std::endl;
-        {
-            std::lock_guard<std::mutex> lock(clients_mutex_);
-            clients_.erase(client_key);
-        }
-        return;
     }
 
     std::cout << "Player " << player_id << " joined from " << client_ip << ":" << client_port << std::endl;
@@ -260,12 +274,11 @@ void Server::handle_player_shoot(const std::string& client_ip, uint16_t client_p
 }
 
 void Server::broadcast_message(const std::vector<uint8_t>& data, const std::string& exclude_ip, uint16_t exclude_port) {
-    auto players = instance_.listPlayers();
-
-    for (const auto& player : players) {
-        if (player.is_connected && (player.ip != exclude_ip || player.port != exclude_port)) {
+    std::lock_guard<std::mutex> lock(clients_mutex_);
+    for (const auto& [key, client] : clients_) {
+        if (client.is_connected && (client.ip != exclude_ip || client.port != exclude_port)) {
             if (udp_server_) {
-                udp_server_->send(player.ip, player.port, data);
+                udp_server_->send(client.ip, client.port, data);
             }
         }
     }
