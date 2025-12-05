@@ -102,7 +102,7 @@ void MenuState::update(Renderer& renderer, Client& client, StateManager& state_m
     }
 }
 
-void MenuState::render(Renderer& renderer) {
+void MenuState::render(Renderer& renderer, Client& /* client */) {
     renderer.clear();
 
     if (font_loaded_) {

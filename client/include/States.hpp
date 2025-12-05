@@ -15,7 +15,7 @@ class IState {
     virtual ~IState() = default;
     virtual void handle_input(Renderer& renderer, StateManager& state_manager) = 0;
     virtual void update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) = 0;
-    virtual void render(Renderer& renderer) = 0;
+    virtual void render(Renderer& renderer, Client& client) = 0;
     virtual void on_enter(Renderer& renderer, Client& client) = 0;
     virtual void on_exit(Renderer& renderer, Client& client) = 0;
     virtual StateType get_type() const = 0;

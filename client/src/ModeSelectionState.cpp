@@ -118,7 +118,7 @@ void ModeSelectionState::update(Renderer& renderer, Client& client, StateManager
     }
 }
 
-void ModeSelectionState::render(Renderer& renderer) {
+void ModeSelectionState::render(Renderer& renderer, Client& /* client */) {
     renderer.clear();
 
     if (font_loaded_) {

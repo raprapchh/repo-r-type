@@ -93,7 +93,7 @@ void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_
     }
 }
 
-void LobbyState::render(Renderer& renderer) {
+void LobbyState::render(Renderer& renderer, Client& /* client */) {
     renderer.clear();
 
     if (font_loaded_) {

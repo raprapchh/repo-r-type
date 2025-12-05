@@ -1,12 +1,17 @@
 #include "Client.hpp"
 #include "../shared/net/ProtocolAdapter.hpp"
 #include "../shared/net/MessageSerializer.hpp"
+#include "../../ecs/include/components/NetworkId.hpp"
+#include "../../ecs/include/components/Position.hpp"
+#include "../../ecs/include/components/Velocity.hpp"
+#include "../../ecs/include/components/Drawable.hpp"
+#include "../../ecs/include/components/Controllable.hpp"
 #include <iostream>
 
 namespace rtype::client {
 
 Client::Client(const std::string& host, uint16_t port, Renderer& renderer)
-    : host_(host), port_(port), connected_(false), player_id_(0), renderer_(renderer) {
+    : host_(host), port_(port), connected_(false), player_id_(0), renderer_(renderer), network_system_(0) {
     io_context_ = std::make_unique<asio::io_context>();
     udp_client_ = std::make_unique<UdpClient>(*io_context_, host_, port_);
     udp_client_->set_message_handler(
@@ -106,8 +111,17 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             auto join_data = serializer.deserialize_player_join(packet);
             if (!connected_.load()) {
                 player_id_ = join_data.player_id;
+                network_system_.set_player_id(player_id_);
                 connected_ = true;
                 std::cout << "Successfully connected to server. My Player ID is " << player_id_ << std::endl;
+                
+                auto entity = registry_.createEntity();
+                registry_.addComponent<rtype::ecs::component::NetworkId>(entity, player_id_);
+                registry_.addComponent<rtype::ecs::component::Position>(entity, 100.0f, 100.0f);
+                registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
+                uint32_t sprite_index = (player_id_ - 1) % 4;
+                registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index, 0, 2.0f, 2.0f);
+                registry_.addComponent<rtype::ecs::component::Controllable>(entity, true);
             } else {
                 std::cout << "Player " << join_data.player_id << " has joined the game." << std::endl;
                 if (player_join_callback_) {

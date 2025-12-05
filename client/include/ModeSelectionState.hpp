@@ -12,7 +12,7 @@ class ModeSelectionState : public IState {
 
     void handle_input(Renderer& renderer, StateManager& state_manager) override;
     void update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) override;
-    void render(Renderer& renderer) override;
+    void render(Renderer& renderer, Client& client) override;
     void on_enter(Renderer& renderer, Client& client) override;
     void on_exit(Renderer& renderer, Client& client) override;
     StateType get_type() const override {

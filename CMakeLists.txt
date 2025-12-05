@@ -63,6 +63,12 @@ target_include_directories(rtype_ecs
         ${CMAKE_SOURCE_DIR}/ecs/include
 )
 
+find_package(SFML 2.5 COMPONENTS graphics window system QUIET)
+if(SFML_FOUND)
+    target_link_libraries(rtype_ecs PRIVATE sfml-graphics sfml-window sfml-system)
+    target_compile_definitions(rtype_ecs PRIVATE SFML_FOUND)
+endif()
+
 #
 # SHARED
 #

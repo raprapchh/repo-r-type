@@ -39,6 +39,9 @@ class Client {
     uint32_t get_player_id() const {
         return player_id_;
     }
+    GameEngine::Registry& get_registry() {
+        return registry_;
+    }
 
   private:
     void handle_udp_receive(const asio::error_code& error, std::size_t bytes_transferred,

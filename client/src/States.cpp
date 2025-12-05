@@ -30,7 +30,7 @@ void StateManager::update(float delta_time) {
 
 void StateManager::render() {
     if (current_state_) {
-        current_state_->render(renderer_);
+        current_state_->render(renderer_, client_);
     }
 }
 
