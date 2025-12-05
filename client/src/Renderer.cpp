@@ -36,10 +36,14 @@ void Renderer::display() {
 }
 
 void Renderer::handle_input() {
-    keys_[sf::Keyboard::Up] = sf::Keyboard::isKeyPressed(sf::Keyboard::Up);
-    keys_[sf::Keyboard::Down] = sf::Keyboard::isKeyPressed(sf::Keyboard::Down);
-    keys_[sf::Keyboard::Left] = sf::Keyboard::isKeyPressed(sf::Keyboard::Left);
-    keys_[sf::Keyboard::Right] = sf::Keyboard::isKeyPressed(sf::Keyboard::Right);
+    keys_[sf::Keyboard::Up] =
+        sf::Keyboard::isKeyPressed(sf::Keyboard::Up) || sf::Keyboard::isKeyPressed(sf::Keyboard::Z);
+    keys_[sf::Keyboard::Down] =
+        sf::Keyboard::isKeyPressed(sf::Keyboard::Down) || sf::Keyboard::isKeyPressed(sf::Keyboard::S);
+    keys_[sf::Keyboard::Left] =
+        sf::Keyboard::isKeyPressed(sf::Keyboard::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::Q);
+    keys_[sf::Keyboard::Right] =
+        sf::Keyboard::isKeyPressed(sf::Keyboard::Right) || sf::Keyboard::isKeyPressed(sf::Keyboard::D);
     keys_[sf::Keyboard::Space] = sf::Keyboard::isKeyPressed(sf::Keyboard::Space);
 }
 
@@ -132,6 +136,7 @@ void Renderer::load_texture(const std::string& path, const std::string& name) {
 }
 
 void Renderer::load_sprites() {
+    load_texture("client/sprites/r-typesheet42.gif", "player_ships");
     load_texture("client/sprites/r-typesheet5.gif", "player");
     load_texture("client/sprites/r-typesheet8.gif", "background");
     load_texture("client/sprites/r-typesheet3.gif", "enemy_basic");

@@ -1,5 +1,5 @@
 #include "../include/MenuState.hpp"
-#include "../include/LobbyState.hpp"
+#include "../include/ModeSelectionState.hpp"
 #include <iostream>
 #include <memory>
 
@@ -80,7 +80,7 @@ void MenuState::handle_input(Renderer& renderer, StateManager& state_manager) {
 
 void MenuState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager& state_manager) {
     if (start_button_.getGlobalBounds().contains(mouse_pos)) {
-        state_manager.change_state(std::make_unique<LobbyState>());
+        state_manager.change_state(std::make_unique<ModeSelectionState>());
     } else if (quit_button_.getGlobalBounds().contains(mouse_pos)) {
         state_manager.get_renderer().close_window();
     }
@@ -102,7 +102,7 @@ void MenuState::update(Renderer& renderer, Client& client, StateManager& state_m
     }
 }
 
-void MenuState::render(Renderer& renderer) {
+void MenuState::render(Renderer& renderer, Client& /* client */) {
     renderer.clear();
 
     if (font_loaded_) {

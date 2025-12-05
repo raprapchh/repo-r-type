@@ -20,12 +20,6 @@ int main() {
         while (renderer.is_open()) {
             float delta_time = clock.restart().asSeconds();
 
-            sf::Event event;
-            while (renderer.poll_event(event)) {
-                if (event.type == sf::Event::Closed) {
-                    renderer.close_window();
-                }
-            }
             renderer.handle_input();
             client.update();
 

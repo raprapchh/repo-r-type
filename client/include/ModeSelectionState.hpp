@@ -2,15 +2,13 @@
 
 #include "States.hpp"
 #include <SFML/Graphics.hpp>
-#include <atomic>
-#include <vector>
 
 namespace rtype::client {
 
-class LobbyState : public IState {
+class ModeSelectionState : public IState {
   public:
-    LobbyState();
-    ~LobbyState() override = default;
+    ModeSelectionState();
+    ~ModeSelectionState() override = default;
 
     void handle_input(Renderer& renderer, StateManager& state_manager) override;
     void update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) override;
@@ -18,28 +16,23 @@ class LobbyState : public IState {
     void on_enter(Renderer& renderer, Client& client) override;
     void on_exit(Renderer& renderer, Client& client) override;
     StateType get_type() const override {
-        return StateType::Lobby;
+        return StateType::ModeSelection;
     }
-
-    void add_player(uint32_t player_id);
-    void remove_player(uint32_t player_id);
-    void set_player_count(uint8_t count);
 
   private:
     void setup_ui();
-    void update_player_display();
+    void handle_button_click(const sf::Vector2f& mouse_pos, StateManager& state_manager);
     void update_positions(const sf::Vector2u& window_size);
 
     sf::Font font_;
     sf::Text title_text_;
-    sf::Text waiting_text_;
-    sf::Text players_text_;
-    sf::Text player_list_text_;
+    sf::Text solo_button_text_;
+    sf::Text multiplayer_button_text_;
+    sf::Text back_button_text_;
+    sf::RectangleShape solo_button_;
+    sf::RectangleShape multiplayer_button_;
+    sf::RectangleShape back_button_;
     bool font_loaded_;
-    std::vector<uint32_t> connected_players_;
-    uint8_t player_count_;
-    std::atomic<bool> game_started_;
-    Renderer* renderer_ref_;
 };
 
 } // namespace rtype::client

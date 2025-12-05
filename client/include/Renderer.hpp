@@ -65,6 +65,14 @@ class Renderer {
     sf::Vector2f get_mouse_position() const;
     void handle_resize(uint32_t width, uint32_t height);
 
+    std::unordered_map<std::string, sf::Texture>& get_textures() {
+        return textures_;
+    }
+
+    sf::RenderWindow* get_window() {
+        return window_.get();
+    }
+
   private:
     void load_sprites();
     void load_texture(const std::string& path, const std::string& name);
