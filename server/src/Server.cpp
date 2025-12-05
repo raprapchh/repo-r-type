@@ -5,8 +5,10 @@
 #include "../../ecs/include/systems/MovementSystem.hpp"
 #include "../../ecs/include/systems/BoundarySystem.hpp"
 #include "../../ecs/include/systems/CollisionSystem.hpp"
+#include "../../ecs/include/systems/WeaponSystem.hpp"
 #include "../../ecs/include/components/Position.hpp"
 #include "../../ecs/include/components/Velocity.hpp"
+#include "../../ecs/include/components/Weapon.hpp"
 
 #include <iostream>
 
@@ -99,6 +101,9 @@ void Server::game_loop() {
             rtype::ecs::CollisionSystem collision_system;
             collision_system.update(registry_, dt);
 
+            rtype::ecs::WeaponSystem weapon_system;
+            weapon_system.update(registry_, dt);
+
             if (protocol_adapter_ && message_serializer_) {
                 rtype::net::GameStateData game_state_data;
                 game_state_data.game_time = static_cast<uint32_t>(elapsed.count());
@@ -190,6 +195,7 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         GameEngine::entity_t entity = registry_.createEntity();
         registry_.addComponent<rtype::ecs::component::Position>(entity, 100.0f, 100.0f);
         registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
+        registry_.addComponent<rtype::ecs::component::Weapon>(entity);
 
         ClientInfo info;
         info.ip = client_ip;
