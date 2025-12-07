@@ -216,7 +216,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
     }
 }
 
-void Client::send_move(int8_t dx, int8_t dy) {
+void Client::send_move(float vx, float vy) {
     if (!connected_.load())
         return;
     rtype::net::MessageSerializer serializer;
@@ -225,8 +225,8 @@ void Client::send_move(int8_t dx, int8_t dy) {
     sf::Vector2f pos = renderer_.get_player_position(player_id_);
     move_data.position_x = pos.x;
     move_data.position_y = pos.y;
-    move_data.velocity_x = dx;
-    move_data.velocity_y = dy;
+    move_data.velocity_x = vx;
+    move_data.velocity_y = vy;
     rtype::net::Packet move_packet = serializer.serialize_player_move(move_data);
     std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(move_packet);
     udp_client_->send(packet_data);
