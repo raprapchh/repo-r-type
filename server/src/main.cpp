@@ -12,7 +12,7 @@ GameEngine::Registry g_registry;
 
 void signal_handler(int signal) {
     if (signal == SIGINT) {
-        std::cout << "\nShutting down server..." << std::endl;
+
         if (g_server) {
             g_server->stop();
         }

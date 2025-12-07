@@ -9,7 +9,7 @@
 
 int main() {
     try {
-        rtype::client::Renderer renderer(1280, 720);
+        rtype::client::Renderer renderer(1920, 1080);
         rtype::client::Client client("127.0.0.1", 4242, renderer);
         rtype::client::StateManager state_manager(renderer, client);
 

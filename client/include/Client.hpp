@@ -28,7 +28,7 @@ class Client {
     void run();
     void update();
 
-    void send_move(int8_t dx, int8_t dy);
+    void send_move(float vx, float vy);
     void send_shoot(int32_t x, int32_t y);
 
     void set_game_start_callback(GameStartCallback callback);
