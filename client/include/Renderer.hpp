@@ -40,6 +40,7 @@ class Renderer {
 
     void draw_entities();
     void draw_ui();
+    void draw_background();
     void render_frame();
 
     sf::Vector2f get_player_position(uint32_t player_id) const;
@@ -88,6 +89,8 @@ class Renderer {
 
     bool keys_[sf::Keyboard::KeyCount];
     float background_x_;
+    float background_x_stars_;
+    float background_x_stars2_;
 
     rtype::net::GameStateData game_state_;
 
