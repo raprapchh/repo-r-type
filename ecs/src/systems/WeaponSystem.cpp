@@ -23,7 +23,7 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
             registry.addComponent<component::Position>(projectile, spawnX, spawnY);
             registry.addComponent<component::Velocity>(projectile, weapon.projectileSpeed, 0.0f);
             registry.addComponent<component::Projectile>(projectile, weapon.damage, weapon.projectileLifetime);
-            registry.addComponent<component::HitBox>(projectile, 10.0f, 5.0f); // Arbitrary size for now
+            registry.addComponent<component::HitBox>(projectile, 58.0f, 66.0f);
 
             weapon.timeSinceLastFire = 0.0f;
         }

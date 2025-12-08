@@ -59,14 +59,17 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
 
         if (is_player) {
             uint32_t sprite_index = (data.entity_id - 1) % 4;
-            registry.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index, 0, 2.0f, 2.0f);
+            registry.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index,
+                                                                   static_cast<uint32_t>(0), 2.0f, 2.0f);
             if (is_local) {
                 registry.addComponent<rtype::ecs::component::Controllable>(entity, true);
             }
         } else if (data.entity_type == rtype::net::EntityType::ENEMY) {
-            registry.addComponent<rtype::ecs::component::Drawable>(entity, "enemy_basic", 0, 0, 1.0f, 1.0f);
+            registry.addComponent<rtype::ecs::component::Drawable>(entity, "enemy_basic", static_cast<uint32_t>(0),
+                                                                   static_cast<uint32_t>(0), 1.0f, 1.0f);
         } else if (data.entity_type == rtype::net::EntityType::PROJECTILE) {
-            registry.addComponent<rtype::ecs::component::Drawable>(entity, "shot", 0, 0, 1.0f, 1.0f);
+            registry.addComponent<rtype::ecs::component::Drawable>(entity, "shot", 0, 0, 29, 33, 2.0f, 2.0f, 4, 0.05f,
+                                                                   false);
         }
 
     } catch (const std::exception& e) {
