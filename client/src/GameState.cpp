@@ -68,7 +68,7 @@ void GameState::render(Renderer& renderer, Client& client) {
     if (renderer.get_window()) {
         GameEngine::Registry& registry = client.get_registry();
         rtype::ecs::RenderSystem render_system(*renderer.get_window(), renderer.get_textures());
-        render_system.update(registry, 0.0);
+        render_system.update(registry, 0.016f);
     }
 
     renderer.display();

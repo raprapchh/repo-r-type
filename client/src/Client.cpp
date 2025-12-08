@@ -120,8 +120,8 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 registry_.addComponent<rtype::ecs::component::Position>(entity, 100.0f, 100.0f);
                 registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
                 uint32_t sprite_index = (player_id_ - 1) % 4;
-                registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index, 0, 2.0f,
-                                                                        2.0f);
+                registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index,
+                                                                        static_cast<uint32_t>(0), 2.0f, 2.0f);
                 registry_.addComponent<rtype::ecs::component::Controllable>(entity, true);
             } else {
                 std::cout << "Player " << join_data.player_id << " has joined the game." << std::endl;
