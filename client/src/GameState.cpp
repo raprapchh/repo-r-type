@@ -36,34 +36,42 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
     client.update();
 
     GameEngine::Registry& registry = client.get_registry();
+    std::mutex& registry_mutex = client.get_registry_mutex();
 
     bool window_has_focus = renderer.get_window() && renderer.get_window()->hasFocus();
 
     if (window_has_focus) {
-        rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(),
-                                             renderer.is_moving_left(), renderer.is_moving_right(), 200.0f);
-        input_system.update(registry, delta_time);
+        {
+            std::lock_guard<std::mutex> lock(registry_mutex);
+            rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(),
+                                                 renderer.is_moving_left(), renderer.is_moving_right(), 200.0f);
+            input_system.update(registry, delta_time);
 
-        auto controllable_view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Position,
-                                               rtype::ecs::component::Velocity>();
-        for (auto entity : controllable_view) {
-            GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
-            auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id);
-            auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(entity_id);
-            pos.x += vel.vx * delta_time;
-            pos.y += vel.vy * delta_time;
+            auto controllable_view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Position,
+                                                   rtype::ecs::component::Velocity>();
+            for (auto entity : controllable_view) {
+                GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
+                auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id);
+                auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(entity_id);
+                pos.x += vel.vx * delta_time;
+                pos.y += vel.vy * delta_time;
+            }
         }
 
-        auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
-        for (auto entity : view) {
-            auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
-            client.send_move(vel.vx, vel.vy);
+        {
+            std::lock_guard<std::mutex> lock(registry_mutex);
+            auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
+            for (auto entity : view) {
+                auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
+                client.send_move(vel.vx, vel.vy);
+            }
         }
 
         if (renderer.is_shooting()) {
             client.send_shoot(0, 0);
         }
     } else {
+        std::lock_guard<std::mutex> lock(registry_mutex);
         auto controllable_view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
         for (auto entity : controllable_view) {
             GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
@@ -86,6 +94,8 @@ void GameState::render(Renderer& renderer, Client& client) {
 
     if (renderer.get_window()) {
         GameEngine::Registry& registry = client.get_registry();
+        std::mutex& registry_mutex = client.get_registry_mutex();
+        std::lock_guard<std::mutex> lock(registry_mutex);
         rtype::ecs::RenderSystem render_system(*renderer.get_window(), renderer.get_textures());
         render_system.update(registry, 0.0);
     }
