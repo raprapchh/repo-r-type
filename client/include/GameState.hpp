@@ -17,6 +17,9 @@ class GameState : public IState {
     StateType get_type() const override {
         return StateType::Game;
     }
+
+  private:
+    bool shoot_requested_ = false;
 };
 
 } // namespace rtype::client

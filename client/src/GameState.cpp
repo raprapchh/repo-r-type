@@ -1,6 +1,7 @@
 #include "../include/GameState.hpp"
 #include "../../ecs/include/systems/InputSystem.hpp"
 #include "../../ecs/include/systems/RenderSystem.hpp"
+#include "../../ecs/include/systems/MovementSystem.hpp"
 #include <thread>
 #include <chrono>
 
@@ -28,6 +29,8 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
             renderer.handle_resize(event.size.width, event.size.height);
         } else if (event.type == sf::Event::KeyPressed) {
             if (event.key.code == sf::Keyboard::Escape) {
+            } else if (event.key.code == sf::Keyboard::Space) {
+                shoot_requested_ = true;
             }
         }
     }
@@ -48,16 +51,12 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
             rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(),
                                                  renderer.is_moving_left(), renderer.is_moving_right(), 200.0f);
             input_system.update(registry, delta_time);
+        }
 
-            auto controllable_view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Position,
-                                                   rtype::ecs::component::Velocity>();
-            for (auto entity : controllable_view) {
-                GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
-                auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id);
-                auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(entity_id);
-                pos.x += vel.vx * delta_time;
-                pos.y += vel.vy * delta_time;
-            }
+        {
+            std::lock_guard<std::mutex> lock(registry_mutex);
+            rtype::ecs::MovementSystem movement_system;
+            movement_system.update(registry, delta_time);
         }
 
         {
@@ -69,8 +68,9 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
             }
         }
 
-        if (renderer.is_shooting()) {
+        if (shoot_requested_) {
             client.send_shoot(0, 0);
+            shoot_requested_ = false;
         }
     } else {
         std::lock_guard<std::mutex> lock(registry_mutex);

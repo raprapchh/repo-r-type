@@ -197,7 +197,7 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/star_bg.png", "background_stars");
     load_texture("client/sprites/star_2_bg.png", "background_stars2");
     load_texture("client/sprites/monster_0.png", "enemy_basic");
-    load_texture("client/sprites/special_shot.png", "shot");
+    load_texture("client/sprites/r-typesheet2-ezgif.com-crop.gif", "shot");
     load_texture("client/sprites/shot_death.png", "death");
     load_texture("client/sprites/players_ship.gif", "default");
 }
