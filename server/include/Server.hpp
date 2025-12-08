@@ -38,6 +38,7 @@ class Server {
     void handle_player_join(const std::string& client_ip, uint16_t client_port);
     void handle_player_move(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
     void handle_player_shoot(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
+    void handle_game_start(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
     void broadcast_message(const std::vector<uint8_t>& data, const std::string& exclude_ip = "",
                            uint16_t exclude_port = 0);
     void game_loop();
