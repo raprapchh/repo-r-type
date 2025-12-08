@@ -179,10 +179,10 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             }
 
             std::lock_guard<std::mutex> lock(registry_mutex_);
-            
+
             bool found = false;
             GameEngine::entity_t found_entity_id = 0;
-            
+
             {
                 auto view = registry_.view<rtype::ecs::component::NetworkId>();
                 for (auto entity : view) {
@@ -223,8 +223,8 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                     registry_.addComponent<rtype::ecs::component::Velocity>(entity, move_data.velocity_x,
                                                                             move_data.velocity_y);
                     uint32_t sprite_index = (move_data.player_id - 1) % 4;
-                    registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index, 0, 2.0f,
-                                                                            2.0f);
+                    registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index, 0,
+                                                                            2.0f, 2.0f);
                 } catch (const std::exception& e) {
                 }
             }
