@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -43,6 +44,9 @@ class Client {
     GameEngine::Registry& get_registry() {
         return registry_;
     }
+    std::mutex& get_registry_mutex() {
+        return registry_mutex_;
+    }
 
   private:
     void handle_udp_receive(const asio::error_code& error, std::size_t bytes_transferred,
@@ -64,6 +68,7 @@ class Client {
 
     GameEngine::Registry registry_;
     NetworkSystem network_system_;
+    std::mutex registry_mutex_;
 };
 
 } // namespace rtype::client
