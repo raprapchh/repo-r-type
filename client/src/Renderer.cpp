@@ -137,7 +137,7 @@ void Renderer::load_texture(const std::string& path, const std::string& name) {
 }
 
 void Renderer::load_sprites() {
-    load_texture("client/sprites/player_ships.png", "player_ships");
+    load_texture("client/sprites/players_ship.png", "player_ships");
     load_texture("client/sprites/r-typesheet5.gif", "player");
     load_texture("client/sprites/map_1.png", "background");
     load_texture("client/sprites/monster_0.png", "enemy_basic");
