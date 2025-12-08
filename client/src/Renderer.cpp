@@ -124,26 +124,37 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
 
 void Renderer::draw_ui() {
 }
-
-void Renderer::render_frame() {
-    clear();
-
+void Renderer::draw_background() {
     if (textures_.count("background")) {
+        window_->setView(view_);
+
         sf::Sprite bg_sprite(textures_["background"]);
-        bg_sprite.setScale(10.0f, 10.0f);
-        bg_sprite.setPosition(background_x_, 0);
+
+        float window_height = view_.getSize().y;
+        float texture_height = bg_sprite.getLocalBounds().height;
+        float scale = window_height / texture_height;
+
+        bg_sprite.setOrigin(0, texture_height);
+        bg_sprite.setScale(scale, scale);
+        bg_sprite.setPosition(background_x_, window_height);
         window_->draw(bg_sprite);
 
         sf::Sprite bg2_sprite(textures_["background"]);
-        bg2_sprite.setScale(10.0f, 10.0f);
-        bg2_sprite.setPosition(background_x_ + bg_sprite.getLocalBounds().width, 0);
+        bg2_sprite.setOrigin(0, texture_height);
+        bg2_sprite.setScale(scale, scale);
+        bg2_sprite.setPosition(background_x_ + (bg_sprite.getLocalBounds().width * scale), window_height);
         window_->draw(bg2_sprite);
 
-        background_x_ -= 1.0f;
-        if (background_x_ < -bg_sprite.getLocalBounds().width) {
+        background_x_ -= 3.0f;
+        if (background_x_ < -(bg_sprite.getLocalBounds().width * scale)) {
             background_x_ = 0;
         }
     }
+}
+
+void Renderer::render_frame() {
+    clear();
+    draw_background();
     draw_entities();
     draw_ui();
     display();
@@ -162,6 +173,9 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/players_ship.png", "player_ships");
     load_texture("client/sprites/r-typesheet5.gif", "player");
     load_texture("client/sprites/map_1.png", "background");
+    if (textures_.count("background")) {
+        textures_["background"].setSmooth(true);
+    }
     load_texture("client/sprites/monster_0.png", "enemy_basic");
     load_texture("client/sprites/special_shot.png", "shot");
     load_texture("client/sprites/shot_death.png", "death");

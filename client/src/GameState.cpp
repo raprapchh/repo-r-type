@@ -24,6 +24,8 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
     while (renderer.poll_event(event)) {
         if (event.type == sf::Event::Closed) {
             renderer.close_window();
+        } else if (event.type == sf::Event::Resized) {
+            renderer.handle_resize(event.size.width, event.size.height);
         } else if (event.type == sf::Event::KeyPressed) {
             if (event.key.code == sf::Keyboard::Escape) {
             }
@@ -85,11 +87,8 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
 void GameState::render(Renderer& renderer, Client& client) {
     renderer.clear();
 
-    if (renderer.get_window() && renderer.get_textures().count("background")) {
-        sf::Sprite bg_sprite(renderer.get_textures().at("background"));
-        bg_sprite.setScale(4.0f, 4.0f);
-        bg_sprite.setPosition(0, 0);
-        renderer.get_window()->draw(bg_sprite);
+    if (renderer.get_window()) {
+        renderer.draw_background();
     }
 
     if (renderer.get_window()) {

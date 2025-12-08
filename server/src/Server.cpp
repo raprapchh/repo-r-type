@@ -13,6 +13,7 @@
 #include "../../ecs/include/components/HitBox.hpp"
 #include "../../ecs/include/components/Projectile.hpp"
 #include "../../ecs/include/components/NetworkId.hpp"
+#include "../../ecs/include/components/MapBounds.hpp"
 #include "../../shared/utils/Logger.hpp"
 
 namespace rtype::server {
@@ -41,6 +42,9 @@ void Server::start() {
 
     udp_server_->start();
     Logger::instance().info("Server started on port " + std::to_string(port_));
+
+    auto boundsEntity = registry_.createEntity();
+    registry_.addComponent<rtype::ecs::component::MapBounds>(boundsEntity, 0.0f, 0.0f, 1920.0f, 1080.0f);
     Logger::instance().info("Map dimensions: 1920x1080");
 }
 
