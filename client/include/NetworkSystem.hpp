@@ -2,6 +2,7 @@
 
 #include <queue>
 #include <memory>
+#include <mutex>
 #include "../../shared/net/Packet.hpp"
 #include "../../shared/net/MessageSerializer.hpp"
 #include "../../ecs/include/Registry.hpp"
@@ -18,7 +19,7 @@ class NetworkSystem {
     NetworkSystem(uint32_t player_id = 0);
     ~NetworkSystem() = default;
 
-    void update(GameEngine::Registry& registry);
+    void update(GameEngine::Registry& registry, std::mutex& registry_mutex);
     void push_packet(const rtype::net::Packet& packet);
     void set_player_id(uint32_t player_id);
 
@@ -28,6 +29,7 @@ class NetworkSystem {
     void handle_destroy(GameEngine::Registry& registry, const rtype::net::Packet& packet);
 
     std::queue<rtype::net::Packet> packet_queue_;
+    std::mutex packet_queue_mutex_;
     rtype::net::MessageSerializer serializer_;
     uint32_t player_id_;
 };
