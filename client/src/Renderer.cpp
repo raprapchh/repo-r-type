@@ -163,7 +163,7 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/r-typesheet5.gif", "player");
     load_texture("client/sprites/map_1.png", "background");
     load_texture("client/sprites/monster_0.png", "enemy_basic");
-    load_texture("client/sprites/special_shot.png", "shot");
+    load_texture("client/sprites/r-typesheet2-ezgif.com-crop.gif", "shot");
     load_texture("client/sprites/shot_death.png", "death");
     load_texture("client/sprites/r-typesheet7.gif", "default");
 }
