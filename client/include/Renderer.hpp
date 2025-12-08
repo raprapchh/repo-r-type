@@ -16,6 +16,8 @@ struct Entity {
     float y;
     float velocity_x;
     float velocity_y;
+    int animation_frame = 0;
+    float animation_timer = 0.0f;
 };
 
 class Renderer {
@@ -33,6 +35,7 @@ class Renderer {
     void remove_entity(uint32_t entity_id);
     void update_game_state(const rtype::net::GameStateData& state);
     void spawn_entity(const Entity& entity);
+    void update_animations(float delta_time);
     void close_window();
 
     void draw_entities();

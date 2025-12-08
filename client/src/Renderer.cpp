@@ -60,6 +60,18 @@ void Renderer::remove_entity(uint32_t entity_id) {
     entities_.erase(entity_id);
 }
 
+void Renderer::update_animations(float delta_time) {
+    for (auto& [id, entity] : entities_) {
+        if (entity.type == rtype::net::EntityType::PROJECTILE) {
+            entity.animation_timer += delta_time;
+            if (entity.animation_timer >= 0.1f) {
+                entity.animation_timer = 0.0f;
+                entity.animation_frame = (entity.animation_frame + 1) % 4;
+            }
+        }
+    }
+}
+
 void Renderer::update_game_state(const rtype::net::GameStateData& state) {
     game_state_ = state;
 }
@@ -94,6 +106,10 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
         sprite.setTexture(textures_[texture_name]);
     } else if (textures_.count("default")) {
         sprite.setTexture(textures_["default"]);
+    }
+
+    if (entity.type == rtype::net::EntityType::PROJECTILE) {
+        sprite.setTextureRect(sf::IntRect(entity.animation_frame * 29, 0, 29, 33));
     }
 
     sprite.setPosition(entity.x, entity.y);
@@ -140,7 +156,7 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/r-typesheet5.gif", "player");
     load_texture("client/sprites/r-typesheet8.gif", "background");
     load_texture("client/sprites/r-typesheet3.gif", "enemy_basic");
-    load_texture("client/sprites/r-typesheet2.gif", "shot");
+    load_texture("client/sprites/r-typesheet2-ezgif.com-crop.gif", "shot");
     load_texture("client/sprites/r-typesheet7.gif", "default");
 }
 
