@@ -27,7 +27,6 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
                 registry.addComponent<component::Projectile>(projectile, weapon.damage, weapon.projectileLifetime);
             projComp.owner_id = static_cast<std::size_t>(entity);
 
-            registry.addComponent<component::Projectile>(projectile, weapon.damage, weapon.projectileLifetime);
             registry.addComponent<component::HitBox>(projectile, 58.0f, 66.0f);
 
             weapon.timeSinceLastFire = 0.0f;
