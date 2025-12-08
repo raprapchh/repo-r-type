@@ -1,5 +1,4 @@
 #include "../include/GameState.hpp"
-#include "../../ecs/include/systems/MovementSystem.hpp"
 #include "../../ecs/include/systems/InputSystem.hpp"
 #include "../../ecs/include/systems/RenderSystem.hpp"
 #include <thread>
@@ -38,21 +37,40 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
 
     GameEngine::Registry& registry = client.get_registry();
 
-    rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(), renderer.is_moving_left(),
-                                         renderer.is_moving_right(), 200.0f);
-    input_system.update(registry, delta_time);
+    bool window_has_focus = renderer.get_window() && renderer.get_window()->hasFocus();
 
-    rtype::ecs::MovementSystem movement_system;
-    movement_system.update(registry, delta_time);
+    if (window_has_focus) {
+        rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(),
+                                             renderer.is_moving_left(), renderer.is_moving_right(), 200.0f);
+        input_system.update(registry, delta_time);
 
-    auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
-    for (auto entity : view) {
-        auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
-        client.send_move(vel.vx, vel.vy);
-    }
+        auto controllable_view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Position,
+                                               rtype::ecs::component::Velocity>();
+        for (auto entity : controllable_view) {
+            GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
+            auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id);
+            auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(entity_id);
+            pos.x += vel.vx * delta_time;
+            pos.y += vel.vy * delta_time;
+        }
 
-    if (renderer.is_shooting()) {
-        client.send_shoot(0, 0);
+        auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
+        for (auto entity : view) {
+            auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
+            client.send_move(vel.vx, vel.vy);
+        }
+
+        if (renderer.is_shooting()) {
+            client.send_shoot(0, 0);
+        }
+    } else {
+        auto controllable_view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
+        for (auto entity : controllable_view) {
+            GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
+            auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(entity_id);
+            vel.vx = 0.0f;
+            vel.vy = 0.0f;
+        }
     }
 }
 

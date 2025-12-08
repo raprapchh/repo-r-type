@@ -43,6 +43,16 @@ void LobbyState::setup_ui() {
     player_list_text_.setString("");
     player_list_text_.setCharacterSize(20);
     player_list_text_.setFillColor(sf::Color::Cyan);
+
+    start_button_.setSize(sf::Vector2f(300, 60));
+    start_button_.setFillColor(sf::Color(100, 150, 200));
+    start_button_.setOutlineColor(sf::Color::White);
+    start_button_.setOutlineThickness(2);
+
+    start_button_text_.setFont(font_);
+    start_button_text_.setString("START GAME");
+    start_button_text_.setCharacterSize(30);
+    start_button_text_.setFillColor(sf::Color::White);
 }
 
 void LobbyState::on_enter(Renderer& renderer, Client& client) {
@@ -80,8 +90,18 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
         } else if (event.type == sf::Event::Resized) {
             renderer.handle_resize(event.size.width, event.size.height);
             update_positions(sf::Vector2u(event.size.width, event.size.height));
+        } else if (event.type == sf::Event::MouseButtonPressed) {
+            if (event.mouseButton.button == sf::Mouse::Left) {
+                sf::Vector2f mouse_pos = renderer.get_mouse_position();
+                if (player_count_ >= 2 && start_button_.getGlobalBounds().contains(mouse_pos)) {
+                    state_manager.get_client().send_game_start_request();
+                }
+            }
         } else if (event.type == sf::Event::KeyPressed) {
             if (event.key.code == sf::Keyboard::Escape) {
+            } else if ((event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) &&
+                       player_count_ >= 2) {
+                state_manager.get_client().send_game_start_request();
             }
         }
     }
@@ -90,6 +110,15 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
 void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) {
     if (game_started_.load()) {
         state_manager.change_state(std::make_unique<GameState>());
+    }
+
+    if (player_count_ >= 2) {
+        sf::Vector2f mouse_pos = renderer.get_mouse_position();
+        if (start_button_.getGlobalBounds().contains(mouse_pos)) {
+            start_button_.setFillColor(sf::Color(120, 170, 220));
+        } else {
+            start_button_.setFillColor(sf::Color(100, 150, 200));
+        }
     }
 }
 
@@ -101,6 +130,10 @@ void LobbyState::render(Renderer& renderer, Client& /* client */) {
         renderer.draw_text(waiting_text_);
         renderer.draw_text(players_text_);
         renderer.draw_text(player_list_text_);
+        if (player_count_ >= 2) {
+            renderer.draw_rectangle(start_button_);
+            renderer.draw_text(start_button_text_);
+        }
     }
 
     renderer.display();
@@ -148,11 +181,20 @@ void LobbyState::update_positions(const sf::Vector2u& window_size) {
     float waiting_y = window_size.y * 0.35f;
     float players_y = window_size.y * 0.45f;
     float list_y = window_size.y * 0.53f;
+    float button_y = window_size.y * 0.7f;
 
     title_text_.setPosition((window_size.x - title_text_.getLocalBounds().width) / 2.0f, title_y);
     waiting_text_.setPosition((window_size.x - waiting_text_.getLocalBounds().width) / 2.0f, waiting_y);
     players_text_.setPosition((window_size.x - players_text_.getLocalBounds().width) / 2.0f, players_y);
     player_list_text_.setPosition((window_size.x - player_list_text_.getLocalBounds().width) / 2.0f, list_y);
+
+    float button_width = std::min(300.0f, window_size.x * 0.25f);
+    float button_height = std::min(60.0f, window_size.y * 0.08f);
+    start_button_.setSize(sf::Vector2f(button_width, button_height));
+    start_button_.setPosition((window_size.x - button_width) / 2.0f, button_y);
+    start_button_text_.setPosition(
+        start_button_.getPosition().x + (button_width - start_button_text_.getLocalBounds().width) / 2.0f,
+        start_button_.getPosition().y + (button_height - start_button_text_.getLocalBounds().height) / 2.0f - 5.0f);
 }
 
 } // namespace rtype::client

@@ -35,6 +35,8 @@ class LobbyState : public IState {
     sf::Text waiting_text_;
     sf::Text players_text_;
     sf::Text player_list_text_;
+    sf::Text start_button_text_;
+    sf::RectangleShape start_button_;
     bool font_loaded_;
     std::vector<uint32_t> connected_players_;
     uint8_t player_count_;
