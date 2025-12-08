@@ -1,6 +1,5 @@
 #include "../include/NetworkSystem.hpp"
 #include "../../shared/net/MessageData.hpp"
-#include <iostream>
 
 namespace rtype::client {
 
@@ -8,6 +7,7 @@ NetworkSystem::NetworkSystem(uint32_t player_id) : player_id_(player_id) {
 }
 
 void NetworkSystem::push_packet(const rtype::net::Packet& packet) {
+    std::lock_guard<std::mutex> lock(packet_queue_mutex_);
     packet_queue_.push(packet);
 }
 
@@ -15,11 +15,19 @@ void NetworkSystem::set_player_id(uint32_t player_id) {
     player_id_ = player_id;
 }
 
-void NetworkSystem::update(GameEngine::Registry& registry) {
-    while (!packet_queue_.empty()) {
-        rtype::net::Packet packet = packet_queue_.front();
-        packet_queue_.pop();
+void NetworkSystem::update(GameEngine::Registry& registry, std::mutex& registry_mutex) {
+    std::queue<rtype::net::Packet> packets_to_process;
+    
+    {
+        std::lock_guard<std::mutex> lock(packet_queue_mutex_);
+        packets_to_process = std::move(packet_queue_);
+    }
 
+    while (!packets_to_process.empty()) {
+        rtype::net::Packet packet = packets_to_process.front();
+        packets_to_process.pop();
+
+        std::lock_guard<std::mutex> lock(registry_mutex);
         switch (static_cast<rtype::net::MessageType>(packet.header.message_type)) {
         case rtype::net::MessageType::EntitySpawn:
             handle_spawn(registry, packet);
@@ -61,10 +69,7 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             registry.addComponent<rtype::ecs::component::Drawable>(entity, "shot", 0, 0, 1.0f, 1.0f);
         }
 
-        std::cout << "Spawned entity " << data.entity_id << " at (" << data.position_x << ", " << data.position_y << ")"
-                  << std::endl;
     } catch (const std::exception& e) {
-        std::cerr << "Error handling spawn packet: " << e.what() << std::endl;
     }
 }
 
@@ -94,27 +99,31 @@ void NetworkSystem::handle_move(GameEngine::Registry& registry, const rtype::net
         bool found = false;
 
         for (auto entity : view) {
-            auto& net_id = registry.getComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity));
-            if (net_id.id == entity_id) {
-                if (registry.hasComponent<rtype::ecs::component::Position>(static_cast<size_t>(entity))) {
-                    auto& pos = registry.getComponent<rtype::ecs::component::Position>(static_cast<size_t>(entity));
-                    pos.x = x;
-                    pos.y = y;
+            GameEngine::entity_t entity_id_ecs = static_cast<GameEngine::entity_t>(entity);
+            try {
+                auto& net_id = registry.getComponent<rtype::ecs::component::NetworkId>(entity_id_ecs);
+                if (net_id.id == entity_id) {
+                    if (registry.hasComponent<rtype::ecs::component::Position>(entity_id_ecs)) {
+                        auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id_ecs);
+                        pos.x = x;
+                        pos.y = y;
+                    }
+                    if (registry.hasComponent<rtype::ecs::component::Velocity>(entity_id_ecs)) {
+                        auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(entity_id_ecs);
+                        vel.vx = vx;
+                        vel.vy = vy;
+                    }
+                    found = true;
+                    break;
                 }
-                if (registry.hasComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity))) {
-                    auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
-                    vel.vx = vx;
-                    vel.vy = vy;
-                }
-                found = true;
-                break;
+            } catch (const std::exception& e) {
+                continue;
             }
         }
 
         if (!found) {
         }
     } catch (const std::exception& e) {
-        std::cerr << "Error handling move packet: " << e.what() << std::endl;
     }
 }
 
@@ -124,15 +133,18 @@ void NetworkSystem::handle_destroy(GameEngine::Registry& registry, const rtype::
         auto view = registry.view<rtype::ecs::component::NetworkId>();
 
         for (auto entity : view) {
-            auto& net_id = registry.getComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity));
-            if (net_id.id == data.entity_id) {
-                registry.destroyEntity(static_cast<size_t>(entity));
-                std::cout << "Destroyed entity " << data.entity_id << std::endl;
-                return;
+            GameEngine::entity_t entity_id_ecs = static_cast<GameEngine::entity_t>(entity);
+            try {
+                auto& net_id = registry.getComponent<rtype::ecs::component::NetworkId>(entity_id_ecs);
+                if (net_id.id == data.entity_id) {
+                    registry.destroyEntity(entity_id_ecs);
+                    return;
+                }
+            } catch (const std::exception& e) {
+                continue;
             }
         }
     } catch (const std::exception& e) {
-        std::cerr << "Error handling destroy packet: " << e.what() << std::endl;
     }
 }
 
