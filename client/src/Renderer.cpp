@@ -114,10 +114,12 @@ void Renderer::render_frame() {
 
     if (textures_.count("background")) {
         sf::Sprite bg_sprite(textures_["background"]);
+        bg_sprite.setScale(10.0f, 10.0f);
         bg_sprite.setPosition(background_x_, 0);
         window_->draw(bg_sprite);
 
         sf::Sprite bg2_sprite(textures_["background"]);
+        bg2_sprite.setScale(10.0f, 10.0f);
         bg2_sprite.setPosition(background_x_ + bg_sprite.getLocalBounds().width, 0);
         window_->draw(bg2_sprite);
 
@@ -126,7 +128,6 @@ void Renderer::render_frame() {
             background_x_ = 0;
         }
     }
-
     draw_entities();
     draw_ui();
     display();
@@ -142,11 +143,12 @@ void Renderer::load_texture(const std::string& path, const std::string& name) {
 }
 
 void Renderer::load_sprites() {
-    load_texture("client/sprites/r-typesheet42.gif", "player_ships");
+    load_texture("client/sprites/players_ship.png", "player_ships");
     load_texture("client/sprites/r-typesheet5.gif", "player");
-    load_texture("client/sprites/r-typesheet8.gif", "background");
-    load_texture("client/sprites/r-typesheet3.gif", "enemy_basic");
-    load_texture("client/sprites/r-typesheet2.gif", "shot");
+    load_texture("client/sprites/map_1.png", "background");
+    load_texture("client/sprites/monster_0.png", "enemy_basic");
+    load_texture("client/sprites/special_shot.png", "shot");
+    load_texture("client/sprites/shot_death.png", "death");
     load_texture("client/sprites/r-typesheet7.gif", "default");
 }
 
