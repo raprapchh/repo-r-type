@@ -6,11 +6,23 @@
 #include <chrono>
 #include <thread>
 #include <memory>
+#include <string>
+#include <cstdint>
 
-int main() {
+int main(int argc, char* argv[]) {
     try {
+        std::string server_host = "127.0.0.1";
+        uint16_t server_port = 4242;
+
+        if (argc > 1) {
+            server_host = argv[1];
+        }
+        if (argc > 2) {
+            server_port = static_cast<uint16_t>(std::stoi(argv[2]));
+        }
+
         rtype::client::Renderer renderer(1920, 1080);
-        rtype::client::Client client("127.0.0.1", 4242, renderer);
+        rtype::client::Client client(server_host, server_port, renderer);
         rtype::client::StateManager state_manager(renderer, client);
 
         auto menu_state = std::make_unique<rtype::client::MenuState>();
