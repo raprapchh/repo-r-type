@@ -89,6 +89,8 @@ class Renderer {
 
     bool keys_[sf::Keyboard::KeyCount];
     float background_x_;
+    float background_x_stars_;
+    float background_x_stars2_;
 
     rtype::net::GameStateData game_state_;
 
