@@ -1,5 +1,6 @@
 #include "../include/Renderer.hpp"
 #include <iostream>
+#include <algorithm>
 
 namespace rtype::client {
 
@@ -36,6 +37,11 @@ void Renderer::display() {
 }
 
 void Renderer::handle_input() {
+    if (!window_ || !window_->hasFocus()) {
+        std::fill(std::begin(keys_), std::end(keys_), false);
+        return;
+    }
+
     keys_[sf::Keyboard::Up] =
         sf::Keyboard::isKeyPressed(sf::Keyboard::Up) || sf::Keyboard::isKeyPressed(sf::Keyboard::Z);
     keys_[sf::Keyboard::Down] =

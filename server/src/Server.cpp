@@ -205,6 +205,10 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
         }
     } break;
 
+    case rtype::net::MessageType::GameStart: {
+        handle_game_start(client_ip, client_port, packet);
+    } break;
+
     default:
         Logger::instance().warn("Unknown message type: " + std::to_string(packet.header.message_type));
     }
@@ -223,8 +227,11 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
 
         player_id = next_player_id_++;
 
+        float start_x = 100.0f + (player_id - 1) * 150.0f;
+        float start_y = 100.0f + (player_id - 1) * 100.0f;
+
         GameEngine::entity_t entity = registry_.createEntity();
-        registry_.addComponent<rtype::ecs::component::Position>(entity, 100.0f, 100.0f);
+        registry_.addComponent<rtype::ecs::component::Position>(entity, start_x, start_y);
         registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
         registry_.addComponent<rtype::ecs::component::HitBox>(entity, 66.0f, 110.0f);
         registry_.addComponent<rtype::ecs::component::Weapon>(entity);
@@ -252,6 +259,18 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
     auto response_data = protocol_adapter_->serialize(response);
     udp_server_->send(client_ip, client_port, response_data);
     broadcast_message(response_data, client_ip, client_port);
+
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        for (const auto& [key, existing_client] : clients_) {
+            if (existing_client.is_connected && existing_client.player_id != player_id) {
+                rtype::net::PlayerJoinData existing_join_data(existing_client.player_id);
+                rtype::net::Packet existing_response = message_serializer_->serialize_player_join(existing_join_data);
+                auto existing_response_data = protocol_adapter_->serialize(existing_response);
+                udp_server_->send(client_ip, client_port, existing_response_data);
+            }
+        }
+    }
 }
 
 void Server::handle_player_move(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet) {
@@ -270,11 +289,6 @@ void Server::handle_player_move(const std::string& client_ip, uint16_t client_po
             entity_id = it->second.entity_id;
         }
 
-        if (registry_.hasComponent<rtype::ecs::component::Position>(entity_id)) {
-            auto& pos = registry_.getComponent<rtype::ecs::component::Position>(entity_id);
-            pos.x = move_data.position_x;
-            pos.y = move_data.position_y;
-        }
         if (registry_.hasComponent<rtype::ecs::component::Velocity>(entity_id)) {
             auto& vel = registry_.getComponent<rtype::ecs::component::Velocity>(entity_id);
             vel.vx = move_data.velocity_x;
@@ -312,6 +326,55 @@ void Server::handle_player_shoot(const std::string& client_ip, uint16_t client_p
         broadcast_message(serialized_packet, client_ip, client_port);
     } catch (const std::exception& e) {
         Logger::instance().error("Error handling player shoot: " + std::string(e.what()));
+    }
+}
+
+void Server::handle_game_start(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet) {
+    std::string client_key = client_ip + ":" + std::to_string(client_port);
+
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        auto it = clients_.find(client_key);
+        if (it == clients_.end() || !it->second.is_connected) {
+            return;
+        }
+    }
+
+    if (!protocol_adapter_ || !message_serializer_) {
+        return;
+    }
+
+    try {
+        auto start_data = message_serializer_->deserialize_game_start(packet);
+        uint8_t connected_count = 0;
+        {
+            std::lock_guard<std::mutex> lock(clients_mutex_);
+            for (const auto& [key, client] : clients_) {
+                if (client.is_connected) {
+                    connected_count++;
+                }
+            }
+        }
+
+        if (connected_count >= 2) {
+            start_data.player_count = connected_count;
+            rtype::net::Packet start_packet = message_serializer_->serialize_game_start(start_data);
+            auto serialized_packet = protocol_adapter_->serialize(start_packet);
+            {
+                std::lock_guard<std::mutex> lock(clients_mutex_);
+                for (const auto& [key, client] : clients_) {
+                    if (client.is_connected && udp_server_) {
+                        udp_server_->send(client.ip, client.port, serialized_packet);
+                    }
+                }
+            }
+            Logger::instance().info("Game started with " + std::to_string(connected_count) + " players");
+        } else {
+            Logger::instance().warn("Game start requested but only " + std::to_string(connected_count) +
+                                    " players connected");
+        }
+    } catch (const std::exception& e) {
+        Logger::instance().error("Error handling game start: " + std::string(e.what()));
     }
 }
 
