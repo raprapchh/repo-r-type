@@ -11,7 +11,7 @@ namespace rtype::ecs {
 void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
     auto view = registry.view<component::Weapon, component::Position>();
 
-    view.each([&registry, dt](component::Weapon& weapon, component::Position& pos) {
+    view.each([&registry, dt](auto entity, component::Weapon& weapon, component::Position& pos) {
         weapon.timeSinceLastFire += static_cast<float>(dt);
 
         if (weapon.isShooting && weapon.timeSinceLastFire >= weapon.fireRate) {
@@ -22,7 +22,11 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
 
             registry.addComponent<component::Position>(projectile, spawnX, spawnY);
             registry.addComponent<component::Velocity>(projectile, weapon.projectileSpeed, 0.0f);
-            registry.addComponent<component::Projectile>(projectile, weapon.damage, weapon.projectileLifetime);
+
+            auto& projComp =
+                registry.addComponent<component::Projectile>(projectile, weapon.damage, weapon.projectileLifetime);
+            projComp.owner_id = static_cast<std::size_t>(entity);
+
             registry.addComponent<component::HitBox>(projectile, 10.0f, 5.0f); // Arbitrary size for now
 
             weapon.timeSinceLastFire = 0.0f;
