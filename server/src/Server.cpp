@@ -11,6 +11,11 @@
 #include "../../ecs/include/components/Velocity.hpp"
 #include "../../ecs/include/components/Weapon.hpp"
 #include "../../ecs/include/components/HitBox.hpp"
+#include "../../ecs/include/components/Score.hpp"
+#include "../../ecs/include/components/Tag.hpp"
+#include "../../ecs/include/components/Lives.hpp"
+#include "../../ecs/include/systems/ScoreSystem.hpp"
+#include "../../ecs/include/systems/LivesSystem.hpp"
 #include "../../ecs/include/components/Projectile.hpp"
 #include "../../ecs/include/components/NetworkId.hpp"
 #include "../../ecs/include/components/MapBounds.hpp"
@@ -116,6 +121,12 @@ void Server::game_loop() {
             rtype::ecs::WeaponSystem weapon_system;
             weapon_system.update(registry_, dt);
 
+            rtype::ecs::ScoreSystem score_system;
+            score_system.update(registry_, dt);
+
+            rtype::ecs::LivesSystem lives_system;
+            lives_system.update(registry_, dt);
+
             rtype::ecs::SpawnSystem spawn_system;
             spawn_system.update(registry_, dt);
 
@@ -187,11 +198,19 @@ void Server::game_loop() {
                 game_state_data.padding[1] = 0;
                 game_state_data.padding[2] = 0;
 
-                rtype::net::Packet state_packet = message_serializer_->serialize_game_state(game_state_data);
-                auto packet_data = protocol_adapter_->serialize(state_packet);
-
                 for (const auto& [key, client] : clients_) {
                     if (client.is_connected && udp_server_) {
+                        if (registry_.hasComponent<rtype::ecs::component::Score>(client.entity_id)) {
+                            game_state_data.score =
+                                registry_.getComponent<rtype::ecs::component::Score>(client.entity_id).value;
+                            game_state_data.game_state = 0;
+                        } else {
+                            game_state_data.score = 0;
+                            game_state_data.game_state = 1;
+                        }
+
+                        rtype::net::Packet state_packet = message_serializer_->serialize_game_state(game_state_data);
+                        auto packet_data = protocol_adapter_->serialize(state_packet);
                         udp_server_->send(client.ip, client.port, packet_data);
                     }
                 }
@@ -278,6 +297,9 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
         registry_.addComponent<rtype::ecs::component::HitBox>(entity, 66.0f, 110.0f);
         registry_.addComponent<rtype::ecs::component::Weapon>(entity);
+        registry_.addComponent<rtype::ecs::component::Score>(entity, 0);
+        registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
+        registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
 
         ClientInfo info;
         info.ip = client_ip;
