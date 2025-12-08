@@ -61,6 +61,7 @@ void GameState::render(Renderer& renderer, Client& client) {
 
     if (renderer.get_window() && renderer.get_textures().count("background")) {
         sf::Sprite bg_sprite(renderer.get_textures().at("background"));
+        bg_sprite.setScale(4.0f, 4.0f);
         bg_sprite.setPosition(0, 0);
         renderer.get_window()->draw(bg_sprite);
     }
