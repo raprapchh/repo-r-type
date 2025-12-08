@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -12,6 +13,7 @@
 #include "NetworkSystem.hpp"
 #include "UdpClient.hpp"
 #include "Renderer.hpp"
+#include "../../ecs/include/systems/AudioSystem.hpp"
 
 namespace rtype::client {
 
@@ -30,6 +32,7 @@ class Client {
 
     void send_move(float vx, float vy);
     void send_shoot(int32_t x, int32_t y);
+    void send_game_start_request();
 
     void set_game_start_callback(GameStartCallback callback);
     void set_player_join_callback(PlayerJoinCallback callback);
@@ -41,6 +44,9 @@ class Client {
     }
     GameEngine::Registry& get_registry() {
         return registry_;
+    }
+    std::mutex& get_registry_mutex() {
+        return registry_mutex_;
     }
 
   private:
@@ -63,6 +69,8 @@ class Client {
 
     GameEngine::Registry registry_;
     NetworkSystem network_system_;
+    rtype::ecs::AudioSystem audio_system_;
+    std::mutex registry_mutex_;
 };
 
 } // namespace rtype::client
