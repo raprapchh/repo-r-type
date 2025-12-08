@@ -370,7 +370,8 @@ void Server::handle_game_start(const std::string& client_ip, uint16_t client_por
             }
             Logger::instance().info("Game started with " + std::to_string(connected_count) + " players");
         } else {
-            Logger::instance().warn("Game start requested but only " + std::to_string(connected_count) + " players connected");
+            Logger::instance().warn("Game start requested but only " + std::to_string(connected_count) +
+                                    " players connected");
         }
     } catch (const std::exception& e) {
         Logger::instance().error("Error handling game start: " + std::string(e.what()));

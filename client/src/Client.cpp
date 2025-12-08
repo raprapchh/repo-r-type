@@ -126,17 +126,17 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 registry_.addComponent<rtype::ecs::component::Controllable>(entity, true);
             } else {
                 std::cout << "Player " << join_data.player_id << " has joined the game." << std::endl;
-                
+
                 if (join_data.player_id != player_id_) {
                     auto entity = registry_.createEntity();
                     registry_.addComponent<rtype::ecs::component::NetworkId>(entity, join_data.player_id);
                     registry_.addComponent<rtype::ecs::component::Position>(entity, 100.0f, 100.0f);
                     registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
                     uint32_t sprite_index = (join_data.player_id - 1) % 4;
-                    registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index, 0, 2.0f,
-                                                                            2.0f);
+                    registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index, 0,
+                                                                            2.0f, 2.0f);
                 }
-                
+
                 if (player_join_callback_) {
                     player_join_callback_(join_data.player_id);
                 }
@@ -171,15 +171,16 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
         network_system_.push_packet(packet);
         try {
             auto move_data = serializer.deserialize_player_move(packet);
-            
+
             if (move_data.player_id == player_id_) {
                 return;
             }
-            
+
             auto view = registry_.view<rtype::ecs::component::NetworkId>();
             bool found = false;
             for (auto entity : view) {
-                auto& net_id = registry_.getComponent<rtype::ecs::component::NetworkId>(static_cast<GameEngine::entity_t>(entity));
+                auto& net_id =
+                    registry_.getComponent<rtype::ecs::component::NetworkId>(static_cast<GameEngine::entity_t>(entity));
                 if (net_id.id == move_data.player_id) {
                     GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
                     if (registry_.hasComponent<rtype::ecs::component::Position>(entity_id)) {
@@ -196,14 +197,17 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                     break;
                 }
             }
-            
+
             if (!found) {
                 auto entity = registry_.createEntity();
                 registry_.addComponent<rtype::ecs::component::NetworkId>(entity, move_data.player_id);
-                registry_.addComponent<rtype::ecs::component::Position>(entity, move_data.position_x, move_data.position_y);
-                registry_.addComponent<rtype::ecs::component::Velocity>(entity, move_data.velocity_x, move_data.velocity_y);
+                registry_.addComponent<rtype::ecs::component::Position>(entity, move_data.position_x,
+                                                                        move_data.position_y);
+                registry_.addComponent<rtype::ecs::component::Velocity>(entity, move_data.velocity_x,
+                                                                        move_data.velocity_y);
                 uint32_t sprite_index = (move_data.player_id - 1) % 4;
-                registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index, 0, 2.0f, 2.0f);
+                registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index, 0, 2.0f,
+                                                                        2.0f);
             }
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing PlayerMove packet: " << e.what() << std::endl;
@@ -276,20 +280,22 @@ void Client::send_shoot(int32_t x, int32_t y) {
     rtype::net::MessageSerializer serializer;
     rtype::net::PlayerShootData shoot_data;
     shoot_data.player_id = player_id_;
-    
+
     float pos_x = 0.0f;
     float pos_y = 0.0f;
     auto view = registry_.view<rtype::ecs::component::NetworkId, rtype::ecs::component::Position>();
     for (auto entity : view) {
-        auto& net_id = registry_.getComponent<rtype::ecs::component::NetworkId>(static_cast<GameEngine::entity_t>(entity));
+        auto& net_id =
+            registry_.getComponent<rtype::ecs::component::NetworkId>(static_cast<GameEngine::entity_t>(entity));
         if (net_id.id == player_id_) {
-            auto& pos = registry_.getComponent<rtype::ecs::component::Position>(static_cast<GameEngine::entity_t>(entity));
+            auto& pos =
+                registry_.getComponent<rtype::ecs::component::Position>(static_cast<GameEngine::entity_t>(entity));
             pos_x = pos.x;
             pos_y = pos.y;
             break;
         }
     }
-    
+
     shoot_data.weapon_type = 0;
     shoot_data.position_x = pos_x;
     shoot_data.position_y = pos_y;
@@ -309,9 +315,8 @@ void Client::send_game_start_request() {
     start_data.level_id = 1;
     start_data.player_count = 0;
     start_data.difficulty = 1;
-    start_data.timestamp = static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::seconds>(
-                                                      std::chrono::system_clock::now().time_since_epoch())
-                                                      .count());
+    start_data.timestamp = static_cast<uint32_t>(
+        std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
     rtype::net::Packet start_packet = serializer.serialize_game_start(start_data);
     std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(start_packet);
     udp_client_->send(packet_data);

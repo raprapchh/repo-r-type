@@ -40,11 +40,12 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
     bool window_has_focus = renderer.get_window() && renderer.get_window()->hasFocus();
 
     if (window_has_focus) {
-        rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(), renderer.is_moving_left(),
-                                             renderer.is_moving_right(), 200.0f);
+        rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(),
+                                             renderer.is_moving_left(), renderer.is_moving_right(), 200.0f);
         input_system.update(registry, delta_time);
 
-        auto controllable_view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Position, rtype::ecs::component::Velocity>();
+        auto controllable_view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Position,
+                                               rtype::ecs::component::Velocity>();
         for (auto entity : controllable_view) {
             GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
             auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id);
