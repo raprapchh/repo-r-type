@@ -326,6 +326,7 @@ void Client::send_game_start_request() {
 }
 
 void Client::update() {
+    audio_system_.update(registry_, 0.0);
     network_system_.update(registry_, registry_mutex_);
 }
 

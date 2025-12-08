@@ -56,16 +56,16 @@ file(GLOB_RECURSE ECS_SRC
 )
 
 add_library(rtype_ecs ${ECS_SRC})
-target_include_directories(rtype_ecs 
+target_include_directories(rtype_ecs
     PUBLIC
         ${CMAKE_SOURCE_DIR}/ecs/include
         ${ENTT_INCLUDE_DIR}
         ${CMAKE_SOURCE_DIR}/ecs/include
 )
 
-find_package(SFML 2.5 COMPONENTS graphics window system QUIET)
+find_package(SFML 2.5 COMPONENTS graphics window system audio QUIET)
 if(SFML_FOUND)
-    target_link_libraries(rtype_ecs PRIVATE sfml-graphics sfml-window sfml-system)
+    target_link_libraries(rtype_ecs PRIVATE sfml-graphics sfml-window sfml-system sfml-audio)
     target_compile_definitions(rtype_ecs PRIVATE SFML_FOUND)
 endif()
 
@@ -89,10 +89,10 @@ target_include_directories(r-type_client PRIVATE
     ${CMAKE_SOURCE_DIR}/client/include
 )
 
-find_package(SFML 2.5 COMPONENTS graphics window system QUIET)
+find_package(SFML 2.5 COMPONENTS graphics window system audio QUIET)
 if(SFML_FOUND)
     target_link_libraries(r-type_client
-        PRIVATE rtype_ecs rtype_shared sfml-graphics sfml-window sfml-system
+        PRIVATE rtype_ecs rtype_shared sfml-graphics sfml-window sfml-system sfml-audio
     )
 else()
     message(WARNING "SFML not found. Client will compile without graphics support.")
