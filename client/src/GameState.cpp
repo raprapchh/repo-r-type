@@ -48,20 +48,7 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
     auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
     for (auto entity : view) {
         auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
-
-        int8_t dx = 0, dy = 0;
-        if (vel.vx < 0)
-            dx = -1;
-        else if (vel.vx > 0)
-            dx = 1;
-        if (vel.vy < 0)
-            dy = -1;
-        else if (vel.vy > 0)
-            dy = 1;
-
-        if (dx != 0 || dy != 0) {
-            client.send_move(dx, dy);
-        }
+        client.send_move(vel.vx, vel.vy);
     }
 
     if (renderer.is_shooting()) {
@@ -74,6 +61,7 @@ void GameState::render(Renderer& renderer, Client& client) {
 
     if (renderer.get_window() && renderer.get_textures().count("background")) {
         sf::Sprite bg_sprite(renderer.get_textures().at("background"));
+        bg_sprite.setScale(4.0f, 4.0f);
         bg_sprite.setPosition(0, 0);
         renderer.get_window()->draw(bg_sprite);
     }
