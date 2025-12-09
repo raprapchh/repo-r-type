@@ -51,6 +51,7 @@ class Server {
     std::unique_ptr<rtype::net::IMessageSerializer> message_serializer_;
     std::map<std::string, ClientInfo> clients_;
     std::mutex clients_mutex_;
+    std::mutex registry_mutex_;
     uint32_t next_player_id_;
     std::atomic<bool> running_;
     std::thread game_thread_;
