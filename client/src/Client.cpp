@@ -165,7 +165,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
     case rtype::net::MessageType::GameState: {
         try {
             auto game_state_data = serializer.deserialize_game_state(packet);
-            (void)game_state_data;
+            renderer_.update_game_state(game_state_data);
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing GameState packet: " << e.what() << std::endl;
         }
