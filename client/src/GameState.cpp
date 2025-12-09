@@ -11,6 +11,7 @@ GameState::GameState() {
 }
 
 void GameState::on_enter(Renderer& renderer, Client& client) {
+    (void)renderer;
     if (!client.is_connected()) {
         client.connect();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -18,13 +19,18 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
 }
 
 void GameState::on_exit(Renderer& renderer, Client& client) {
+    (void)renderer;
+    (void)client;
 }
 
 void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
+    (void)state_manager;
     sf::Event event;
     while (renderer.poll_event(event)) {
         if (event.type == sf::Event::Closed) {
             renderer.close_window();
+        } else if (event.type == sf::Event::Resized) {
+            renderer.handle_resize(event.size.width, event.size.height);
         } else if (event.type == sf::Event::KeyPressed) {
             if (event.key.code == sf::Keyboard::Escape) {
             } else if (event.key.code == sf::Keyboard::Space) {
@@ -36,6 +42,7 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
 }
 
 void GameState::update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) {
+    (void)state_manager;
     client.update();
 
     GameEngine::Registry& registry = client.get_registry();
@@ -85,11 +92,8 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
 void GameState::render(Renderer& renderer, Client& client) {
     renderer.clear();
 
-    if (renderer.get_window() && renderer.get_textures().count("background")) {
-        sf::Sprite bg_sprite(renderer.get_textures().at("background"));
-        bg_sprite.setScale(4.0f, 4.0f);
-        bg_sprite.setPosition(0, 0);
-        renderer.get_window()->draw(bg_sprite);
+    if (renderer.get_window()) {
+        renderer.draw_background();
     }
 
     if (renderer.get_window()) {

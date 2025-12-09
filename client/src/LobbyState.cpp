@@ -80,6 +80,8 @@ void LobbyState::on_enter(Renderer& renderer, Client& client) {
 }
 
 void LobbyState::on_exit(Renderer& renderer, Client& client) {
+    (void)renderer;
+    (void)client;
 }
 
 void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
@@ -108,6 +110,9 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
 }
 
 void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) {
+    (void)client;
+    (void)delta_time;
+
     if (game_started_.load()) {
         state_manager.change_state(std::make_unique<GameState>());
     }
