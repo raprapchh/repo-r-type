@@ -3,17 +3,38 @@
 #include "../../include/components/HitBox.hpp"
 #include "../../include/components/Health.hpp"
 #include "../../include/components/Weapon.hpp"
+#include "../../include/components/MapBounds.hpp"
 #include "../../include/Registry.hpp"
 
 namespace rtype::ecs {
 
 void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
     (void)dt;
+
+    float minX = 0.0f;
+    float minY = 0.0f;
+    float maxX = 1920.0f;
+    float maxY = 1080.0f;
+
+    try {
+        auto mapBoundsView = registry.view<component::MapBounds>();
+        for (auto entity : mapBoundsView) {
+            auto& bounds = registry.getComponent<component::MapBounds>(static_cast<std::size_t>(entity));
+            minX = bounds.minX;
+            minY = bounds.minY;
+            maxX = bounds.maxX;
+            maxY = bounds.maxY;
+            break;
+        }
+    } catch (const std::exception&) {
+    }
+
     auto view = registry.view<component::Position>();
 
     std::vector<GameEngine::entity_t> entities_to_destroy;
 
     view.each([&](const auto entity, component::Position& pos) {
+    view.each([&registry, minX, minY, maxX, maxY](const auto entity, component::Position& pos) {
         float width = 0.0f;
         float height = 0.0f;
 
@@ -43,11 +64,15 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
             pos.x = 0;
         if (pos.x + width > 1920)
             pos.x = 1920 - width;
+        if (pos.x < minX)
+            pos.x = minX;
+        if (pos.x + width > maxX)
+            pos.x = maxX - width;
 
-        if (pos.y < 0)
-            pos.y = 0;
-        if (pos.y + height > 1080)
-            pos.y = 1080 - height;
+        if (pos.y < minY)
+            pos.y = minY;
+        if (pos.y + height > maxY)
+            pos.y = maxY - height;
     });
 
     // Destroy all marked entities

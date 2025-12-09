@@ -59,10 +59,13 @@ void ModeSelectionState::setup_ui() {
 }
 
 void ModeSelectionState::on_enter(Renderer& renderer, Client& client) {
+    (void)client;
     update_positions(renderer.get_window_size());
 }
 
 void ModeSelectionState::on_exit(Renderer& renderer, Client& client) {
+    (void)renderer;
+    (void)client;
 }
 
 void ModeSelectionState::handle_input(Renderer& renderer, StateManager& state_manager) {
@@ -97,6 +100,9 @@ void ModeSelectionState::handle_button_click(const sf::Vector2f& mouse_pos, Stat
 }
 
 void ModeSelectionState::update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) {
+    (void)client;
+    (void)state_manager;
+    (void)delta_time;
     sf::Vector2f mouse_pos = renderer.get_mouse_position();
 
     if (solo_button_.getGlobalBounds().contains(mouse_pos)) {

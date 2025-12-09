@@ -76,6 +76,7 @@ void Client::run() {
 
 void Client::handle_udp_receive(const asio::error_code& error, std::size_t bytes_transferred,
                                 const std::vector<uint8_t>& data) {
+    (void)bytes_transferred;
     if (!error) {
         std::cout << "Received UDP packet size: " << data.size() << " bytes" << std::endl;
         handle_server_message(data);
@@ -122,8 +123,8 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 registry_.addComponent<rtype::ecs::component::Position>(entity, 100.0f, 100.0f);
                 registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
                 uint32_t sprite_index = (player_id_ - 1) % 4;
-                registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index, 0, 2.0f,
-                                                                        2.0f);
+                registry_.addComponent<rtype::ecs::component::Drawable>(
+                    entity, std::string("player_ships"), sprite_index, static_cast<uint32_t>(0), 2.0f, 2.0f);
                 registry_.addComponent<rtype::ecs::component::Controllable>(entity, true);
             } else {
                 std::cout << "Player " << join_data.player_id << " has joined the game." << std::endl;
@@ -135,8 +136,8 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                     registry_.addComponent<rtype::ecs::component::Position>(entity, 100.0f, 100.0f);
                     registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
                     uint32_t sprite_index = (join_data.player_id - 1) % 4;
-                    registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index, 0,
-                                                                            2.0f, 2.0f);
+                    registry_.addComponent<rtype::ecs::component::Drawable>(
+                        entity, std::string("player_ships"), sprite_index, static_cast<uint32_t>(0), 2.0f, 2.0f);
                 }
 
                 if (player_join_callback_) {
@@ -164,6 +165,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
     case rtype::net::MessageType::GameState: {
         try {
             auto game_state_data = serializer.deserialize_game_state(packet);
+            renderer_.update_game_state(game_state_data);
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing GameState packet: " << e.what() << std::endl;
         }
@@ -223,8 +225,8 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                     registry_.addComponent<rtype::ecs::component::Velocity>(entity, move_data.velocity_x,
                                                                             move_data.velocity_y);
                     uint32_t sprite_index = (move_data.player_id - 1) % 4;
-                    registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index, 0,
-                                                                            2.0f, 2.0f);
+                    registry_.addComponent<rtype::ecs::component::Drawable>(
+                        entity, std::string("player_ships"), sprite_index, static_cast<uint32_t>(0), 2.0f, 2.0f);
                 } catch (const std::exception& e) {
                 }
             }
@@ -251,6 +253,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
     case rtype::net::MessageType::Pong: {
         try {
             auto pong_data = serializer.deserialize_ping_pong(packet);
+            (void)pong_data;
             std::cout << "Received Pong." << std::endl;
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing Pong packet: " << e.what() << std::endl;
@@ -280,6 +283,8 @@ void Client::send_move(float vx, float vy) {
 }
 
 void Client::send_shoot(int32_t x, int32_t y) {
+    (void)x;
+    (void)y;
     if (!connected_.load())
         return;
     rtype::net::MessageSerializer serializer;
@@ -331,6 +336,7 @@ void Client::send_game_start_request() {
 }
 
 void Client::update() {
+    audio_system_.update(registry_, 0.0);
     network_system_.update(registry_, registry_mutex_);
 }
 

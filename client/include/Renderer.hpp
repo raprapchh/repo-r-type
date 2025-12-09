@@ -16,6 +16,8 @@ struct Entity {
     float y;
     float velocity_x;
     float velocity_y;
+    int animation_frame = 0;
+    float animation_timer = 0.0f;
 };
 
 class Renderer {
@@ -33,10 +35,12 @@ class Renderer {
     void remove_entity(uint32_t entity_id);
     void update_game_state(const rtype::net::GameStateData& state);
     void spawn_entity(const Entity& entity);
+    void update_animations(float delta_time);
     void close_window();
 
     void draw_entities();
     void draw_ui();
+    void draw_background();
     void render_frame();
 
     sf::Vector2f get_player_position(uint32_t player_id) const;
@@ -75,6 +79,7 @@ class Renderer {
 
   private:
     void load_sprites();
+    void load_fonts();
     void load_texture(const std::string& path, const std::string& name);
     sf::Sprite create_sprite(const Entity& entity);
 
@@ -82,9 +87,14 @@ class Renderer {
     sf::View view_;
     std::unordered_map<std::string, sf::Texture> textures_;
     std::unordered_map<uint32_t, Entity> entities_;
+    sf::Font font_;
+    sf::Text score_text_;
+    sf::Text lives_text_;
 
     bool keys_[sf::Keyboard::KeyCount];
     float background_x_;
+    float background_x_stars_;
+    float background_x_stars2_;
 
     rtype::net::GameStateData game_state_;
 
