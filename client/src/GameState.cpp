@@ -2,6 +2,7 @@
 #include "../../ecs/include/systems/InputSystem.hpp"
 #include "../../ecs/include/systems/RenderSystem.hpp"
 #include "../../ecs/include/systems/MovementSystem.hpp"
+#include "../../ecs/include/systems/BoundarySystem.hpp"
 #include <thread>
 #include <chrono>
 
@@ -62,6 +63,12 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
             std::lock_guard<std::mutex> lock(registry_mutex);
             rtype::ecs::MovementSystem movement_system;
             movement_system.update(registry, delta_time);
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(registry_mutex);
+            rtype::ecs::BoundarySystem boundary_system;
+            boundary_system.update(registry, delta_time);
         }
 
         {

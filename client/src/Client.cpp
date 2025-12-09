@@ -6,6 +6,7 @@
 #include "../../ecs/include/components/Velocity.hpp"
 #include "../../ecs/include/components/Drawable.hpp"
 #include "../../ecs/include/components/Controllable.hpp"
+#include "../../ecs/include/components/HitBox.hpp"
 #include <iostream>
 #include <chrono>
 
@@ -126,6 +127,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 registry_.addComponent<rtype::ecs::component::Drawable>(
                     entity, std::string("player_ships"), sprite_index, static_cast<uint32_t>(0), 2.0f, 2.0f);
                 registry_.addComponent<rtype::ecs::component::Controllable>(entity, true);
+                registry_.addComponent<rtype::ecs::component::HitBox>(entity, 64.0f, 64.0f);
             } else {
                 std::cout << "Player " << join_data.player_id << " has joined the game." << std::endl;
 
