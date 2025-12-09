@@ -133,6 +133,7 @@ void Renderer::draw_background() {
         sf::Sprite bg_sprite(textures_["background"]);
 
         float window_height = view_.getSize().y;
+        float window_width = view_.getSize().x;
         float texture_height = bg_sprite.getLocalBounds().height;
         float scale = window_height / texture_height;
 
@@ -161,13 +162,13 @@ void Renderer::draw_background() {
         float bg2_width = bg2_sprite.getLocalBounds().width * scale;
         float bg3_width = bg3_sprite.getLocalBounds().width * scale;
 
-        if (background_x_ < -bg_width) {
+        if (background_x_ < -bg_width + window_width) {
             background_x_ = 0;
         }
-        if (background_x_stars_ < -bg2_width) {
+        if (background_x_stars_ < -bg2_width + window_width) {
             background_x_stars_ = 0;
         }
-        if (background_x_stars2_ < -bg3_width) {
+        if (background_x_stars2_ < -bg3_width + window_width) {
             background_x_stars2_ = 0;
         }
     }
@@ -192,14 +193,14 @@ void Renderer::load_texture(const std::string& path, const std::string& name) {
 
 void Renderer::load_sprites() {
     load_texture("client/sprites/players_ship.png", "player_ships");
-    load_texture("client/sprites/players_ship.gif", "player");
+    load_texture("client/sprites/players_ship.png", "player");
     load_texture("client/sprites/map_1.png", "background");
     load_texture("client/sprites/star_bg.png", "background_stars");
     load_texture("client/sprites/star_2_bg.png", "background_stars2");
     load_texture("client/sprites/monster_0.png", "enemy_basic");
     load_texture("client/sprites/r-typesheet2-ezgif.com-crop.gif", "shot");
     load_texture("client/sprites/shot_death.png", "death");
-    load_texture("client/sprites/players_ship.gif", "default");
+    load_texture("client/sprites/players_ship.png", "default");
 }
 
 sf::Vector2f Renderer::get_shoot_direction() const {
