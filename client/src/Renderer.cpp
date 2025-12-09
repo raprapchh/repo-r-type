@@ -133,6 +133,7 @@ void Renderer::draw_background() {
         sf::Sprite bg_sprite(textures_["background"]);
 
         float window_height = view_.getSize().y;
+        float window_width = view_.getSize().x;
         float texture_height = bg_sprite.getLocalBounds().height;
         float scale = window_height / texture_height;
 
@@ -161,13 +162,13 @@ void Renderer::draw_background() {
         float bg2_width = bg2_sprite.getLocalBounds().width * scale;
         float bg3_width = bg3_sprite.getLocalBounds().width * scale;
 
-        if (background_x_ < -bg_width) {
+        if (background_x_ < -bg_width + window_width) {
             background_x_ = 0;
         }
-        if (background_x_stars_ < -bg2_width) {
+        if (background_x_stars_ < -bg2_width + window_width) {
             background_x_stars_ = 0;
         }
-        if (background_x_stars2_ < -bg3_width) {
+        if (background_x_stars2_ < -bg3_width + window_width) {
             background_x_stars2_ = 0;
         }
     }
