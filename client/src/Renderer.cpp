@@ -5,10 +5,8 @@
 namespace rtype::client {
 
 Renderer::Renderer(uint32_t width, uint32_t height)
-    : window_(std::make_unique<sf::RenderWindow>(sf::VideoMode(width, height), "R-Type Client"))
-      // player_x_(100.0f), player_y_(height / 2.0f)
-      ,
-      background_x_(0.0f) {
+    : window_(std::make_unique<sf::RenderWindow>(sf::VideoMode(width, height), "R-Type Client")), background_x_(0.0f),
+      background_x_stars_(0.0f), background_x_stars2_(0.0f) {
     window_->setFramerateLimit(60);
     window_->setKeyRepeatEnabled(false);
     view_.setSize(static_cast<float>(width), static_cast<float>(height));
@@ -66,6 +64,18 @@ void Renderer::remove_entity(uint32_t entity_id) {
     entities_.erase(entity_id);
 }
 
+void Renderer::update_animations(float delta_time) {
+    for (auto& [id, entity] : entities_) {
+        if (entity.type == rtype::net::EntityType::PROJECTILE) {
+            entity.animation_timer += delta_time;
+            if (entity.animation_timer >= 0.1f) {
+                entity.animation_timer = 0.0f;
+                entity.animation_frame = (entity.animation_frame + 1) % 4;
+            }
+        }
+    }
+}
+
 void Renderer::update_game_state(const rtype::net::GameStateData& state) {
     game_state_ = state;
 }
@@ -102,32 +112,71 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
         sprite.setTexture(textures_["default"]);
     }
 
+    if (entity.type == rtype::net::EntityType::PROJECTILE) {
+        sprite.setTextureRect(sf::IntRect(entity.animation_frame * 29, 0, 29, 33));
+    }
+
+    if (entity.type == rtype::net::EntityType::PLAYER) {
+        sprite.setScale(3.0f, 3.0f);
+    }
+
     sprite.setPosition(entity.x, entity.y);
     return sprite;
 }
 
 void Renderer::draw_ui() {
 }
+void Renderer::draw_background() {
+    if (textures_.count("background")) {
+        window_->setView(view_);
+
+        sf::Sprite bg_sprite(textures_["background"]);
+
+        float window_height = view_.getSize().y;
+        float window_width = view_.getSize().x;
+        float texture_height = bg_sprite.getLocalBounds().height;
+        float scale = window_height / texture_height;
+
+        sf::Sprite bg3_sprite(textures_["background_stars2"]);
+        bg3_sprite.setOrigin(0, texture_height);
+        bg3_sprite.setScale(scale, scale);
+        bg3_sprite.setPosition(background_x_stars2_, window_height);
+        window_->draw(bg3_sprite);
+
+        sf::Sprite bg2_sprite(textures_["background_stars"]);
+        bg2_sprite.setOrigin(0, texture_height);
+        bg2_sprite.setScale(scale, scale);
+        bg2_sprite.setPosition(background_x_stars_, window_height);
+        window_->draw(bg2_sprite);
+
+        bg_sprite.setOrigin(0, texture_height);
+        bg_sprite.setScale(scale, scale);
+        bg_sprite.setPosition(background_x_, window_height);
+        window_->draw(bg_sprite);
+
+        background_x_ -= 3.0f;
+        background_x_stars_ -= 5.0f;
+        background_x_stars2_ -= 10.0f;
+
+        float bg_width = bg_sprite.getLocalBounds().width * scale;
+        float bg2_width = bg2_sprite.getLocalBounds().width * scale;
+        float bg3_width = bg3_sprite.getLocalBounds().width * scale;
+
+        if (background_x_ < -bg_width + window_width) {
+            background_x_ = 0;
+        }
+        if (background_x_stars_ < -bg2_width + window_width) {
+            background_x_stars_ = 0;
+        }
+        if (background_x_stars2_ < -bg3_width + window_width) {
+            background_x_stars2_ = 0;
+        }
+    }
+}
 
 void Renderer::render_frame() {
     clear();
-
-    if (textures_.count("background")) {
-        sf::Sprite bg_sprite(textures_["background"]);
-        bg_sprite.setScale(10.0f, 10.0f);
-        bg_sprite.setPosition(background_x_, 0);
-        window_->draw(bg_sprite);
-
-        sf::Sprite bg2_sprite(textures_["background"]);
-        bg2_sprite.setScale(10.0f, 10.0f);
-        bg2_sprite.setPosition(background_x_ + bg_sprite.getLocalBounds().width, 0);
-        window_->draw(bg2_sprite);
-
-        background_x_ -= 1.0f;
-        if (background_x_ < -bg_sprite.getLocalBounds().width) {
-            background_x_ = 0;
-        }
-    }
+    draw_background();
     draw_entities();
     draw_ui();
     display();
@@ -144,12 +193,14 @@ void Renderer::load_texture(const std::string& path, const std::string& name) {
 
 void Renderer::load_sprites() {
     load_texture("client/sprites/players_ship.png", "player_ships");
-    load_texture("client/sprites/r-typesheet5.gif", "player");
+    load_texture("client/sprites/players_ship.png", "player");
     load_texture("client/sprites/map_1.png", "background");
+    load_texture("client/sprites/star_bg.png", "background_stars");
+    load_texture("client/sprites/star_2_bg.png", "background_stars2");
     load_texture("client/sprites/monster_0.png", "enemy_basic");
-    load_texture("client/sprites/special_shot.png", "shot");
+    load_texture("client/sprites/r-typesheet2-ezgif.com-crop.gif", "shot");
     load_texture("client/sprites/shot_death.png", "death");
-    load_texture("client/sprites/r-typesheet7.gif", "default");
+    load_texture("client/sprites/players_ship.png", "default");
 }
 
 sf::Vector2f Renderer::get_shoot_direction() const {

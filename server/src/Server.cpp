@@ -6,10 +6,19 @@
 #include "../../ecs/include/systems/BoundarySystem.hpp"
 #include "../../ecs/include/systems/CollisionSystem.hpp"
 #include "../../ecs/include/systems/WeaponSystem.hpp"
+#include "../../ecs/include/systems/SpawnSystem.hpp"
 #include "../../ecs/include/components/Position.hpp"
 #include "../../ecs/include/components/Velocity.hpp"
 #include "../../ecs/include/components/Weapon.hpp"
 #include "../../ecs/include/components/HitBox.hpp"
+#include "../../ecs/include/components/Score.hpp"
+#include "../../ecs/include/components/Tag.hpp"
+#include "../../ecs/include/components/Lives.hpp"
+#include "../../ecs/include/systems/ScoreSystem.hpp"
+#include "../../ecs/include/systems/LivesSystem.hpp"
+#include "../../ecs/include/components/Projectile.hpp"
+#include "../../ecs/include/components/NetworkId.hpp"
+#include "../../ecs/include/components/MapBounds.hpp"
 #include "../../shared/utils/Logger.hpp"
 
 namespace rtype::server {
@@ -38,6 +47,9 @@ void Server::start() {
 
     udp_server_->start();
     Logger::instance().info("Server started on port " + std::to_string(port_));
+
+    auto boundsEntity = registry_.createEntity();
+    registry_.addComponent<rtype::ecs::component::MapBounds>(boundsEntity, 0.0f, 0.0f, 1920.0f, 1080.0f);
     Logger::instance().info("Map dimensions: 1920x1080");
 }
 
@@ -109,6 +121,48 @@ void Server::game_loop() {
             rtype::ecs::WeaponSystem weapon_system;
             weapon_system.update(registry_, dt);
 
+            rtype::ecs::ScoreSystem score_system;
+            score_system.update(registry_, dt);
+
+            rtype::ecs::LivesSystem lives_system;
+            lives_system.update(registry_, dt);
+
+            rtype::ecs::SpawnSystem spawn_system;
+            spawn_system.update(registry_, dt);
+
+            auto projectile_view = registry_.view<rtype::ecs::component::Projectile, rtype::ecs::component::Position,
+                                                  rtype::ecs::component::Velocity>();
+            for (auto entity : projectile_view) {
+                auto id = static_cast<size_t>(entity);
+                if (!registry_.hasComponent<rtype::ecs::component::NetworkId>(id)) {
+                    auto& pos = registry_.getComponent<rtype::ecs::component::Position>(id);
+                    auto& vel = registry_.getComponent<rtype::ecs::component::Velocity>(id);
+
+                    uint32_t net_id = static_cast<uint32_t>(id);
+                    registry_.addComponent<rtype::ecs::component::NetworkId>(id, net_id);
+
+                    rtype::net::EntitySpawnData spawn_data;
+                    spawn_data.entity_id = net_id;
+                    spawn_data.entity_type = rtype::net::EntityType::PROJECTILE;
+                    spawn_data.sub_type = 0;
+                    spawn_data.position_x = pos.x;
+                    spawn_data.position_y = pos.y;
+                    spawn_data.velocity_x = vel.vx;
+                    spawn_data.velocity_y = vel.vy;
+
+                    rtype::net::Packet spawn_packet = message_serializer_->serialize_entity_spawn(spawn_data);
+                    auto serialized_spawn = protocol_adapter_->serialize(spawn_packet);
+
+                    std::lock_guard<std::mutex> lock(clients_mutex_);
+                    for (const auto& [key, client] : clients_) {
+                        if (client.is_connected && udp_server_) {
+                            udp_server_->send(client.ip, client.port, serialized_spawn);
+                        }
+                    }
+                    Logger::instance().info("Spawned projectile " + std::to_string(net_id));
+                }
+            }
+
             if (protocol_adapter_ && message_serializer_) {
                 std::lock_guard<std::mutex> lock(clients_mutex_);
                 for (const auto& [key, client] : clients_) {
@@ -144,11 +198,19 @@ void Server::game_loop() {
                 game_state_data.padding[1] = 0;
                 game_state_data.padding[2] = 0;
 
-                rtype::net::Packet state_packet = message_serializer_->serialize_game_state(game_state_data);
-                auto packet_data = protocol_adapter_->serialize(state_packet);
-
                 for (const auto& [key, client] : clients_) {
                     if (client.is_connected && udp_server_) {
+                        if (registry_.hasComponent<rtype::ecs::component::Score>(client.entity_id)) {
+                            game_state_data.score =
+                                registry_.getComponent<rtype::ecs::component::Score>(client.entity_id).value;
+                            game_state_data.game_state = 0;
+                        } else {
+                            game_state_data.score = 0;
+                            game_state_data.game_state = 1;
+                        }
+
+                        rtype::net::Packet state_packet = message_serializer_->serialize_game_state(game_state_data);
+                        auto packet_data = protocol_adapter_->serialize(state_packet);
                         udp_server_->send(client.ip, client.port, packet_data);
                     }
                 }
@@ -235,6 +297,9 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
         registry_.addComponent<rtype::ecs::component::HitBox>(entity, 66.0f, 110.0f);
         registry_.addComponent<rtype::ecs::component::Weapon>(entity);
+        registry_.addComponent<rtype::ecs::component::Score>(entity, 0);
+        registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
+        registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
 
         ClientInfo info;
         info.ip = client_ip;
@@ -321,9 +386,23 @@ void Server::handle_player_shoot(const std::string& client_ip, uint16_t client_p
     Logger::instance().info("Player " + std::to_string(player_id) + " shot");
 
     try {
-        // rtype::net::PlayerShootData shoot_data = message_serializer_->deserialize_player_shoot(packet);
-        auto serialized_packet = protocol_adapter_->serialize(packet);
-        broadcast_message(serialized_packet, client_ip, client_port);
+        message_serializer_->deserialize_player_shoot(packet);
+
+        GameEngine::entity_t entity_id;
+        {
+            std::lock_guard<std::mutex> lock(clients_mutex_);
+            auto it = clients_.find(client_key);
+            if (it == clients_.end() || !it->second.is_connected) {
+                return;
+            }
+            entity_id = it->second.entity_id;
+        }
+
+        if (registry_.hasComponent<rtype::ecs::component::Weapon>(entity_id)) {
+            auto& weapon = registry_.getComponent<rtype::ecs::component::Weapon>(entity_id);
+            weapon.isShooting = true;
+        }
+
     } catch (const std::exception& e) {
         Logger::instance().error("Error handling player shoot: " + std::string(e.what()));
     }

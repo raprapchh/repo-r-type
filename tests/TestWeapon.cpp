@@ -21,6 +21,7 @@ TEST_CASE("WeaponSystem spawns projectiles", "[WeaponSystem]") {
     bool projectileFound = false;
     auto view = registry.view<rtype::ecs::component::Projectile>();
     for (auto entity : view) {
+        (void)entity;
         projectileFound = true;
         break;
     }
@@ -45,6 +46,7 @@ TEST_CASE("WeaponSystem respects fire rate", "[WeaponSystem]") {
     bool projectileFound = false;
     auto view = registry.view<rtype::ecs::component::Projectile>();
     for (auto entity : view) {
+        (void)entity;
         projectileFound = true;
         break;
     }

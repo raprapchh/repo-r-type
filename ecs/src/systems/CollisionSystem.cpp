@@ -3,6 +3,9 @@
 #include "../../include/components/HitBox.hpp"
 #include "../../include/components/CollisionLayer.hpp"
 #include "../../include/components/Health.hpp"
+#include "../../include/components/Projectile.hpp"
+#include "../../include/components/Score.hpp"
+#include "../../include/components/Lives.hpp"
 
 namespace rtype::ecs {
 
@@ -100,7 +103,9 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
             health.hp -= 10;
 
             if (health.hp <= 0) {
-                registry.destroyEntity(player_entity);
+                if (!registry.hasComponent<component::Lives>(player_entity)) {
+                    registry.destroyEntity(player_entity);
+                }
             }
         }
     }
@@ -110,6 +115,11 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
         auto projectile_entity = (layer1 == CL::PlayerProjectile) ? entity1 : entity2;
         auto enemy_entity = (layer1 == CL::Enemy) ? entity1 : entity2;
 
+        std::size_t scorer_id = 0;
+        if (registry.hasComponent<component::Projectile>(projectile_entity)) {
+            scorer_id = registry.getComponent<component::Projectile>(projectile_entity).owner_id;
+        }
+
         registry.destroyEntity(projectile_entity);
 
         if (registry.hasComponent<component::Health>(enemy_entity)) {
@@ -117,6 +127,12 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
             health.hp -= 25;
 
             if (health.hp <= 0) {
+                if (scorer_id != 0) {
+                    auto scorer_entity = static_cast<GameEngine::entity_t>(scorer_id);
+                    if (registry.isValid(scorer_entity) && registry.hasComponent<component::Score>(scorer_entity)) {
+                        registry.addComponent<component::ScoreEvent>(scorer_entity, 100);
+                    }
+                }
                 registry.destroyEntity(enemy_entity);
             }
         }
@@ -134,7 +150,9 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
             health.hp -= 20;
 
             if (health.hp <= 0) {
-                registry.destroyEntity(player_entity);
+                if (!registry.hasComponent<component::Lives>(player_entity)) {
+                    registry.destroyEntity(player_entity);
+                }
             }
         }
     }
