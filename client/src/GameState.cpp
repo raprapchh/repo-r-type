@@ -104,6 +104,8 @@ void GameState::render(Renderer& renderer, Client& client) {
         render_system.update(registry, 0.016f);
     }
 
+    renderer.draw_ui();
+
     renderer.display();
 }
 
