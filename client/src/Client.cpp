@@ -76,6 +76,7 @@ void Client::run() {
 
 void Client::handle_udp_receive(const asio::error_code& error, std::size_t bytes_transferred,
                                 const std::vector<uint8_t>& data) {
+    (void)bytes_transferred;
     if (!error) {
         std::cout << "Received UDP packet size: " << data.size() << " bytes" << std::endl;
         handle_server_message(data);
@@ -164,6 +165,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
     case rtype::net::MessageType::GameState: {
         try {
             auto game_state_data = serializer.deserialize_game_state(packet);
+            (void)game_state_data;
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing GameState packet: " << e.what() << std::endl;
         }
@@ -246,6 +248,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
     case rtype::net::MessageType::Pong: {
         try {
             auto pong_data = serializer.deserialize_ping_pong(packet);
+            (void)pong_data;
             std::cout << "Received Pong." << std::endl;
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing Pong packet: " << e.what() << std::endl;
@@ -275,6 +278,8 @@ void Client::send_move(float vx, float vy) {
 }
 
 void Client::send_shoot(int32_t x, int32_t y) {
+    (void)x;
+    (void)y;
     if (!connected_.load())
         return;
     rtype::net::MessageSerializer serializer;
