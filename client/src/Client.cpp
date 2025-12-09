@@ -6,6 +6,7 @@
 #include "../../ecs/include/components/Velocity.hpp"
 #include "../../ecs/include/components/Drawable.hpp"
 #include "../../ecs/include/components/Controllable.hpp"
+#include "../../ecs/include/components/HitBox.hpp"
 #include <iostream>
 #include <chrono>
 
@@ -124,8 +125,9 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
                 uint32_t sprite_index = (player_id_ - 1) % 4;
                 registry_.addComponent<rtype::ecs::component::Drawable>(
-                    entity, std::string("player_ships"), sprite_index, static_cast<uint32_t>(0), 2.0f, 2.0f);
+                    entity, std::string("player_ships"), sprite_index, static_cast<uint32_t>(0), 3.0f, 3.0f);
                 registry_.addComponent<rtype::ecs::component::Controllable>(entity, true);
+                registry_.addComponent<rtype::ecs::component::HitBox>(entity, 96.0f, 96.0f);
             } else {
                 std::cout << "Player " << join_data.player_id << " has joined the game." << std::endl;
 
@@ -137,7 +139,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                     registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
                     uint32_t sprite_index = (join_data.player_id - 1) % 4;
                     registry_.addComponent<rtype::ecs::component::Drawable>(
-                        entity, std::string("player_ships"), sprite_index, static_cast<uint32_t>(0), 2.0f, 2.0f);
+                        entity, std::string("player_ships"), sprite_index, static_cast<uint32_t>(0), 3.0f, 3.0f);
                 }
 
                 if (player_join_callback_) {
@@ -236,6 +238,11 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
         break;
     }
     case rtype::net::MessageType::EntitySpawn: {
+        network_system_.push_packet(packet);
+        break;
+    }
+
+    case rtype::net::MessageType::EntityMove: {
         network_system_.push_packet(packet);
         break;
     }
