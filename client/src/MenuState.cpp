@@ -47,10 +47,13 @@ void MenuState::setup_ui() {
 }
 
 void MenuState::on_enter(Renderer& renderer, Client& client) {
+    (void)client;
     update_positions(renderer.get_window_size());
 }
 
 void MenuState::on_exit(Renderer& renderer, Client& client) {
+    (void)renderer;
+    (void)client;
 }
 
 void MenuState::handle_input(Renderer& renderer, StateManager& state_manager) {
@@ -87,6 +90,9 @@ void MenuState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager&
 }
 
 void MenuState::update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) {
+    (void)client;
+    (void)state_manager;
+    (void)delta_time;
     sf::Vector2f mouse_pos = renderer.get_mouse_position();
 
     if (start_button_.getGlobalBounds().contains(mouse_pos)) {

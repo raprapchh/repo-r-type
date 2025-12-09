@@ -25,9 +25,10 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
             if (drawable.animation_timer >= drawable.animation_speed) {
                 drawable.animation_timer = 0.0f;
                 if (drawable.loop) {
-                    drawable.animation_frame = (drawable.animation_frame + 1) % drawable.frame_count;
+                    drawable.animation_frame =
+                        (drawable.animation_frame + 1) % static_cast<uint32_t>(drawable.frame_count);
                 } else {
-                    if (drawable.animation_frame < drawable.frame_count - 1) {
+                    if (drawable.animation_frame < static_cast<uint32_t>(drawable.frame_count) - 1) {
                         drawable.animation_frame++;
                     }
                 }
