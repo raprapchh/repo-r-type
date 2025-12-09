@@ -1,5 +1,9 @@
 #include "../include/NetworkSystem.hpp"
 #include "../../shared/net/MessageData.hpp"
+#include "../../ecs/include/components/HitBox.hpp"
+#include "../../ecs/include/components/CollisionLayer.hpp"
+#include "../../shared/GameConstants.hpp"
+#include <iostream>
 
 namespace rtype::client {
 
@@ -59,8 +63,14 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
 
         if (is_player) {
             uint32_t sprite_index = (data.entity_id - 1) % 4;
-            registry.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index,
-                                                                   static_cast<uint32_t>(0), 2.0f, 2.0f);
+            registry.addComponent<rtype::ecs::component::Drawable>(
+                entity, "player_ships", sprite_index, static_cast<uint32_t>(0), rtype::constants::PLAYER_SCALE,
+                rtype::constants::PLAYER_SCALE);
+            registry.addComponent<rtype::ecs::component::HitBox>(
+                entity, rtype::constants::PLAYER_WIDTH * rtype::constants::PLAYER_SCALE,
+                rtype::constants::PLAYER_HEIGHT * rtype::constants::PLAYER_SCALE);
+            registry.addComponent<rtype::ecs::component::Collidable>(entity,
+                                                                     rtype::ecs::component::CollisionLayer::Player);
             if (is_local) {
                 registry.addComponent<rtype::ecs::component::Controllable>(entity, true);
             }
@@ -70,6 +80,15 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
         } else if (data.entity_type == rtype::net::EntityType::PROJECTILE) {
             registry.addComponent<rtype::ecs::component::Drawable>(entity, "shot", 0, 0, 29, 33, 2.0f, 2.0f, 4, 0.05f,
                                                                    false);
+        } else if (data.entity_type == rtype::net::EntityType::OBSTACLE) {
+            registry.addComponent<rtype::ecs::component::Drawable>(
+                entity, "obstacle_1", static_cast<uint32_t>(0), static_cast<uint32_t>(0),
+                rtype::constants::OBSTACLE_SCALE, rtype::constants::OBSTACLE_SCALE);
+            registry.addComponent<rtype::ecs::component::HitBox>(
+                entity, rtype::constants::OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE,
+                rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
+            registry.addComponent<rtype::ecs::component::Collidable>(entity,
+                                                                     rtype::ecs::component::CollisionLayer::Obstacle);
         }
 
     } catch (const std::exception& e) {

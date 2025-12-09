@@ -171,6 +171,43 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
 
         registry.destroyEntity(powerup_entity);
     }
+
+    if ((layer1 == CL::Player && layer2 == CL::Obstacle) || (layer1 == CL::Obstacle && layer2 == CL::Player)) {
+        auto player_entity = (layer1 == CL::Player) ? entity1 : entity2;
+        auto obstacle_entity = (layer1 == CL::Obstacle) ? entity1 : entity2;
+
+        if (registry.hasComponent<component::Position>(player_entity) &&
+            registry.hasComponent<component::HitBox>(player_entity) &&
+            registry.hasComponent<component::Position>(obstacle_entity) &&
+            registry.hasComponent<component::HitBox>(obstacle_entity)) {
+
+            auto& posP = registry.getComponent<component::Position>(player_entity);
+            auto& boxP = registry.getComponent<component::HitBox>(player_entity);
+            auto& posO = registry.getComponent<component::Position>(obstacle_entity);
+            auto& boxO = registry.getComponent<component::HitBox>(obstacle_entity);
+
+            float overlapX = std::min(posP.x + boxP.width, posO.x + boxO.width) - std::max(posP.x, posO.x);
+            float overlapY = std::min(posP.y + boxP.height, posO.y + boxO.height) - std::max(posP.y, posO.y);
+
+            if (overlapX < overlapY) {
+                if (posP.x < posO.x)
+                    posP.x -= overlapX;
+                else
+                    posP.x += overlapX;
+            } else {
+                if (posP.y < posO.y)
+                    posP.y -= overlapY;
+                else
+                    posP.y += overlapY;
+            }
+        }
+    }
+
+    if ((layer1 == CL::PlayerProjectile && layer2 == CL::Obstacle) ||
+        (layer1 == CL::Obstacle && layer2 == CL::PlayerProjectile)) {
+        auto proj_entity = (layer1 == CL::PlayerProjectile) ? entity1 : entity2;
+        registry.destroyEntity(proj_entity);
+    }
 }
 
 } // namespace rtype::ecs

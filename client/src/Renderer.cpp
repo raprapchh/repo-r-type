@@ -200,6 +200,7 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/monster_0.png", "enemy_basic");
     load_texture("client/sprites/r-typesheet2-ezgif.com-crop.gif", "shot");
     load_texture("client/sprites/shot_death.png", "death");
+    load_texture("client/sprites/obstacle1.png", "obstacle_1");
     load_texture("client/sprites/players_ship.gif", "default");
 }
 

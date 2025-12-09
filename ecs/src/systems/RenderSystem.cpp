@@ -1,6 +1,7 @@
 #include "../../include/systems/RenderSystem.hpp"
 #include "../../include/components/Position.hpp"
 #include "../../include/components/Drawable.hpp"
+#include "../../include/components/HitBox.hpp"
 #include <SFML/Graphics.hpp>
 
 namespace rtype::ecs {
@@ -44,6 +45,8 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
             int current_frame = drawable.animation_frame;
             texture_rect = sf::IntRect(drawable.rect_x + (current_frame * drawable.rect_width), drawable.rect_y,
                                        drawable.rect_width, drawable.rect_height);
+        } else if (drawable.texture_name == "obstacle_1") {
+            texture_rect = sf::IntRect(0, 1, texture_size.x, texture_size.y - 1);
         } else {
             uint32_t sprite_width = texture_size.x / 5;
             uint32_t sprite_height = texture_size.y / 5;
@@ -59,6 +62,27 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
         sprite.setScale(drawable.scale_x, drawable.scale_y);
 
         window_.draw(sprite);
+
+        sf::FloatRect bounds = sprite.getGlobalBounds();
+        sf::RectangleShape hitbox(sf::Vector2f(bounds.width, bounds.height));
+        hitbox.setPosition(bounds.left, bounds.top);
+        hitbox.setFillColor(sf::Color::Transparent);
+        hitbox.setOutlineColor(sf::Color::Red);
+        hitbox.setOutlineThickness(2.0f);
+        window_.draw(hitbox);
+    }
+
+    auto view_hitbox = registry.view<component::Position, component::HitBox>();
+    for (auto entity : view_hitbox) {
+        auto& pos = registry.getComponent<component::Position>(static_cast<size_t>(entity));
+        auto& hitbox = registry.getComponent<component::HitBox>(static_cast<size_t>(entity));
+
+        sf::RectangleShape debug_box(sf::Vector2f(hitbox.width, hitbox.height));
+        debug_box.setPosition(pos.x, pos.y);
+        debug_box.setFillColor(sf::Color::Transparent);
+        debug_box.setOutlineColor(sf::Color::Green);
+        debug_box.setOutlineThickness(2.0f);
+        window_.draw(debug_box);
     }
 }
 
