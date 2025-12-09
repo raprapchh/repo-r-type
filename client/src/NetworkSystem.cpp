@@ -103,6 +103,12 @@ void NetworkSystem::handle_move(GameEngine::Registry& registry, const rtype::net
             try {
                 auto& net_id = registry.getComponent<rtype::ecs::component::NetworkId>(entity_id_ecs);
                 if (net_id.id == entity_id) {
+                    // Don't update local player's position/velocity - it's controlled locally
+                    if (entity_id == player_id_) {
+                        found = true;
+                        break;
+                    }
+
                     if (registry.hasComponent<rtype::ecs::component::Position>(entity_id_ecs)) {
                         auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id_ecs);
                         pos.x = x;
@@ -130,6 +136,12 @@ void NetworkSystem::handle_move(GameEngine::Registry& registry, const rtype::net
 void NetworkSystem::handle_destroy(GameEngine::Registry& registry, const rtype::net::Packet& packet) {
     try {
         auto data = serializer_.deserialize_entity_destroy(packet);
+
+        // NEVER destroy the local player, even if IDs conflict
+        if (data.entity_id == player_id_) {
+            return;
+        }
+
         auto view = registry.view<rtype::ecs::component::NetworkId>();
 
         for (auto entity : view) {

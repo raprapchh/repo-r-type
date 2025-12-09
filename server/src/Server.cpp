@@ -6,11 +6,16 @@
 #include "../../ecs/include/systems/BoundarySystem.hpp"
 #include "../../ecs/include/systems/CollisionSystem.hpp"
 #include "../../ecs/include/systems/WeaponSystem.hpp"
+#include "../../ecs/include/systems/SpawnSystem.hpp"
 #include "../../ecs/include/components/Position.hpp"
 #include "../../ecs/include/components/Velocity.hpp"
 #include "../../ecs/include/components/Weapon.hpp"
 #include "../../ecs/include/components/HitBox.hpp"
+#include "../../ecs/include/components/Health.hpp"
+#include "../../ecs/include/components/NetworkId.hpp"
+#include "../../ecs/include/components/EnemySpawner.hpp"
 #include "../../shared/utils/Logger.hpp"
+#include <unordered_set>
 
 namespace rtype::server {
 
@@ -36,9 +41,14 @@ void Server::start() {
         handle_client_message(ip, port, data);
     });
 
+    // Create enemy spawner entity
+    auto spawner = registry_.createEntity();
+    registry_.addComponent<rtype::ecs::component::EnemySpawner>(spawner, 2.0f, 0.0f);
+
     udp_server_->start();
     Logger::instance().info("Server started on port " + std::to_string(port_));
     Logger::instance().info("Map dimensions: 1920x1080");
+    Logger::instance().info("Enemy spawner initialized (interval: 2.0s)");
 }
 
 void Server::stop() {
@@ -97,11 +107,106 @@ void Server::game_loop() {
                 Logger::instance().warn("Server lag spike detected: " + std::to_string(dt * 1000) + "ms");
             }
 
+            rtype::ecs::SpawnSystem spawn_system;
+            spawn_system.update(registry_, dt);
+
+            // Broadcast newly spawned enemies to clients
+            if (protocol_adapter_ && message_serializer_) {
+                std::lock_guard<std::mutex> lock(clients_mutex_);
+                auto enemy_spawn_view = registry_.view<rtype::ecs::component::Position,
+                                                        rtype::ecs::component::Velocity,
+                                                        rtype::ecs::component::Health>();
+                enemy_spawn_view.each([&](const auto entity,
+                                          rtype::ecs::component::Position& pos,
+                                          rtype::ecs::component::Velocity& vel,
+                                          rtype::ecs::component::Health&) {
+                    // Check if enemy already has NetworkId (already broadcasted)
+                    if (!registry_.hasComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity))) {
+                        // Add NetworkId to mark as broadcasted
+                        registry_.addComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity),
+                                                                                  static_cast<uint32_t>(entity));
+
+                        // Send EntitySpawn to all clients
+                        rtype::net::EntitySpawnData spawn_data(static_cast<uint32_t>(entity),
+                                                                rtype::net::EntityType::ENEMY, 0, pos.x, pos.y,
+                                                                vel.vx, vel.vy);
+
+                        rtype::net::Packet spawn_packet = message_serializer_->serialize_entity_spawn(spawn_data);
+                        auto serialized_spawn = protocol_adapter_->serialize(spawn_packet);
+
+                        for (const auto& [dest_key, dest_client] : clients_) {
+                            if (dest_client.is_connected && udp_server_) {
+                                udp_server_->send(dest_client.ip, dest_client.port, serialized_spawn);
+                            }
+                        }
+
+                        Logger::instance().info("Enemy spawned and broadcasted: entity_id=" +
+                                                std::to_string(static_cast<uint32_t>(entity)));
+                    }
+                });
+            }
+
             rtype::ecs::MovementSystem movement_system;
             movement_system.update(registry_, dt);
 
+            // Track enemy entities before BoundarySystem (to detect destroyed ones)
+            std::unordered_set<uint32_t> enemies_before;
+            {
+                auto enemy_track_view = registry_.view<rtype::ecs::component::Health,
+                                                        rtype::ecs::component::NetworkId>();
+                enemy_track_view.each([&](const auto entity,
+                                         rtype::ecs::component::Health&,
+                                         rtype::ecs::component::NetworkId& net_id) {
+                    // Only track enemies (no Weapon component)
+                    if (!registry_.hasComponent<rtype::ecs::component::Weapon>(static_cast<size_t>(entity))) {
+                        enemies_before.insert(net_id.id);
+                    }
+                });
+            }
+
             rtype::ecs::BoundarySystem boundary_system;
             boundary_system.update(registry_, dt);
+
+            // Track enemy entities after BoundarySystem and find destroyed ones
+            if (protocol_adapter_ && message_serializer_) {
+                std::lock_guard<std::mutex> lock(clients_mutex_);
+
+                std::unordered_set<uint32_t> enemies_after;
+                {
+                    auto enemy_track_view = registry_.view<rtype::ecs::component::Health,
+                                                            rtype::ecs::component::NetworkId>();
+                    enemy_track_view.each([&](const auto entity,
+                                             rtype::ecs::component::Health&,
+                                             rtype::ecs::component::NetworkId& net_id) {
+                        // Only track enemies (no Weapon component)
+                        if (!registry_.hasComponent<rtype::ecs::component::Weapon>(static_cast<size_t>(entity))) {
+                            enemies_after.insert(net_id.id);
+                        }
+                    });
+                }
+
+                // Find destroyed enemies (in before but not in after)
+                for (uint32_t enemy_id : enemies_before) {
+                    if (enemies_after.find(enemy_id) == enemies_after.end()) {
+                        // Enemy was destroyed - broadcast to clients
+                        rtype::net::EntityDestroyData destroy_data;
+                        destroy_data.entity_id = enemy_id;
+                        destroy_data.reason = rtype::net::DestroyReason::TIMEOUT;
+
+                        rtype::net::Packet destroy_packet = message_serializer_->serialize_entity_destroy(destroy_data);
+                        auto serialized_destroy = protocol_adapter_->serialize(destroy_packet);
+
+                        for (const auto& [dest_key, dest_client] : clients_) {
+                            if (dest_client.is_connected && udp_server_) {
+                                udp_server_->send(dest_client.ip, dest_client.port, serialized_destroy);
+                            }
+                        }
+
+                        Logger::instance().info("Enemy destroyed and broadcasted: entity_id=" +
+                                                std::to_string(enemy_id));
+                    }
+                }
+            }
 
             rtype::ecs::CollisionSystem collision_system;
             collision_system.update(registry_, dt);
@@ -133,6 +238,36 @@ void Server::game_loop() {
                         }
                     }
                 }
+
+                // Broadcast enemy positions to all clients
+                auto enemy_view = registry_.view<rtype::ecs::component::Position,
+                                                  rtype::ecs::component::Velocity,
+                                                  rtype::ecs::component::Health>();
+                enemy_view.each([&](const auto entity,
+                                    rtype::ecs::component::Position& pos,
+                                    rtype::ecs::component::Velocity& vel,
+                                    rtype::ecs::component::Health&) {
+                    // Skip players (entities with Weapon component)
+                    if (registry_.hasComponent<rtype::ecs::component::Weapon>(static_cast<size_t>(entity))) {
+                        return;
+                    }
+
+                    rtype::net::EntityMoveData enemy_move_data;
+                    enemy_move_data.entity_id = static_cast<uint32_t>(entity);
+                    enemy_move_data.position_x = pos.x;
+                    enemy_move_data.position_y = pos.y;
+                    enemy_move_data.velocity_x = vel.vx;
+                    enemy_move_data.velocity_y = vel.vy;
+
+                    rtype::net::Packet enemy_packet = message_serializer_->serialize_entity_move(enemy_move_data);
+                    auto serialized_enemy = protocol_adapter_->serialize(enemy_packet);
+
+                    for (const auto& [dest_key, dest_client] : clients_) {
+                        if (dest_client.is_connected && udp_server_) {
+                            udp_server_->send(dest_client.ip, dest_client.port, serialized_enemy);
+                        }
+                    }
+                });
 
                 rtype::net::GameStateData game_state_data;
                 game_state_data.game_time = static_cast<uint32_t>(elapsed.count());

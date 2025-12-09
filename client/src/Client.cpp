@@ -238,6 +238,11 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
         break;
     }
 
+    case rtype::net::MessageType::EntityMove: {
+        network_system_.push_packet(packet);
+        break;
+    }
+
     case rtype::net::MessageType::EntityDestroy: {
         network_system_.push_packet(packet);
         break;
