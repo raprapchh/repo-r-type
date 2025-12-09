@@ -3,6 +3,7 @@
 #include "../../include/components/HitBox.hpp"
 #include "../../include/components/Health.hpp"
 #include "../../include/components/Weapon.hpp"
+#include "../../include/components/Projectile.hpp"
 #include "../../include/components/MapBounds.hpp"
 #include "../../include/Registry.hpp"
 
@@ -14,7 +15,7 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
     float minX = 0.0f;
     float minY = 0.0f;
     float maxX = 1920.0f;
-    float maxY = 1080.0f;
+    float maxY = 1060.0f;
 
     try {
         auto mapBoundsView = registry.view<component::MapBounds>();
@@ -27,6 +28,7 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
             break;
         }
     } catch (const std::exception&) {
+        // std::cerr << "BoundarySystem: MapBounds not found, using defaults.\n";
     }
 
     auto view = registry.view<component::Position>();
@@ -34,7 +36,6 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
     std::vector<GameEngine::entity_t> entities_to_destroy;
 
     view.each([&](const auto entity, component::Position& pos) {
-    view.each([&registry, minX, minY, maxX, maxY](const auto entity, component::Position& pos) {
         float width = 0.0f;
         float height = 0.0f;
 
@@ -49,13 +50,17 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
                         !registry.hasComponent<component::Weapon>(static_cast<std::size_t>(entity));
 
         // Destroy enemies when they go off-screen to the left
-        if (is_enemy && pos.x + width < 0) {
+        if (is_enemy && pos.x + width < -100.0f) {
             entities_to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
             return;
         }
 
         // Don't clamp enemies - let them move freely until destroyed
         if (is_enemy) {
+            return;
+        }
+
+        if (registry.hasComponent<component::Projectile>(static_cast<std::size_t>(entity))) {
             return;
         }
 
@@ -69,10 +74,12 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
         if (pos.x + width > maxX)
             pos.x = maxX - width;
 
-        if (pos.y < minY)
+        if (pos.y < minY) {
             pos.y = minY;
-        if (pos.y + height > maxY)
+        }
+        if (pos.y + height > maxY) {
             pos.y = maxY - height;
+        }
     });
 
     // Destroy all marked entities

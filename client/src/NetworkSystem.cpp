@@ -1,5 +1,8 @@
 #include "../include/NetworkSystem.hpp"
 #include "../../shared/net/MessageData.hpp"
+#include "../../ecs/include/components/Health.hpp"
+#include "../../ecs/include/components/HitBox.hpp"
+#include "../../ecs/include/components/Projectile.hpp"
 
 namespace rtype::client {
 
@@ -66,10 +69,14 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             }
         } else if (data.entity_type == rtype::net::EntityType::ENEMY) {
             registry.addComponent<rtype::ecs::component::Drawable>(entity, "enemy_basic", static_cast<uint32_t>(0),
-                                                                   static_cast<uint32_t>(0), 1.0f, 1.0f);
+                                                                   static_cast<uint32_t>(0), 3.0f, 3.0f);
+            registry.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, 150.0f, 150.0f);
         } else if (data.entity_type == rtype::net::EntityType::PROJECTILE) {
-            registry.addComponent<rtype::ecs::component::Drawable>(entity, "shot", 0, 0, 29, 33, 2.0f, 2.0f, 4, 0.05f,
+            registry.addComponent<rtype::ecs::component::Drawable>(entity, "shot", 0, 0, 29, 33, 3.0f, 3.0f, 4, 0.05f,
                                                                    false);
+            registry.addComponent<rtype::ecs::component::Projectile>(entity, 10.0f, 5.0f);
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, 87.0f, 99.0f);
         }
 
     } catch (const std::exception& e) {
