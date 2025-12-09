@@ -135,8 +135,9 @@ void Server::game_loop() {
                 rtype::ecs::SpawnSystem spawn_system;
                 spawn_system.update(registry_, dt);
 
-                auto projectile_view = registry_.view<rtype::ecs::component::Projectile, rtype::ecs::component::Position,
-                                                      rtype::ecs::component::Velocity>();
+                auto projectile_view =
+                    registry_.view<rtype::ecs::component::Projectile, rtype::ecs::component::Position,
+                                   rtype::ecs::component::Velocity>();
                 for (auto entity : projectile_view) {
                     auto id = static_cast<size_t>(entity);
                     if (!registry_.hasComponent<rtype::ecs::component::NetworkId>(id)) {
@@ -225,7 +226,8 @@ void Server::game_loop() {
                                 game_state_data.game_state = 1;
                             }
 
-                            rtype::net::Packet state_packet = message_serializer_->serialize_game_state(game_state_data);
+                            rtype::net::Packet state_packet =
+                                message_serializer_->serialize_game_state(game_state_data);
                             auto packet_data = protocol_adapter_->serialize(state_packet);
                             udp_server_->send(client.ip, client.port, packet_data);
                         }
