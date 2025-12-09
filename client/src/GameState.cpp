@@ -11,6 +11,7 @@ GameState::GameState() {
 }
 
 void GameState::on_enter(Renderer& renderer, Client& client) {
+    (void)renderer;
     if (!client.is_connected()) {
         client.connect();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -18,9 +19,12 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
 }
 
 void GameState::on_exit(Renderer& renderer, Client& client) {
+    (void)renderer;
+    (void)client;
 }
 
 void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
+    (void)state_manager;
     sf::Event event;
     while (renderer.poll_event(event)) {
         if (event.type == sf::Event::Closed) {
@@ -38,6 +42,7 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
 }
 
 void GameState::update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) {
+    (void)state_manager;
     client.update();
 
     GameEngine::Registry& registry = client.get_registry();
