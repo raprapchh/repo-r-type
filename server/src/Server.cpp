@@ -210,7 +210,6 @@ void Server::game_loop() {
                 game_state_data.game_state = 0;
                 game_state_data.padding[0] = 0;
                 game_state_data.padding[1] = 0;
-                game_state_data.padding[2] = 0;
 
                 {
                     std::lock_guard<std::mutex> registry_lock(registry_mutex_);
@@ -220,11 +219,18 @@ void Server::game_loop() {
                             if (registry_.hasComponent<rtype::ecs::component::Score>(client.entity_id)) {
                                 game_state_data.score =
                                     registry_.getComponent<rtype::ecs::component::Score>(client.entity_id).value;
-                                game_state_data.game_state = 0;
                             } else {
                                 game_state_data.score = 0;
-                                game_state_data.game_state = 1;
                             }
+
+                            if (registry_.hasComponent<rtype::ecs::component::Lives>(client.entity_id)) {
+                                game_state_data.lives =
+                                    registry_.getComponent<rtype::ecs::component::Lives>(client.entity_id).remaining;
+                            } else {
+                                game_state_data.lives = 0;
+                            }
+
+                            game_state_data.game_state = 0;
 
                             rtype::net::Packet state_packet =
                                 message_serializer_->serialize_game_state(game_state_data);

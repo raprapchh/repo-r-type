@@ -14,6 +14,23 @@ Renderer::Renderer(uint32_t width, uint32_t height)
     window_->setView(view_);
     std::fill(std::begin(keys_), std::end(keys_), false);
     load_sprites();
+    load_fonts();
+}
+
+void Renderer::load_fonts() {
+    if (!font_.loadFromFile("client/fonts/Ethnocentric-Regular.otf")) {
+        std::cerr << "Erreur: Impossible de charger la police client/fonts/Ethnocentric-Regular.otf" << std::endl;
+    }
+
+    score_text_.setFont(font_);
+    score_text_.setCharacterSize(24);
+    score_text_.setFillColor(sf::Color::White);
+    score_text_.setPosition(10.0f, 10.0f);
+
+    lives_text_.setFont(font_);
+    lives_text_.setCharacterSize(24);
+    lives_text_.setFillColor(sf::Color::White);
+    lives_text_.setPosition(10.0f, 40.0f);
 }
 
 Renderer::~Renderer() = default;
@@ -125,6 +142,16 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
 }
 
 void Renderer::draw_ui() {
+    sf::View current_view = window_->getView();
+    window_->setView(window_->getDefaultView());
+
+    score_text_.setString("Score: " + std::to_string(game_state_.score));
+    lives_text_.setString("Lives: " + std::to_string(static_cast<int>(game_state_.lives)));
+
+    window_->draw(score_text_);
+    window_->draw(lives_text_);
+
+    window_->setView(current_view);
 }
 void Renderer::draw_background() {
     if (textures_.count("background")) {

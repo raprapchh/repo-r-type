@@ -79,6 +79,7 @@ class Renderer {
 
   private:
     void load_sprites();
+    void load_fonts();
     void load_texture(const std::string& path, const std::string& name);
     sf::Sprite create_sprite(const Entity& entity);
 
@@ -86,6 +87,9 @@ class Renderer {
     sf::View view_;
     std::unordered_map<std::string, sf::Texture> textures_;
     std::unordered_map<uint32_t, Entity> entities_;
+    sf::Font font_;
+    sf::Text score_text_;
+    sf::Text lives_text_;
 
     bool keys_[sf::Keyboard::KeyCount];
     float background_x_;
