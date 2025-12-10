@@ -4,6 +4,10 @@
 #include "../../ecs/include/systems/MovementSystem.hpp"
 #include "../../ecs/include/systems/BoundarySystem.hpp"
 #include "../../ecs/include/components/MapBounds.hpp"
+#include "../../ecs/include/components/NetworkId.hpp"
+#include "../../ecs/include/components/Lives.hpp"
+#include "../../ecs/include/components/Health.hpp"
+#include "../../ecs/include/components/Weapon.hpp"
 #include <thread>
 #include <chrono>
 
@@ -79,9 +83,92 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
     GameEngine::Registry& registry = client.get_registry();
     std::mutex& registry_mutex = client.get_registry_mutex();
 
+    {
+        std::lock_guard<std::mutex> lock(registry_mutex);
+        uint32_t player_id = client.get_player_id();
+        bool player_exists = false;
+        bool player_dead = false;
+
+        auto view = registry.view<rtype::ecs::component::NetworkId>();
+        for (auto entity : view) {
+            auto& net_id =
+                registry.getComponent<rtype::ecs::component::NetworkId>(static_cast<GameEngine::entity_t>(entity));
+            if (net_id.id == player_id) {
+                player_exists = true;
+                if (registry.hasComponent<rtype::ecs::component::Lives>(static_cast<GameEngine::entity_t>(entity))) {
+                    auto& lives =
+                        registry.getComponent<rtype::ecs::component::Lives>(static_cast<GameEngine::entity_t>(entity));
+                    if (lives.remaining <= 0) {
+                        player_dead = true;
+                    }
+                } else if (registry.hasComponent<rtype::ecs::component::Health>(
+                               static_cast<GameEngine::entity_t>(entity))) {
+                    auto& health =
+                        registry.getComponent<rtype::ecs::component::Health>(static_cast<GameEngine::entity_t>(entity));
+                    if (health.hp <= 0) {
+                        player_dead = true;
+                    }
+                }
+                break;
+            }
+        }
+
+        if (!player_exists || player_dead) {
+            if (!game_over_) {
+                game_over_ = true;
+
+                auto player_view = registry.view<rtype::ecs::component::NetworkId>();
+                for (auto entity : player_view) {
+                    auto& net_id = registry.getComponent<rtype::ecs::component::NetworkId>(
+                        static_cast<GameEngine::entity_t>(entity));
+                    if (net_id.id == player_id && registry.hasComponent<rtype::ecs::component::Drawable>(
+                                                      static_cast<GameEngine::entity_t>(entity))) {
+                        registry.removeComponent<rtype::ecs::component::Drawable>(
+                            static_cast<GameEngine::entity_t>(entity));
+                    }
+                }
+            }
+        }
+
+        if (game_over_) {
+            int alive_players = 0;
+            auto all_players_view = registry.view<rtype::ecs::component::NetworkId, rtype::ecs::component::Weapon>();
+            for (auto entity : all_players_view) {
+                auto& net_id =
+                    registry.getComponent<rtype::ecs::component::NetworkId>(static_cast<GameEngine::entity_t>(entity));
+                if (net_id.id != player_id) {
+                    bool other_player_alive = true;
+                    if (registry.hasComponent<rtype::ecs::component::Lives>(
+                            static_cast<GameEngine::entity_t>(entity))) {
+                        auto& lives = registry.getComponent<rtype::ecs::component::Lives>(
+                            static_cast<GameEngine::entity_t>(entity));
+                        if (lives.remaining <= 0) {
+                            other_player_alive = false;
+                        }
+                    } else if (registry.hasComponent<rtype::ecs::component::Health>(
+                                   static_cast<GameEngine::entity_t>(entity))) {
+                        auto& health = registry.getComponent<rtype::ecs::component::Health>(
+                            static_cast<GameEngine::entity_t>(entity));
+                        if (health.hp <= 0) {
+                            other_player_alive = false;
+                        }
+                    }
+                    if (other_player_alive) {
+                        alive_players++;
+                    }
+                }
+            }
+            all_players_dead_ = (alive_players == 0);
+        }
+    }
+
+    if (game_over_ && all_players_dead_) {
+        return;
+    }
+
     bool window_has_focus = renderer.get_window() && renderer.get_window()->hasFocus();
 
-    if (window_has_focus) {
+    if (window_has_focus && !game_over_) {
         {
             std::lock_guard<std::mutex> lock(registry_mutex);
             rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(),
@@ -142,6 +229,10 @@ void GameState::render(Renderer& renderer, Client& client) {
     }
 
     renderer.draw_ui();
+
+    if (game_over_) {
+        renderer.draw_game_over(all_players_dead_);
+    }
 
     renderer.display();
 }

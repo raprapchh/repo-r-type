@@ -162,6 +162,40 @@ void Renderer::draw_ui() {
 
     window_->setView(current_view);
 }
+
+void Renderer::draw_game_over(bool all_players_dead) {
+    sf::View current_view = window_->getView();
+    window_->setView(window_->getDefaultView());
+
+    sf::Text game_over_text;
+    game_over_text.setFont(font_);
+    game_over_text.setString("GAME OVER");
+    game_over_text.setCharacterSize(72);
+    game_over_text.setFillColor(sf::Color::Red);
+    game_over_text.setStyle(sf::Text::Bold);
+
+    sf::Vector2u window_size = window_->getSize();
+    sf::FloatRect text_bounds = game_over_text.getLocalBounds();
+    game_over_text.setPosition((window_size.x - text_bounds.width) / 2.0f, (window_size.y - text_bounds.height) / 2.0f);
+
+    window_->draw(game_over_text);
+
+    if (!all_players_dead) {
+        sf::Text waiting_text;
+        waiting_text.setFont(font_);
+        waiting_text.setString("Waiting for other players...");
+        waiting_text.setCharacterSize(24);
+        waiting_text.setFillColor(sf::Color::White);
+
+        sf::FloatRect waiting_bounds = waiting_text.getLocalBounds();
+        waiting_text.setPosition((window_size.x - waiting_bounds.width) / 2.0f,
+                                 game_over_text.getPosition().y + text_bounds.height + 40.0f);
+
+        window_->draw(waiting_text);
+    }
+
+    window_->setView(current_view);
+}
 void Renderer::draw_background() {
     if (textures_.count("background")) {
         window_->setView(view_);

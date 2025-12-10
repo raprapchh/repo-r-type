@@ -147,11 +147,6 @@ void NetworkSystem::handle_destroy(GameEngine::Registry& registry, const rtype::
     try {
         auto data = serializer_.deserialize_entity_destroy(packet);
 
-        // NEVER destroy the local player, even if IDs conflict
-        if (data.entity_id == player_id_) {
-            return;
-        }
-
         auto view = registry.view<rtype::ecs::component::NetworkId>();
 
         for (auto entity : view) {
