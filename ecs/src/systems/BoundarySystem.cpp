@@ -47,32 +47,25 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
             height = hitbox.height;
         }
 
-        bool is_enemy = registry.hasComponent<component::Health>(static_cast<std::size_t>(entity)) &&
-                        !registry.hasComponent<component::Weapon>(static_cast<std::size_t>(entity));
+        bool is_player = registry.hasComponent<component::Weapon>(static_cast<std::size_t>(entity)) &&
+                         registry.hasComponent<component::Health>(static_cast<std::size_t>(entity)) &&
+                         !registry.hasComponent<component::Projectile>(static_cast<std::size_t>(entity));
 
-        if (is_enemy && pos.x + width < rtype::config::ENEMY_DESPAWN_OFFSET) {
+        if (is_player) {
+            if (pos.x < minX)
+                pos.x = minX;
+            if (pos.x + width > maxX)
+                pos.x = maxX - width;
+            if (pos.y < minY)
+                pos.y = minY;
+            if (pos.y + height > maxY)
+                pos.y = maxY - height;
+            return;
+        }
+
+        float buffer = 200.0f;
+        if (pos.x < minX - buffer || pos.x > maxX + buffer || pos.y < minY - buffer || pos.y > maxY + buffer) {
             entities_to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
-            return;
-        }
-
-        if (is_enemy) {
-            return;
-        }
-
-        if (registry.hasComponent<component::Projectile>(static_cast<std::size_t>(entity))) {
-            return;
-        }
-
-        if (pos.x < minX)
-            pos.x = minX;
-        if (pos.x + width > maxX)
-            pos.x = maxX - width;
-
-        if (pos.y < minY) {
-            pos.y = minY;
-        }
-        if (pos.y + height > maxY) {
-            pos.y = maxY - height;
         }
     });
 

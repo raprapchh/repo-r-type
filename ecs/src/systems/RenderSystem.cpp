@@ -68,13 +68,17 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
             texture_rect = sf::IntRect(drawable.rect_x + (drawable.current_sprite * drawable.rect_width),
                                        drawable.rect_y, drawable.rect_width, drawable.rect_height);
         } else {
-            const uint32_t columns = 5;
-            uint32_t sprite_width = texture_size.x / columns;
-            uint32_t sprite_height = texture_size.y / 5;
-            uint32_t row = drawable.sprite_index;
-            uint32_t col = drawable.current_sprite % columns;
+            if (drawable.texture_name.find("monster_0-") == 0) {
+                texture_rect = sf::IntRect(0, 0, texture_size.x, texture_size.y);
+            } else {
+                const uint32_t columns = 5;
+                uint32_t sprite_width = texture_size.x / columns;
+                uint32_t sprite_height = texture_size.y / 5;
+                uint32_t row = drawable.sprite_index;
+                uint32_t col = drawable.current_sprite % columns;
 
-            texture_rect = sf::IntRect(col * sprite_width, row * sprite_height, sprite_width, sprite_height);
+                texture_rect = sf::IntRect(col * sprite_width, row * sprite_height, sprite_width, sprite_height);
+            }
         }
 
         sf::Sprite sprite(texture, texture_rect);

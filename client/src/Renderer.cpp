@@ -234,6 +234,11 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/star_bg.png", "background_stars");
     load_texture("client/sprites/star_2_bg.png", "background_stars2");
     load_texture("client/sprites/monster_0.png", "enemy_basic");
+    load_texture("client/sprites/monster_0-top.gif", "monster_0-top");
+    load_texture("client/sprites/monster_0-bot.gif", "monster_0-bot");
+    load_texture("client/sprites/monster_0-left.gif", "monster_0-left");
+    load_texture("client/sprites/monster_0-right.gif", "monster_0-right");
+    load_texture("client/sprites/monster_0-ball.gif", "monster_0-ball");
     load_texture("client/sprites/r-typesheet2-ezgif.com-crop.gif", "shot");
     load_texture("client/sprites/shot_death.png", "death");
     load_texture("client/sprites/players_ship.png", "default");
