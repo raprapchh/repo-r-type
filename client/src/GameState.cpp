@@ -1,4 +1,5 @@
 #include "../include/GameState.hpp"
+#include "../include/MenuState.hpp"
 #include "../../ecs/include/systems/InputSystem.hpp"
 #include "../../ecs/include/systems/RenderSystem.hpp"
 #include "../../ecs/include/systems/MovementSystem.hpp"
@@ -32,7 +33,6 @@ void GameState::on_exit(Renderer& renderer, Client& client) {
 }
 
 void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
-    (void)state_manager;
     sf::Event event;
     while (renderer.poll_event(event)) {
         if (event.type == sf::Event::Closed) {
@@ -70,6 +70,15 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
             if (event.key.code == sf::Keyboard::Escape) {
             } else if (event.key.code == sf::Keyboard::Space) {
                 shoot_requested_ = true;
+            }
+        } else if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+            if (game_over_ && all_players_dead_) {
+                sf::Vector2f mouse_pos = renderer.get_window()->mapPixelToCoords(
+                    sf::Vector2i(event.mouseButton.x, event.mouseButton.y), renderer.get_window()->getDefaultView());
+
+                if (renderer.is_game_over_back_to_menu_clicked(mouse_pos)) {
+                    state_manager.change_state(std::make_unique<MenuState>());
+                }
             }
         }
     }

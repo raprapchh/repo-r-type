@@ -3,7 +3,7 @@
 #include <iostream>
 
 class Button {
-public:
+  public:
     sf::RectangleShape shape;
     sf::Text text;
     sf::Font* font;
@@ -22,10 +22,7 @@ public:
         text.setFillColor(sf::Color::White);
 
         sf::FloatRect textBounds = text.getLocalBounds();
-        text.setPosition(
-            position.x + (size.x - textBounds.width) / 2,
-            position.y + (size.y - textBounds.height) / 2
-        );
+        text.setPosition(position.x + (size.x - textBounds.width) / 2, position.y + (size.y - textBounds.height) / 2);
     }
 
     void update(sf::Vector2i mousePos) {
@@ -33,8 +30,8 @@ public:
         sf::Vector2f size = shape.getSize();
 
         bool wasHovered = isHovered;
-        isHovered = (mousePos.x >= pos.x && mousePos.x <= pos.x + size.x &&
-                    mousePos.y >= pos.y && mousePos.y <= pos.y + size.y);
+        isHovered = (mousePos.x >= pos.x && mousePos.x <= pos.x + size.x && mousePos.y >= pos.y &&
+                     mousePos.y <= pos.y + size.y);
 
         if (isHovered && !wasHovered) {
             shape.setFillColor(sf::Color(100, 149, 237));
