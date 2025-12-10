@@ -337,6 +337,16 @@ void Client::send_game_start_request() {
     udp_client_->send(packet_data);
 }
 
+void Client::send_map_resize(float width, float height) {
+    if (!connected_.load())
+        return;
+    rtype::net::MessageSerializer serializer;
+    rtype::net::MapResizeData resize_data(width, height);
+    rtype::net::Packet resize_packet = serializer.serialize_map_resize(resize_data);
+    std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(resize_packet);
+    udp_client_->send(packet_data);
+}
+
 void Client::update() {
     audio_system_.update(registry_, 0.0);
     network_system_.update(registry_, registry_mutex_);

@@ -20,6 +20,7 @@ class GameState : public IState {
 
   private:
     bool shoot_requested_ = false;
+    Client* client_ = nullptr;
 };
 
 } // namespace rtype::client
