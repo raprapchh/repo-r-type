@@ -210,8 +210,8 @@ void Renderer::draw_game_over(bool all_players_dead) {
         back_to_menu_button_.setPosition(center_x, center_y + 60.0f);
 
         back_to_menu_text_.setFont(font_);
-        back_to_menu_text_.setString("RETOUR AU MENU");
-        back_to_menu_text_.setCharacterSize(24);
+        back_to_menu_text_.setString("BACK TO MENU");
+        back_to_menu_text_.setCharacterSize(23);
         back_to_menu_text_.setFillColor(sf::Color::White);
 
         sf::FloatRect text_bounds_btn = back_to_menu_text_.getLocalBounds();

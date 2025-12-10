@@ -34,7 +34,7 @@ void ModeSelectionState::setup_ui() {
 
     solo_button_text_.setFont(font_);
     solo_button_text_.setString("SOLO");
-    solo_button_text_.setCharacterSize(40);
+    solo_button_text_.setCharacterSize(25);
     solo_button_text_.setFillColor(sf::Color::White);
 
     multiplayer_button_.setSize(sf::Vector2f(300, 60));
@@ -44,7 +44,7 @@ void ModeSelectionState::setup_ui() {
 
     multiplayer_button_text_.setFont(font_);
     multiplayer_button_text_.setString("MULTIPLAYER");
-    multiplayer_button_text_.setCharacterSize(40);
+    multiplayer_button_text_.setCharacterSize(25);
     multiplayer_button_text_.setFillColor(sf::Color::White);
 
     back_button_.setSize(sf::Vector2f(300, 60));
@@ -54,7 +54,7 @@ void ModeSelectionState::setup_ui() {
 
     back_button_text_.setFont(font_);
     back_button_text_.setString("BACK");
-    back_button_text_.setCharacterSize(40);
+    back_button_text_.setCharacterSize(25);
     back_button_text_.setFillColor(sf::Color::White);
 }
 
