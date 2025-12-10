@@ -2,6 +2,7 @@
 #include "../../ecs/include/systems/InputSystem.hpp"
 #include "../../ecs/include/systems/RenderSystem.hpp"
 #include "../../ecs/include/systems/MovementSystem.hpp"
+#include "../../ecs/include/systems/BoundarySystem.hpp"
 #include <thread>
 #include <chrono>
 
@@ -43,7 +44,7 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
 
 void GameState::update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) {
     (void)state_manager;
-    client.update();
+    (void)delta_time;
 
     GameEngine::Registry& registry = client.get_registry();
     std::mutex& registry_mutex = client.get_registry_mutex();
@@ -62,6 +63,12 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
             std::lock_guard<std::mutex> lock(registry_mutex);
             rtype::ecs::MovementSystem movement_system;
             movement_system.update(registry, delta_time);
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(registry_mutex);
+            rtype::ecs::BoundarySystem boundary_system;
+            boundary_system.update(registry, delta_time);
         }
 
         {
@@ -103,6 +110,8 @@ void GameState::render(Renderer& renderer, Client& client) {
         rtype::ecs::RenderSystem render_system(*renderer.get_window(), renderer.get_textures());
         render_system.update(registry, 0.016f);
     }
+
+    renderer.draw_ui();
 
     renderer.display();
 }
