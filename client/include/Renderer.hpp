@@ -99,10 +99,6 @@ class Renderer {
     float background_x_stars2_;
 
     rtype::net::GameStateData game_state_;
-
-    const float PLAYER_SPEED = 5.0f;
-    const float PLAYER_WIDTH = 32.0f;
-    const float PLAYER_HEIGHT = 32.0f;
 };
 
 } // namespace rtype::client

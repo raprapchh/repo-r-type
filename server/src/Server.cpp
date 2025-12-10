@@ -667,6 +667,8 @@ void Server::handle_game_start(const std::string& client_ip, uint16_t client_por
 }
 
 void Server::handle_map_resize(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet) {
+    (void)client_ip;
+    (void)client_port;
     if (!message_serializer_) {
         return;
     }

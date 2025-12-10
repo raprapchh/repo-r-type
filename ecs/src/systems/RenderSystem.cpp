@@ -51,11 +51,12 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
                 drawable.animation_timer -= drawable.animation_speed;
 
                 if (drawable.loop)
-                    drawable.current_sprite = (drawable.current_sprite + 1) % drawable.frame_count;
+                    drawable.current_sprite =
+                        (drawable.current_sprite + 1) % static_cast<uint32_t>(drawable.frame_count);
                 else {
                     uint32_t next_frame = drawable.current_sprite + 1;
-                    drawable.current_sprite =
-                        (next_frame < drawable.frame_count) ? next_frame : drawable.frame_count - 1;
+                    uint32_t frame_count_uint = static_cast<uint32_t>(drawable.frame_count);
+                    drawable.current_sprite = (next_frame < frame_count_uint) ? next_frame : frame_count_uint - 1;
                 }
             }
         }
