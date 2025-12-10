@@ -5,6 +5,7 @@
 #include "../../include/components/Position.hpp"
 #include "../../include/components/Velocity.hpp"
 #include "../../include/components/MapBounds.hpp"
+#include "../../include/components/CollisionLayer.hpp"
 #include "../../shared/utils/GameConfig.hpp"
 #include <random>
 
@@ -49,6 +50,7 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
             registry.addComponent<component::Velocity>(enemy, -200.0f, 0.0f);
             registry.addComponent<component::HitBox>(enemy, ENEMY_WIDTH, 50.0f);
             registry.addComponent<component::Health>(enemy, 100, 100);
+            registry.addComponent<component::Collidable>(enemy, component::CollisionLayer::Enemy);
         }
     });
 }

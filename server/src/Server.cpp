@@ -22,6 +22,7 @@
 #include "../../ecs/include/components/Projectile.hpp"
 #include "../../ecs/include/components/NetworkId.hpp"
 #include "../../ecs/include/components/MapBounds.hpp"
+#include "../../ecs/include/components/CollisionLayer.hpp"
 #include "../../shared/utils/Logger.hpp"
 #include "../../shared/utils/GameConfig.hpp"
 #include <unordered_set>
@@ -134,6 +135,11 @@ void Server::game_loop() {
                                                        rtype::ecs::component::Health>();
                 enemy_spawn_view.each([&](const auto entity, rtype::ecs::component::Position& pos,
                                           rtype::ecs::component::Velocity& vel, rtype::ecs::component::Health&) {
+                    // Skip players (entities with Weapon component)
+                    if (registry_.hasComponent<rtype::ecs::component::Weapon>(static_cast<size_t>(entity))) {
+                        return;
+                    }
+
                     // Check if enemy already has NetworkId (already broadcasted)
                     if (!registry_.hasComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity))) {
                         // Add NetworkId to mark as broadcasted
@@ -235,6 +241,30 @@ void Server::game_loop() {
                 rtype::ecs::LivesSystem lives_system;
                 lives_system.update(registry_, dt);
 
+                if (protocol_adapter_ && message_serializer_) {
+                    std::lock_guard<std::mutex> lock(clients_mutex_);
+                    for (const auto& [key, client] : clients_) {
+                        if (client.is_connected && !registry_.isValid(client.entity_id)) {
+                            rtype::net::EntityDestroyData destroy_data;
+                            destroy_data.entity_id = client.player_id;
+                            destroy_data.reason = rtype::net::DestroyReason::TIMEOUT;
+
+                            rtype::net::Packet destroy_packet =
+                                message_serializer_->serialize_entity_destroy(destroy_data);
+                            auto serialized_destroy = protocol_adapter_->serialize(destroy_packet);
+
+                            for (const auto& [dest_key, dest_client] : clients_) {
+                                if (dest_client.is_connected && udp_server_) {
+                                    udp_server_->send(dest_client.ip, dest_client.port, serialized_destroy);
+                                }
+                            }
+
+                            Logger::instance().info("Player destroyed and broadcasted: player_id=" +
+                                                    std::to_string(client.player_id));
+                        }
+                    }
+                }
+
                 rtype::ecs::SpawnSystem spawn_system;
                 spawn_system.update(registry_, dt);
 
@@ -280,6 +310,9 @@ void Server::game_loop() {
                     std::lock_guard<std::mutex> clients_lock(clients_mutex_);
                     for (const auto& [key, client] : clients_) {
                         if (!client.is_connected)
+                            continue;
+
+                        if (!registry_.isValid(client.entity_id))
                             continue;
 
                         if (registry_.hasComponent<rtype::ecs::component::Position>(client.entity_id) &&
@@ -346,18 +379,24 @@ void Server::game_loop() {
                     std::lock_guard<std::mutex> clients_lock(clients_mutex_);
                     for (const auto& [key, client] : clients_) {
                         if (client.is_connected && udp_server_) {
-                            if (registry_.hasComponent<rtype::ecs::component::Score>(client.entity_id)) {
-                                game_state_data.score =
-                                    registry_.getComponent<rtype::ecs::component::Score>(client.entity_id).value;
-                            } else {
+                            if (!registry_.isValid(client.entity_id)) {
                                 game_state_data.score = 0;
-                            }
-
-                            if (registry_.hasComponent<rtype::ecs::component::Lives>(client.entity_id)) {
-                                game_state_data.lives =
-                                    registry_.getComponent<rtype::ecs::component::Lives>(client.entity_id).remaining;
-                            } else {
                                 game_state_data.lives = 0;
+                            } else {
+                                if (registry_.hasComponent<rtype::ecs::component::Score>(client.entity_id)) {
+                                    game_state_data.score =
+                                        registry_.getComponent<rtype::ecs::component::Score>(client.entity_id).value;
+                                } else {
+                                    game_state_data.score = 0;
+                                }
+
+                                if (registry_.hasComponent<rtype::ecs::component::Lives>(client.entity_id)) {
+                                    game_state_data.lives =
+                                        registry_.getComponent<rtype::ecs::component::Lives>(client.entity_id)
+                                            .remaining;
+                                } else {
+                                    game_state_data.lives = 0;
+                                }
                             }
 
                             game_state_data.game_state = 0;
@@ -457,6 +496,9 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         registry_.addComponent<rtype::ecs::component::Position>(entity, start_x, start_y);
         registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
         registry_.addComponent<rtype::ecs::component::HitBox>(entity, 66.0f, 110.0f);
+        registry_.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
+        registry_.addComponent<rtype::ecs::component::Collidable>(entity,
+                                                                  rtype::ecs::component::CollisionLayer::Player);
         registry_.addComponent<rtype::ecs::component::Weapon>(entity);
         registry_.addComponent<rtype::ecs::component::Score>(entity, 0);
         registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
