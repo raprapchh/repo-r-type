@@ -90,6 +90,19 @@ void Renderer::update_animations(float delta_time) {
                 entity.animation_frame = (entity.animation_frame + 1) % 4;
             }
         }
+        if (entity.type == rtype::net::EntityType::PLAYER) {
+            entity.animation_timer += delta_time;
+            if (entity.animation_timer >= 0.1f && entity.player_state == 1) {
+                entity.animation_timer = 0.0f;
+                entity.animation_frame = (entity.animation_frame + 1) % 4;
+            } else if (entity.animation_timer >= 0.1f && entity.player_state == 2) {
+                entity.animation_timer = 0.0f;
+                entity.animation_frame = (entity.animation_frame - 1) % 4;
+            } else {
+                entity.animation_frame = 2;
+                entity.player_state = 0;
+            }
+        }
     }
 }
 
@@ -110,7 +123,7 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
 
     switch (entity.type) {
     case rtype::net::EntityType::PLAYER:
-        texture_name = "player";
+        texture_name = "player_ships";
         break;
     case rtype::net::EntityType::ENEMY:
         texture_name = "enemy_basic";
@@ -131,10 +144,6 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
 
     if (entity.type == rtype::net::EntityType::PROJECTILE) {
         sprite.setTextureRect(sf::IntRect(entity.animation_frame * 29, 0, 29, 33));
-    }
-
-    if (entity.type == rtype::net::EntityType::PLAYER) {
-        sprite.setScale(3.0f, 3.0f);
     }
 
     sprite.setPosition(entity.x, entity.y);

@@ -62,8 +62,8 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
 
         if (is_player) {
             uint32_t sprite_index = (data.entity_id - 1) % 4;
-            registry.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index,
-                                                                   static_cast<uint32_t>(0), 2.0f, 2.0f);
+            registry.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", 0, 0, 33, 0, 5.0f, 5.0f, 0,
+                                                                   0.1f, false, sprite_index, static_cast<uint32_t>(2));
             if (is_local) {
                 registry.addComponent<rtype::ecs::component::Controllable>(entity, true);
             }

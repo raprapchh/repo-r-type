@@ -79,7 +79,6 @@ void Client::handle_udp_receive(const asio::error_code& error, std::size_t bytes
                                 const std::vector<uint8_t>& data) {
     (void)bytes_transferred;
     if (!error) {
-        std::cout << "Received UDP packet size: " << data.size() << " bytes" << std::endl;
         handle_server_message(data);
     } else {
         std::cerr << "Receive error: " << error.message() << std::endl;
@@ -97,10 +96,6 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
     }
     rtype::net::Packet packet = adapter.deserialize(data);
     rtype::net::MessageSerializer serializer;
-
-    std::cout << "Handling message type: " << static_cast<int>(packet.header.message_type)
-              << ", Announced body size: " << packet.header.payload_size << ", Actual body size: " << packet.body.size()
-              << std::endl;
 
     if (packet.header.payload_size != packet.body.size()) {
         std::cerr << "Error: Malformed packet received. Announced body size (" << packet.header.payload_size
@@ -124,10 +119,22 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 registry_.addComponent<rtype::ecs::component::Position>(entity, 100.0f, 100.0f);
                 registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
                 uint32_t sprite_index = (player_id_ - 1) % 4;
-                registry_.addComponent<rtype::ecs::component::Drawable>(
-                    entity, std::string("player_ships"), sprite_index, static_cast<uint32_t>(0), 3.0f, 3.0f);
+                registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", 0, 0, 33, 0, 5.0f, 5.0f,
+                                                                        0, 0.1f, false, sprite_index,
+                                                                        static_cast<uint32_t>(2));
                 registry_.addComponent<rtype::ecs::component::Controllable>(entity, true);
+                auto& drawable = registry_.getComponent<rtype::ecs::component::Drawable>(entity);
                 registry_.addComponent<rtype::ecs::component::HitBox>(entity, 96.0f, 96.0f);
+                drawable.animation_sequences["idle"] = {2};
+                drawable.animation_sequences["up"] = {2, 3, 4};
+                drawable.animation_sequences["down"] = {2, 1, 0};
+                drawable.current_state = "idle";
+                drawable.last_state = "idle";
+                drawable.animation_timer = 0.0f;
+                drawable.animation_speed = 0.1f;
+                drawable.current_sprite = 2;
+                drawable.animation_frame = 0;
+
             } else {
                 std::cout << "Player " << join_data.player_id << " has joined the game." << std::endl;
 
@@ -138,8 +145,20 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                     registry_.addComponent<rtype::ecs::component::Position>(entity, 100.0f, 100.0f);
                     registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
                     uint32_t sprite_index = (join_data.player_id - 1) % 4;
-                    registry_.addComponent<rtype::ecs::component::Drawable>(
-                        entity, std::string("player_ships"), sprite_index, static_cast<uint32_t>(0), 3.0f, 3.0f);
+                    registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", 0, 0, 33, 0, 5.0f,
+                                                                            5.0f, 0, 0.1f, false, sprite_index,
+                                                                            static_cast<uint32_t>(2));
+                    auto& drawable = registry_.getComponent<rtype::ecs::component::Drawable>(entity);
+                    registry_.addComponent<rtype::ecs::component::HitBox>(entity, 96.0f, 96.0f);
+                    drawable.animation_sequences["idle"] = {2};
+                    drawable.animation_sequences["up"] = {2, 3, 4};
+                    drawable.animation_sequences["down"] = {2, 1, 0};
+                    drawable.current_state = "idle";
+                    drawable.last_state = "idle";
+                    drawable.animation_timer = 0.0f;
+                    drawable.animation_speed = 0.1f;
+                    drawable.current_sprite = 2;
+                    drawable.animation_frame = 0;
                 }
 
                 if (player_join_callback_) {
@@ -183,7 +202,6 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             }
 
             std::lock_guard<std::mutex> lock(registry_mutex_);
-
             bool found = false;
             GameEngine::entity_t found_entity_id = 0;
 
@@ -216,19 +234,36 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                         vel.vx = move_data.velocity_x;
                         vel.vy = move_data.velocity_y;
                     }
-                } catch (const std::exception& e) {
-                }
-            } else {
-                try {
-                    auto entity = registry_.createEntity();
-                    registry_.addComponent<rtype::ecs::component::NetworkId>(entity, move_data.player_id);
-                    registry_.addComponent<rtype::ecs::component::Position>(entity, move_data.position_x,
-                                                                            move_data.position_y);
-                    registry_.addComponent<rtype::ecs::component::Velocity>(entity, move_data.velocity_x,
-                                                                            move_data.velocity_y);
-                    uint32_t sprite_index = (move_data.player_id - 1) % 4;
-                    registry_.addComponent<rtype::ecs::component::Drawable>(
-                        entity, std::string("player_ships"), sprite_index, static_cast<uint32_t>(0), 2.0f, 2.0f);
+                    if (registry_.hasComponent<rtype::ecs::component::Drawable>(found_entity_id)) {
+                        auto& drawable = registry_.getComponent<rtype::ecs::component::Drawable>(found_entity_id);
+                        auto& vel = registry_.getComponent<rtype::ecs::component::Velocity>(found_entity_id);
+
+                        const float threshold = 0.5f;
+
+                        if (drawable.animation_sequences.empty()) {
+                            drawable.animation_sequences["idle"] = {2};
+                            drawable.animation_sequences["up"] = {2, 3, 4};
+                            drawable.animation_sequences["down"] = {2, 1, 0};
+                        }
+
+                        std::string new_state = drawable.current_state;
+
+                        if (vel.vy < -threshold) {
+                            new_state = "up";
+                        } else if (vel.vy > threshold) {
+                            new_state = "down";
+                        } else {
+                            new_state = "idle";
+                        }
+
+                        if (new_state != drawable.last_state) {
+                            drawable.current_state = new_state;
+                            drawable.animation_timer = 0.0f;
+                            drawable.animation_frame = 0;
+
+                            drawable.last_state = new_state;
+                        }
+                    }
                 } catch (const std::exception& e) {
                 }
             }
@@ -350,6 +385,54 @@ void Client::send_map_resize(float width, float height) {
 void Client::update() {
     audio_system_.update(registry_, 0.0);
     network_system_.update(registry_, registry_mutex_);
+
+    std::lock_guard<std::mutex> lock(registry_mutex_);
+    auto view = registry_.view<rtype::ecs::component::Drawable, rtype::ecs::component::Velocity>();
+    for (auto entity : view) {
+        auto& drawable =
+            registry_.getComponent<rtype::ecs::component::Drawable>(static_cast<GameEngine::entity_t>(entity));
+        auto& vel = registry_.getComponent<rtype::ecs::component::Velocity>(static_cast<GameEngine::entity_t>(entity));
+
+        if (drawable.animation_sequences.empty())
+            continue;
+
+        if (vel.vy < 0)
+            drawable.current_state = "up";
+        else if (vel.vy > 0)
+            drawable.current_state = "down";
+        else
+            drawable.current_state = "idle";
+
+        if (drawable.current_state != drawable.last_state) {
+            drawable.animation_frame = 0;
+            const auto& seq = drawable.animation_sequences[drawable.current_state];
+            if (!seq.empty())
+                drawable.current_sprite = seq[0];
+            drawable.animation_timer = 0.0f;
+            drawable.last_state = drawable.current_state;
+            continue;
+        }
+
+        const auto& seq = drawable.animation_sequences[drawable.current_state];
+        if (seq.empty())
+            continue;
+
+        drawable.animation_timer += static_cast<float>(dt);
+        if (drawable.animation_timer >= drawable.animation_speed) {
+            drawable.animation_timer = 0.0f;
+            if (drawable.loop) {
+                drawable.animation_frame = (drawable.animation_frame + 1) % seq.size();
+            } else {
+                if (drawable.animation_frame + 1 < seq.size())
+                    drawable.animation_frame++;
+            }
+            drawable.current_sprite = seq[drawable.animation_frame];
+            if (drawable.current_sprite >= 5) {
+                std::cerr << "Invalid sprite index detected: " << drawable.current_sprite << std::endl;
+                drawable.current_sprite = 2;
+            }
+        }
+    }
 }
 
 } // namespace rtype::client

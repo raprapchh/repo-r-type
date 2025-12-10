@@ -16,8 +16,9 @@ struct Entity {
     float y;
     float velocity_x;
     float velocity_y;
-    int animation_frame = 0;
+    int animation_frame = 2;
     float animation_timer = 0.0f;
+    int player_state = 0;
 };
 
 class Renderer {
