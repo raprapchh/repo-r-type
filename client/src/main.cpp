@@ -2,6 +2,7 @@
 #include "Renderer.hpp"
 #include "States.hpp"
 #include "MenuState.hpp"
+#include "../../shared/GameConstants.hpp"
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -21,7 +22,8 @@ int main(int argc, char* argv[]) {
             server_port = static_cast<uint16_t>(std::stoi(argv[2]));
         }
 
-        rtype::client::Renderer renderer(1920, 1080);
+        rtype::client::Renderer renderer(static_cast<uint32_t>(rtype::constants::SCREEN_WIDTH),
+                                         static_cast<uint32_t>(rtype::constants::SCREEN_HEIGHT));
         rtype::client::Client client(server_host, server_port, renderer);
         rtype::client::StateManager state_manager(renderer, client);
 
@@ -33,7 +35,7 @@ int main(int argc, char* argv[]) {
             float delta_time = clock.restart().asSeconds();
 
             renderer.handle_input();
-            client.update();
+            client.update(delta_time);
 
             state_manager.handle_input();
             state_manager.update(delta_time);

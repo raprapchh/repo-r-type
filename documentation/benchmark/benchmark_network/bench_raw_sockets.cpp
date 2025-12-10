@@ -23,8 +23,7 @@ int main() {
     std::vector<char> buffer(PACKET_SIZE, 'X');
 
     for (int i = 0; i < NUM_PACKETS; ++i) {
-        sendto(sock, buffer.data(), buffer.size(), 0,
-               (sockaddr*)&dest_addr, sizeof(dest_addr));
+        sendto(sock, buffer.data(), buffer.size(), 0, (sockaddr*)&dest_addr, sizeof(dest_addr));
     }
 
     close(sock);

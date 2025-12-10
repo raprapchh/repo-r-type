@@ -1,4 +1,5 @@
 #include "Server.hpp"
+#include "../../shared/GameConstants.hpp"
 #include "../shared/net/Protocol.hpp"
 #include "../shared/net/ProtocolAdapter.hpp"
 #include "../shared/net/MessageSerializer.hpp"
@@ -22,7 +23,9 @@
 #include "../../ecs/include/components/Projectile.hpp"
 #include "../../ecs/include/components/NetworkId.hpp"
 #include "../../ecs/include/components/MapBounds.hpp"
+#include "../../ecs/include/components/CollisionLayer.hpp"
 #include "../../shared/utils/Logger.hpp"
+#include "../../shared/utils/GameConfig.hpp"
 #include <unordered_set>
 
 namespace rtype::server {
@@ -59,9 +62,22 @@ void Server::start() {
     {
         std::lock_guard<std::mutex> registry_lock(registry_mutex_);
         auto boundsEntity = registry_.createEntity();
-        registry_.addComponent<rtype::ecs::component::MapBounds>(boundsEntity, 0.0f, 0.0f, 1920.0f, 1080.0f);
+        registry_.addComponent<rtype::ecs::component::MapBounds>(boundsEntity, rtype::config::MAP_MIN_X,
+                                                                 rtype::config::MAP_MIN_Y, rtype::config::MAP_MAX_X,
+                                                                 rtype::config::MAP_MAX_Y);
+        Logger::instance().info("Map dimensions: 1920x1080");
+
+        auto obstacle = registry_.createEntity();
+
+        registry_.addComponent<rtype::ecs::component::Position>(obstacle, 400.0f, 100.0f);
+        registry_.addComponent<rtype::ecs::component::HitBox>(
+            obstacle, rtype::constants::OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE,
+            rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
+        registry_.addComponent<rtype::ecs::component::Collidable>(obstacle,
+                                                                  rtype::ecs::component::CollisionLayer::Obstacle);
+        registry_.addComponent<rtype::ecs::component::NetworkId>(obstacle, next_player_id_++);
+        registry_.addComponent<rtype::ecs::component::Tag>(obstacle, "Obstacle");
     }
-    Logger::instance().info("Map dimensions: 1920x1080");
     Logger::instance().info("Enemy spawner initialized (interval: 2.0s)");
 }
 
@@ -131,6 +147,11 @@ void Server::game_loop() {
                                                        rtype::ecs::component::Health>();
                 enemy_spawn_view.each([&](const auto entity, rtype::ecs::component::Position& pos,
                                           rtype::ecs::component::Velocity& vel, rtype::ecs::component::Health&) {
+                    // Skip players (entities with Weapon component)
+                    if (registry_.hasComponent<rtype::ecs::component::Weapon>(static_cast<size_t>(entity))) {
+                        return;
+                    }
+
                     // Check if enemy already has NetworkId (already broadcasted)
                     if (!registry_.hasComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity))) {
                         // Add NetworkId to mark as broadcasted
@@ -232,6 +253,30 @@ void Server::game_loop() {
                 rtype::ecs::LivesSystem lives_system;
                 lives_system.update(registry_, dt);
 
+                if (protocol_adapter_ && message_serializer_) {
+                    std::lock_guard<std::mutex> lock(clients_mutex_);
+                    for (const auto& [key, client] : clients_) {
+                        if (client.is_connected && !registry_.isValid(client.entity_id)) {
+                            rtype::net::EntityDestroyData destroy_data;
+                            destroy_data.entity_id = client.player_id;
+                            destroy_data.reason = rtype::net::DestroyReason::TIMEOUT;
+
+                            rtype::net::Packet destroy_packet =
+                                message_serializer_->serialize_entity_destroy(destroy_data);
+                            auto serialized_destroy = protocol_adapter_->serialize(destroy_packet);
+
+                            for (const auto& [dest_key, dest_client] : clients_) {
+                                if (dest_client.is_connected && udp_server_) {
+                                    udp_server_->send(dest_client.ip, dest_client.port, serialized_destroy);
+                                }
+                            }
+
+                            Logger::instance().info("Player destroyed and broadcasted: player_id=" +
+                                                    std::to_string(client.player_id));
+                        }
+                    }
+                }
+
                 rtype::ecs::SpawnSystem spawn_system;
                 spawn_system.update(registry_, dt);
 
@@ -251,6 +296,10 @@ void Server::game_loop() {
                         spawn_data.entity_id = net_id;
                         spawn_data.entity_type = rtype::net::EntityType::PROJECTILE;
                         spawn_data.sub_type = 0;
+                        if (registry_.hasComponent<rtype::ecs::component::Collidable>(id)) {
+                            spawn_data.sub_type = static_cast<uint16_t>(
+                                registry_.getComponent<rtype::ecs::component::Collidable>(id).layer);
+                        }
                         spawn_data.position_x = pos.x;
                         spawn_data.position_y = pos.y;
                         spawn_data.velocity_x = vel.vx;
@@ -277,6 +326,9 @@ void Server::game_loop() {
                     std::lock_guard<std::mutex> clients_lock(clients_mutex_);
                     for (const auto& [key, client] : clients_) {
                         if (!client.is_connected)
+                            continue;
+
+                        if (!registry_.isValid(client.entity_id))
                             continue;
 
                         if (registry_.hasComponent<rtype::ecs::component::Position>(client.entity_id) &&
@@ -343,18 +395,24 @@ void Server::game_loop() {
                     std::lock_guard<std::mutex> clients_lock(clients_mutex_);
                     for (const auto& [key, client] : clients_) {
                         if (client.is_connected && udp_server_) {
-                            if (registry_.hasComponent<rtype::ecs::component::Score>(client.entity_id)) {
-                                game_state_data.score =
-                                    registry_.getComponent<rtype::ecs::component::Score>(client.entity_id).value;
-                            } else {
+                            if (!registry_.isValid(client.entity_id)) {
                                 game_state_data.score = 0;
-                            }
-
-                            if (registry_.hasComponent<rtype::ecs::component::Lives>(client.entity_id)) {
-                                game_state_data.lives =
-                                    registry_.getComponent<rtype::ecs::component::Lives>(client.entity_id).remaining;
-                            } else {
                                 game_state_data.lives = 0;
+                            } else {
+                                if (registry_.hasComponent<rtype::ecs::component::Score>(client.entity_id)) {
+                                    game_state_data.score =
+                                        registry_.getComponent<rtype::ecs::component::Score>(client.entity_id).value;
+                                } else {
+                                    game_state_data.score = 0;
+                                }
+
+                                if (registry_.hasComponent<rtype::ecs::component::Lives>(client.entity_id)) {
+                                    game_state_data.lives =
+                                        registry_.getComponent<rtype::ecs::component::Lives>(client.entity_id)
+                                            .remaining;
+                                } else {
+                                    game_state_data.lives = 0;
+                                }
                             }
 
                             game_state_data.game_state = 0;
@@ -423,6 +481,10 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
         handle_game_start(client_ip, client_port, packet);
     } break;
 
+    case rtype::net::MessageType::MapResize: {
+        handle_map_resize(client_ip, client_port, packet);
+    } break;
+
     default:
         Logger::instance().warn("Unknown message type: " + std::to_string(packet.header.message_type));
     }
@@ -449,11 +511,16 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         entity = registry_.createEntity();
         registry_.addComponent<rtype::ecs::component::Position>(entity, start_x, start_y);
         registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
-        registry_.addComponent<rtype::ecs::component::HitBox>(entity, 66.0f, 110.0f);
+        registry_.addComponent<rtype::ecs::component::HitBox>(
+            entity, rtype::constants::PLAYER_WIDTH * rtype::constants::PLAYER_SCALE,
+            rtype::constants::PLAYER_HEIGHT * rtype::constants::PLAYER_SCALE);
+        registry_.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
         registry_.addComponent<rtype::ecs::component::Weapon>(entity);
         registry_.addComponent<rtype::ecs::component::Score>(entity, 0);
         registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
         registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
+        registry_.addComponent<rtype::ecs::component::Collidable>(entity,
+                                                                  rtype::ecs::component::CollisionLayer::Player);
 
         ClientInfo info;
         info.ip = client_ip;
@@ -488,6 +555,29 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
                 auto existing_response_data = protocol_adapter_->serialize(existing_response);
                 udp_server_->send(client_ip, client_port, existing_response_data);
             }
+        }
+    }
+
+    auto obstacle_view =
+        registry_.view<rtype::ecs::component::NetworkId, rtype::ecs::component::Position, rtype::ecs::component::Tag>();
+    for (auto entity : obstacle_view) {
+        auto& tag = registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
+        if (tag.name == "Obstacle") {
+            auto& net_id = registry_.getComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity));
+            auto& pos = registry_.getComponent<rtype::ecs::component::Position>(static_cast<size_t>(entity));
+
+            rtype::net::EntitySpawnData spawn_data;
+            spawn_data.entity_id = net_id.id;
+            spawn_data.entity_type = rtype::net::EntityType::OBSTACLE;
+            spawn_data.sub_type = 0;
+            spawn_data.position_x = pos.x;
+            spawn_data.position_y = pos.y;
+            spawn_data.velocity_x = 0;
+            spawn_data.velocity_y = 0;
+
+            rtype::net::Packet spawn_packet = message_serializer_->serialize_entity_spawn(spawn_data);
+            auto serialized_spawn = protocol_adapter_->serialize(spawn_packet);
+            udp_server_->send(client_ip, client_port, serialized_spawn);
         }
     }
 }
@@ -614,6 +704,35 @@ void Server::handle_game_start(const std::string& client_ip, uint16_t client_por
         }
     } catch (const std::exception& e) {
         Logger::instance().error("Error handling game start: " + std::string(e.what()));
+    }
+}
+
+void Server::handle_map_resize(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet) {
+    (void)client_ip;
+    (void)client_port;
+    if (!message_serializer_) {
+        return;
+    }
+
+    try {
+        auto resize_data = message_serializer_->deserialize_map_resize(packet);
+
+        {
+            std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+            auto view = registry_.view<rtype::ecs::component::MapBounds>();
+            for (auto entity : view) {
+                auto& bounds =
+                    registry_.getComponent<rtype::ecs::component::MapBounds>(static_cast<std::size_t>(entity));
+                bounds.maxX = resize_data.width;
+                bounds.maxY = resize_data.height;
+                break;
+            }
+        }
+
+        Logger::instance().info("Map resized to " + std::to_string(resize_data.width) + "x" +
+                                std::to_string(resize_data.height));
+    } catch (const std::exception& e) {
+        Logger::instance().error("Error handling map resize: " + std::string(e.what()));
     }
 }
 

@@ -14,7 +14,8 @@ class Deserializer {
     Deserializer(const std::vector<uint8_t>& buffer) : data(buffer), offset(0) {
     }
 
-    template <typename T> typename std::enable_if<std::is_pod_v<T>, T>::type read() {
+    template <typename T>
+    typename std::enable_if<std::is_standard_layout_v<T> && std::is_trivial_v<T>, T>::type read() {
         if (offset + sizeof(T) > data.size()) {
             throw std::runtime_error("Deserializer: not enough data");
         }

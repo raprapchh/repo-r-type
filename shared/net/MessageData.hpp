@@ -147,6 +147,17 @@ struct PingPongData {
     }
 };
 
+struct MapResizeData {
+    float width;
+    float height;
+
+    MapResizeData() : width(0.0f), height(0.0f) {
+    }
+
+    MapResizeData(float w, float h) : width(w), height(h) {
+    }
+};
+
 namespace EntityType {
 constexpr uint16_t ENEMY = 0;
 constexpr uint16_t PROJECTILE = 1;

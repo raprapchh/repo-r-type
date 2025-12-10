@@ -9,17 +9,18 @@
 struct Button {
     SDL_Rect bounds;
     std::string text;
-    bool isHovered;    // Create surface for button
+    bool isHovered; // Create surface for button
 
     bool isPressed;
 
     Button(const std::string& txt, int x, int y, int w, int h)
-        : text(txt), bounds{x, y, w, h}, isHovered(false), isPressed(false) {}
+        : text(txt), bounds{x, y, w, h}, isHovered(false), isPressed(false) {
+    }
 };
 
 void UpdateButton(Button& button, int mouseX, int mouseY, bool mousePressed) {
     button.isHovered = (mouseX >= button.bounds.x && mouseX <= button.bounds.x + button.bounds.w &&
-                       mouseY >= button.bounds.y && mouseY <= button.bounds.y + button.bounds.h);
+                        mouseY >= button.bounds.y && mouseY <= button.bounds.y + button.bounds.h);
     button.isPressed = button.isHovered && mousePressed;
 }
 
@@ -47,12 +48,8 @@ void DrawButton(SDL_Renderer* renderer, void* font, const Button& button) {
                 int textW = textSurface->w;
                 int textH = textSurface->h;
 
-                SDL_Rect textRect = {
-                    button.bounds.x + (button.bounds.w - textW) / 2,
-                    button.bounds.y + (button.bounds.h - textH) / 2,
-                    textW,
-                    textH
-                };
+                SDL_Rect textRect = {button.bounds.x + (button.bounds.w - textW) / 2,
+                                     button.bounds.y + (button.bounds.h - textH) / 2, textW, textH};
 
                 SDL_RenderCopy(renderer, textTexture, nullptr, &textRect);
                 SDL_DestroyTexture(textTexture);
@@ -62,26 +59,22 @@ void DrawButton(SDL_Renderer* renderer, void* font, const Button& button) {
     }
 #else
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_Rect textArea = {
-        button.bounds.x + 10,
-        button.bounds.y + 20,
-        button.bounds.w - 20,
-        20
-    };
+    SDL_Rect textArea = {button.bounds.x + 10, button.bounds.y + 20, button.bounds.w - 20, 20};
     SDL_RenderFillRect(renderer, &textArea);
 #endif
 }
 
 void DrawText(SDL_Renderer* renderer, void* font, const std::string& text, int x, int y, SDL_Color color) {
 #ifdef SDL_TTF_AVAILABLE
-    if (!font) return;
+    if (!font)
+        return;
 
     TTF_Font* ttfFont = (TTF_Font*)font;
     SDL_Surface* textSurface = TTF_RenderText_Solid(ttfFont, text.c_str(), color);
     if (textSurface) {
         SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
         if (textTexture) {
-            SDL_Rect textRect = { x, y, textSurface->w, textSurface->h };
+            SDL_Rect textRect = {x, y, textSurface->w, textSurface->h};
             SDL_RenderCopy(renderer, textTexture, nullptr, &textRect);
             SDL_DestroyTexture(textTexture);
         }
@@ -89,7 +82,7 @@ void DrawText(SDL_Renderer* renderer, void* font, const std::string& text, int x
     }
 #else
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
-    SDL_Rect textRect = { x, y, (int)text.length() * 10, 20 };
+    SDL_Rect textRect = {x, y, (int)text.length() * 10, 20};
     SDL_RenderFillRect(renderer, &textRect);
 #endif
 }
@@ -117,11 +110,8 @@ int main() {
     std::cout << "SDL_ttf not available - using simple graphics only" << std::endl;
 #endif
 
-    SDL_Window* window = SDL_CreateWindow("SDL2 R-Type Menu Demo",
-                                          SDL_WINDOWPOS_CENTERED,
-                                          SDL_WINDOWPOS_CENTERED,
-                                          800, 600,
-                                          SDL_WINDOW_SHOWN);
+    SDL_Window* window = SDL_CreateWindow("SDL2 R-Type Menu Demo", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800,
+                                          600, SDL_WINDOW_SHOWN);
     if (!window) {
         std::cerr << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
 #ifdef SDL_TTF_AVAILABLE
@@ -220,8 +210,10 @@ int main() {
     }
 
 #ifdef SDL_TTF_AVAILABLE
-    if (font) TTF_CloseFont((TTF_Font*)font);
-    if (titleFont) TTF_CloseFont((TTF_Font*)titleFont);
+    if (font)
+        TTF_CloseFont((TTF_Font*)font);
+    if (titleFont)
+        TTF_CloseFont((TTF_Font*)titleFont);
     TTF_Quit();
 #endif
     SDL_DestroyRenderer(renderer);

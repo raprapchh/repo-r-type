@@ -16,8 +16,9 @@ struct Entity {
     float y;
     float velocity_x;
     float velocity_y;
-    int animation_frame = 0;
+    int animation_frame = 2;
     float animation_timer = 0.0f;
+    int player_state = 0;
 };
 
 class Renderer {
@@ -41,6 +42,8 @@ class Renderer {
     void draw_entities();
     void draw_ui();
     void draw_background();
+    void draw_game_over(bool all_players_dead);
+    bool is_game_over_back_to_menu_clicked(const sf::Vector2f& mouse_pos) const;
     void render_frame();
 
     sf::Vector2f get_player_position(uint32_t player_id) const;
@@ -97,10 +100,8 @@ class Renderer {
     float background_x_stars2_;
 
     rtype::net::GameStateData game_state_;
-
-    const float PLAYER_SPEED = 5.0f;
-    const float PLAYER_WIDTH = 32.0f;
-    const float PLAYER_HEIGHT = 32.0f;
+    mutable sf::RectangleShape back_to_menu_button_;
+    mutable sf::Text back_to_menu_text_;
 };
 
 } // namespace rtype::client

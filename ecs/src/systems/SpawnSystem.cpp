@@ -4,41 +4,53 @@
 #include "../../include/components/Health.hpp"
 #include "../../include/components/Position.hpp"
 #include "../../include/components/Velocity.hpp"
+#include "../../include/components/MapBounds.hpp"
+#include "../../include/components/CollisionLayer.hpp"
+#include "../../shared/utils/GameConfig.hpp"
 #include <random>
 
 namespace rtype::ecs {
 
 void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
+    float maxX = rtype::config::MAP_MAX_X;
+    float maxY = rtype::config::MAP_MAX_Y;
+
+    try {
+        auto mapBoundsView = registry.view<component::MapBounds>();
+        for (auto entity : mapBoundsView) {
+            auto& bounds = registry.getComponent<component::MapBounds>(static_cast<std::size_t>(entity));
+            maxX = bounds.maxX;
+            maxY = bounds.maxY;
+            break;
+        }
+    } catch (const std::exception&) {
+    }
+
     auto view = registry.view<component::EnemySpawner>();
 
-    view.each([&registry, dt](component::EnemySpawner& spawner) {
+    view.each([&registry, dt, maxX, maxY](component::EnemySpawner& spawner) {
         spawner.timeSinceLastSpawn += static_cast<float>(dt);
 
         if (spawner.timeSinceLastSpawn >= spawner.spawnInterval) {
             spawner.timeSinceLastSpawn = 0.0f;
 
-            // Random Y position between 0 and 1080
             static std::random_device rd;
             static std::mt19937 gen(rd());
-            std::uniform_real_distribution<float> dis(0.0f, 1080.0f);
+            std::uniform_real_distribution<float> dis(0.0f, maxY - 50.0f);
             float randomY = dis(gen);
 
-            // Create enemy entity
             auto enemy = registry.createEntity();
 
-            // Screen dimensions
-            constexpr float SCREEN_WIDTH = 1920.0f;
             constexpr float ENEMY_WIDTH = 50.0f;
             constexpr float SPAWN_OFFSET = 10.0f;
 
-            // Spawn on the right side, outside visible screen bounds
-            float spawnX = SCREEN_WIDTH + SPAWN_OFFSET;
+            float spawnX = maxX + SPAWN_OFFSET;
 
-            // Add components to the enemy
             registry.addComponent<component::Position>(enemy, spawnX, randomY);
             registry.addComponent<component::Velocity>(enemy, -200.0f, 0.0f);
             registry.addComponent<component::HitBox>(enemy, ENEMY_WIDTH, 50.0f);
             registry.addComponent<component::Health>(enemy, 100, 100);
+            registry.addComponent<component::Collidable>(enemy, component::CollisionLayer::Enemy);
         }
     });
 }

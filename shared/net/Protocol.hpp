@@ -15,7 +15,8 @@ enum class MessageType : uint16_t {
     GameStart = 8,
     GameState = 9,
     Ping = 10,
-    Pong = 11
+    Pong = 11,
+    MapResize = 12
 };
 
 } // namespace rtype::net
