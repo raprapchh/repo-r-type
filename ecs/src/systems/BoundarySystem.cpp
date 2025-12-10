@@ -81,4 +81,4 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
     }
 }
 
-}
+} // namespace rtype::ecs
