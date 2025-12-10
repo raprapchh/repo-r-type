@@ -26,10 +26,18 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
             // Create enemy entity
             auto enemy = registry.createEntity();
 
+            // Screen dimensions
+            constexpr float SCREEN_WIDTH = 1920.0f;
+            constexpr float ENEMY_WIDTH = 50.0f;
+            constexpr float SPAWN_OFFSET = 10.0f;
+
+            // Spawn on the right side, outside visible screen bounds
+            float spawnX = SCREEN_WIDTH + SPAWN_OFFSET;
+
             // Add components to the enemy
-            registry.addComponent<component::Position>(enemy, 1920.0f, randomY);
+            registry.addComponent<component::Position>(enemy, spawnX, randomY);
             registry.addComponent<component::Velocity>(enemy, -200.0f, 0.0f);
-            registry.addComponent<component::HitBox>(enemy, 50.0f, 50.0f);
+            registry.addComponent<component::HitBox>(enemy, ENEMY_WIDTH, 50.0f);
             registry.addComponent<component::Health>(enemy, 100, 100);
         }
     });
