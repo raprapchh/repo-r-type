@@ -6,16 +6,19 @@
 #include "../../include/components/Projectile.hpp"
 #include "../../include/components/MapBounds.hpp"
 #include "../../include/Registry.hpp"
+#include <vector>
+
+#include "../../shared/utils/GameConfig.hpp"
 
 namespace rtype::ecs {
 
 void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
     (void)dt;
 
-    float minX = 0.0f;
-    float minY = 0.0f;
-    float maxX = 1920.0f;
-    float maxY = 1060.0f;
+    float minX = rtype::config::MAP_MIN_X;
+    float minY = rtype::config::MAP_MIN_Y;
+    float maxX = rtype::config::MAP_MAX_X;
+    float maxY = rtype::config::MAP_MAX_Y;
 
     try {
         auto mapBoundsView = registry.view<component::MapBounds>();
@@ -28,7 +31,6 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
             break;
         }
     } catch (const std::exception&) {
-        // std::cerr << "BoundarySystem: MapBounds not found, using defaults.\n";
     }
 
     auto view = registry.view<component::Position>();
@@ -45,17 +47,14 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
             height = hitbox.height;
         }
 
-        // Check if entity is an enemy (has Health, no Weapon)
         bool is_enemy = registry.hasComponent<component::Health>(static_cast<std::size_t>(entity)) &&
                         !registry.hasComponent<component::Weapon>(static_cast<std::size_t>(entity));
 
-        // Destroy enemies when they go off-screen to the left
-        if (is_enemy && pos.x + width < -100.0f) {
+        if (is_enemy && pos.x + width < rtype::config::ENEMY_DESPAWN_OFFSET) {
             entities_to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
             return;
         }
 
-        // Don't clamp enemies - let them move freely until destroyed
         if (is_enemy) {
             return;
         }
@@ -64,11 +63,6 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
             return;
         }
 
-        // For players and other entities, clamp to boundaries
-        if (pos.x < 0)
-            pos.x = 0;
-        if (pos.x + width > 1920)
-            pos.x = 1920 - width;
         if (pos.x < minX)
             pos.x = minX;
         if (pos.x + width > maxX)
@@ -82,10 +76,9 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
         }
     });
 
-    // Destroy all marked entities
     for (auto entity : entities_to_destroy) {
         registry.destroyEntity(entity);
     }
 }
 
-} // namespace rtype::ecs
+}
