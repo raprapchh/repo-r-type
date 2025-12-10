@@ -20,7 +20,6 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
         if (textures_.find(drawable.texture_name) == textures_.end())
             continue;
 
-        // Animation basée sur les états
         if (!drawable.current_state.empty() && drawable.animation_sequences.count(drawable.current_state)) {
             const auto& sequence = drawable.animation_sequences.at(drawable.current_state);
             if (!sequence.empty()) {
@@ -33,7 +32,6 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
                 } else {
                     drawable.animation_timer += static_cast<float>(dt);
 
-                    // Boucle pour gérer gros dt et éviter les saccades
                     while (drawable.animation_timer >= drawable.animation_speed) {
                         drawable.animation_timer -= drawable.animation_speed;
                         drawable.animation_index++;
@@ -48,7 +46,6 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
                 }
             }
         }
-        // Animation simple basée sur frame_count
         else if (drawable.frame_count > 1) {
             drawable.animation_timer += static_cast<float>(dt);
             while (drawable.animation_timer >= drawable.animation_speed) {
@@ -64,7 +61,6 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
             }
         }
 
-        // Gestion du sprite à afficher
         const sf::Texture& texture = textures_.at(drawable.texture_name);
         sf::Vector2u texture_size = texture.getSize();
         sf::IntRect texture_rect;

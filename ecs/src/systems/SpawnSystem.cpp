@@ -35,10 +35,9 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
 
             static std::random_device rd;
             static std::mt19937 gen(rd());
-            std::uniform_real_distribution<float> dis(0.0f, maxY - 50.0f); // Subtract enemy height to keep inside
+            std::uniform_real_distribution<float> dis(0.0f, maxY - 50.0f);
             float randomY = dis(gen);
 
-            // Create enemy entity
             auto enemy = registry.createEntity();
 
             constexpr float ENEMY_WIDTH = 50.0f;

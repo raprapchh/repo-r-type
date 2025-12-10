@@ -185,6 +185,10 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
     }
     case rtype::net::MessageType::GameState: {
         try {
+            if (packet.body.size() < 15) {
+                std::cerr << "Error: GameState packet too small" << std::endl;
+                break;
+            }
             auto game_state_data = serializer.deserialize_game_state(packet);
             renderer_.update_game_state(game_state_data);
         } catch (const std::exception& e) {
