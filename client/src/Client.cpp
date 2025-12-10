@@ -382,8 +382,8 @@ void Client::send_map_resize(float width, float height) {
     udp_client_->send(packet_data);
 }
 
-void Client::update() {
-    audio_system_.update(registry_, 0.0);
+void Client::update(double dt) {
+    audio_system_.update(registry_, dt);
     network_system_.update(registry_, registry_mutex_);
 
     std::lock_guard<std::mutex> lock(registry_mutex_);
