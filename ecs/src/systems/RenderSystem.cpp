@@ -40,7 +40,8 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
                         if (drawable.loop)
                             drawable.animation_index %= sequence.size();
                         else
-                            drawable.animation_index = std::min(drawable.animation_index, static_cast<uint32_t>(sequence.size() - 1));
+                            drawable.animation_index =
+                                std::min(drawable.animation_index, static_cast<uint32_t>(sequence.size() - 1));
 
                         drawable.current_sprite = sequence[drawable.animation_index];
                     }
@@ -57,7 +58,8 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
                     drawable.current_sprite = (drawable.current_sprite + 1) % drawable.frame_count;
                 else {
                     uint32_t next_frame = drawable.current_sprite + 1;
-                    drawable.current_sprite = (next_frame < drawable.frame_count) ? next_frame : drawable.frame_count - 1;
+                    drawable.current_sprite =
+                        (next_frame < drawable.frame_count) ? next_frame : drawable.frame_count - 1;
                 }
             }
         }
@@ -68,12 +70,8 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
         sf::IntRect texture_rect;
 
         if (drawable.rect_width > 0 && drawable.rect_height > 0) {
-            texture_rect = sf::IntRect(
-                drawable.rect_x + (drawable.current_sprite * drawable.rect_width),
-                drawable.rect_y,
-                drawable.rect_width,
-                drawable.rect_height
-            );
+            texture_rect = sf::IntRect(drawable.rect_x + (drawable.current_sprite * drawable.rect_width),
+                                       drawable.rect_y, drawable.rect_width, drawable.rect_height);
         } else {
             const uint32_t columns = 5;
             uint32_t sprite_width = texture_size.x / columns;
