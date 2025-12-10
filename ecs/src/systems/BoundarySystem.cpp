@@ -1,19 +1,25 @@
 #include "../../include/systems/BoundarySystem.hpp"
 #include "../../include/components/Position.hpp"
 #include "../../include/components/HitBox.hpp"
+#include "../../include/components/Health.hpp"
+#include "../../include/components/Weapon.hpp"
+#include "../../include/components/Projectile.hpp"
 #include "../../include/components/MapBounds.hpp"
 #include "../../../shared/GameConstants.hpp"
 #include "../../include/Registry.hpp"
+#include <vector>
+
+#include "../../shared/utils/GameConfig.hpp"
 
 namespace rtype::ecs {
 
 void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
     (void)dt;
 
-    float minX = 0.0f;
-    float minY = 0.0f;
-    float maxX = rtype::constants::SCREEN_WIDTH;
-    float maxY = rtype::constants::SCREEN_HEIGHT;
+    float minX = rtype::config::MAP_MIN_X;
+    float minY = rtype::config::MAP_MIN_Y;
+    float maxX = rtype::config::MAP_MAX_X;
+    float maxY = rtype::config::MAP_MAX_Y;
 
     try {
         auto mapBoundsView = registry.view<component::MapBounds>();
@@ -30,7 +36,9 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
 
     auto view = registry.view<component::Position>();
 
-    view.each([&registry, minX, minY, maxX, maxY](const auto entity, component::Position& pos) {
+    std::vector<GameEngine::entity_t> entities_to_destroy;
+
+    view.each([&](const auto entity, component::Position& pos) {
         float width = 0.0f;
         float height = 0.0f;
 
@@ -40,16 +48,38 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
             height = hitbox.height;
         }
 
+        bool is_enemy = registry.hasComponent<component::Health>(static_cast<std::size_t>(entity)) &&
+                        !registry.hasComponent<component::Weapon>(static_cast<std::size_t>(entity));
+
+        if (is_enemy && pos.x + width < rtype::config::ENEMY_DESPAWN_OFFSET) {
+            entities_to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
+            return;
+        }
+
+        if (is_enemy) {
+            return;
+        }
+
+        if (registry.hasComponent<component::Projectile>(static_cast<std::size_t>(entity))) {
+            return;
+        }
+
         if (pos.x < minX)
             pos.x = minX;
         if (pos.x + width > maxX)
             pos.x = maxX - width;
 
-        if (pos.y < minY)
+        if (pos.y < minY) {
             pos.y = minY;
-        if (pos.y + height > maxY)
+        }
+        if (pos.y + height > maxY) {
             pos.y = maxY - height;
+        }
     });
+
+    for (auto entity : entities_to_destroy) {
+        registry.destroyEntity(entity);
+    }
 }
 
 } // namespace rtype::ecs

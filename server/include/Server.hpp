@@ -39,6 +39,7 @@ class Server {
     void handle_player_move(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
     void handle_player_shoot(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
     void handle_game_start(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
+    void handle_map_resize(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
     void broadcast_message(const std::vector<uint8_t>& data, const std::string& exclude_ip = "",
                            uint16_t exclude_port = 0);
     void game_loop();
@@ -51,6 +52,7 @@ class Server {
     std::unique_ptr<rtype::net::IMessageSerializer> message_serializer_;
     std::map<std::string, ClientInfo> clients_;
     std::mutex clients_mutex_;
+    std::mutex registry_mutex_;
     uint32_t next_player_id_;
     std::atomic<bool> running_;
     std::thread game_thread_;

@@ -56,7 +56,7 @@ chmod +x ./clean.sh
 
 ## Workflow
 1. **Create a branch**
-       git checkout -b feature/my-new-feature
+       git checkout -b feat-my-new-feature
 2. **Make your changes**
 3. **Commit your changes**
 ``` bash
@@ -66,7 +66,7 @@ git commit -m "Add a short, meaningful commit message and respect the norme"
 [Conventional Commit norme](https://www.conventionalcommits.org/en/v1.0.0/)
 4. **Push your branch**
 ``` bash
-git push origin feature/my-new-feature
+git push origin feat-my-new-feature
 ```
 5. **Create a Pull Request** on GitHub
 

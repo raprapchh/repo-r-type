@@ -20,7 +20,13 @@ void CollisionSystem::update(GameEngine::Registry& registry, double dt) {
 
     for (size_t i = 0; i < entities.size(); ++i) {
         auto entity1 = entities[i];
+        if (!registry.isValid(entity1))
+            continue;
+
         auto entt_entity1 = static_cast<entt::entity>(entity1);
+        if (!view.contains(entt_entity1))
+            continue;
+
         auto& pos1 = view.get<component::Position>(entt_entity1);
         auto& hitbox1 = view.get<component::HitBox>(entt_entity1);
         auto& collidable1 = view.get<component::Collidable>(entt_entity1);
@@ -31,7 +37,13 @@ void CollisionSystem::update(GameEngine::Registry& registry, double dt) {
 
         for (size_t j = i + 1; j < entities.size(); ++j) {
             auto entity2 = entities[j];
+            if (!registry.isValid(entity2))
+                continue;
+
             auto entt_entity2 = static_cast<entt::entity>(entity2);
+            if (!view.contains(entt_entity2))
+                continue;
+
             auto& pos2 = view.get<component::Position>(entt_entity2);
             auto& hitbox2 = view.get<component::HitBox>(entt_entity2);
             auto& collidable2 = view.get<component::Collidable>(entt_entity2);
@@ -47,6 +59,8 @@ void CollisionSystem::update(GameEngine::Registry& registry, double dt) {
             if (CheckAABBCollision(pos1.x, pos1.y, hitbox1.width, hitbox1.height, pos2.x, pos2.y, hitbox2.width,
                                    hitbox2.height)) {
                 HandleCollision(registry, entity1, entity2, collidable1.layer, collidable2.layer);
+                if (!registry.isValid(entity1))
+                    break; // Entity 1 destroyed, stop inner loop
             }
         }
     }

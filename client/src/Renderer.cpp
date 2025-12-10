@@ -15,6 +15,23 @@ Renderer::Renderer(uint32_t width, uint32_t height)
     window_->setView(view_);
     std::fill(std::begin(keys_), std::end(keys_), false);
     load_sprites();
+    load_fonts();
+}
+
+void Renderer::load_fonts() {
+    if (!font_.loadFromFile("client/fonts/Ethnocentric-Regular.otf")) {
+        std::cerr << "Erreur: Impossible de charger la police client/fonts/Ethnocentric-Regular.otf" << std::endl;
+    }
+
+    score_text_.setFont(font_);
+    score_text_.setCharacterSize(24);
+    score_text_.setFillColor(sf::Color::White);
+    score_text_.setPosition(10.0f, 10.0f);
+
+    lives_text_.setFont(font_);
+    lives_text_.setCharacterSize(24);
+    lives_text_.setFillColor(sf::Color::White);
+    lives_text_.setPosition(10.0f, 40.0f);
 }
 
 Renderer::~Renderer() = default;
@@ -74,6 +91,19 @@ void Renderer::update_animations(float delta_time) {
                 entity.animation_frame = (entity.animation_frame + 1) % 4;
             }
         }
+        if (entity.type == rtype::net::EntityType::PLAYER) {
+            entity.animation_timer += delta_time;
+            if (entity.animation_timer >= 0.1f && entity.player_state == 1) {
+                entity.animation_timer = 0.0f;
+                entity.animation_frame = (entity.animation_frame + 1) % 4;
+            } else if (entity.animation_timer >= 0.1f && entity.player_state == 2) {
+                entity.animation_timer = 0.0f;
+                entity.animation_frame = (entity.animation_frame - 1) % 4;
+            } else {
+                entity.animation_frame = 2;
+                entity.player_state = 0;
+            }
+        }
     }
 }
 
@@ -94,7 +124,7 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
 
     switch (entity.type) {
     case rtype::net::EntityType::PLAYER:
-        texture_name = "player";
+        texture_name = "player_ships";
         break;
     case rtype::net::EntityType::ENEMY:
         texture_name = "enemy_basic";
@@ -117,15 +147,21 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
         sprite.setTextureRect(sf::IntRect(entity.animation_frame * 29, 0, 29, 33));
     }
 
-    if (entity.type == rtype::net::EntityType::PLAYER) {
-        sprite.setScale(3.0f, 3.0f);
-    }
-
     sprite.setPosition(entity.x, entity.y);
     return sprite;
 }
 
 void Renderer::draw_ui() {
+    sf::View current_view = window_->getView();
+    window_->setView(window_->getDefaultView());
+
+    score_text_.setString("Score: " + std::to_string(game_state_.score));
+    lives_text_.setString("Lives: " + std::to_string(static_cast<int>(game_state_.lives)));
+
+    window_->draw(score_text_);
+    window_->draw(lives_text_);
+
+    window_->setView(current_view);
 }
 void Renderer::draw_background() {
     if (textures_.count("background")) {
@@ -194,7 +230,7 @@ void Renderer::load_texture(const std::string& path, const std::string& name) {
 
 void Renderer::load_sprites() {
     load_texture("client/sprites/players_ship.png", "player_ships");
-    load_texture("client/sprites/players_ship.gif", "player");
+    load_texture("client/sprites/players_ship.png", "player");
     load_texture("client/sprites/map_1.png", "background");
     load_texture("client/sprites/star_bg.png", "background_stars");
     load_texture("client/sprites/star_2_bg.png", "background_stars2");
@@ -202,7 +238,7 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/r-typesheet2-ezgif.com-crop.gif", "shot");
     load_texture("client/sprites/shot_death.png", "death");
     load_texture("client/sprites/obstacle1.png", "obstacle_1");
-    load_texture("client/sprites/players_ship.gif", "default");
+    load_texture("client/sprites/players_ship.png", "default");
 }
 
 sf::Vector2f Renderer::get_shoot_direction() const {

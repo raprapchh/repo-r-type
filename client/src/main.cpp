@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) {
             float delta_time = clock.restart().asSeconds();
 
             renderer.handle_input();
-            client.update();
+            client.update(delta_time);
 
             state_manager.handle_input();
             state_manager.update(delta_time);

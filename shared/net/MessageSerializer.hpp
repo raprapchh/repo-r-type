@@ -5,7 +5,6 @@
 #include "Packet.hpp"
 #include "Serializer.hpp"
 #include "Deserializer.hpp"
-#include <vector>
 #include <cstdint>
 
 namespace rtype::net {
@@ -171,9 +170,9 @@ class MessageSerializer : public IMessageSerializer {
         serializer.write(data.enemies_remaining);
         serializer.write(data.score);
         serializer.write(data.game_state);
+        serializer.write(data.lives);
         serializer.write(data.padding[0]);
         serializer.write(data.padding[1]);
-        serializer.write(data.padding[2]);
         return Packet(static_cast<uint16_t>(MessageType::GameState), serializer.get_data());
     }
 
@@ -185,9 +184,9 @@ class MessageSerializer : public IMessageSerializer {
         data.enemies_remaining = deserializer.read<uint16_t>();
         data.score = deserializer.read<uint32_t>();
         data.game_state = deserializer.read<uint8_t>();
+        data.lives = deserializer.read<uint8_t>();
         data.padding[0] = deserializer.read<uint8_t>();
         data.padding[1] = deserializer.read<uint8_t>();
-        data.padding[2] = deserializer.read<uint8_t>();
         return data;
     }
 
@@ -207,6 +206,21 @@ class MessageSerializer : public IMessageSerializer {
         Deserializer deserializer(packet.body);
         PingPongData data;
         data.timestamp = deserializer.read<uint64_t>();
+        return data;
+    }
+
+    Packet serialize_map_resize(const MapResizeData& data) override {
+        Serializer serializer;
+        serializer.write(data.width);
+        serializer.write(data.height);
+        return Packet(static_cast<uint16_t>(MessageType::MapResize), serializer.get_data());
+    }
+
+    MapResizeData deserialize_map_resize(const Packet& packet) override {
+        Deserializer deserializer(packet.body);
+        MapResizeData data;
+        data.width = deserializer.read<float>();
+        data.height = deserializer.read<float>();
         return data;
     }
 };

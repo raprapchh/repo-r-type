@@ -8,7 +8,7 @@ constexpr float OBSTACLE_SCALE = 6.0f;
 
 constexpr float PLAYER_WIDTH = 33.0f;
 constexpr float PLAYER_HEIGHT = 17.0f;
-constexpr float PLAYER_SCALE = 2.0f;
+constexpr float PLAYER_SCALE = 5.0f;
 
 constexpr float SCREEN_WIDTH = 1920.0f;
 constexpr float SCREEN_HEIGHT = 1080.0f;
