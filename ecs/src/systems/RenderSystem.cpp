@@ -45,8 +45,7 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
                     }
                 }
             }
-        }
-        else if (drawable.frame_count > 1) {
+        } else if (drawable.frame_count > 1) {
             drawable.animation_timer += static_cast<float>(dt);
             while (drawable.animation_timer >= drawable.animation_speed) {
                 drawable.animation_timer -= drawable.animation_speed;
