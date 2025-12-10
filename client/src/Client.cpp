@@ -1,12 +1,14 @@
 #include "Client.hpp"
 #include "../shared/net/ProtocolAdapter.hpp"
 #include "../shared/net/MessageSerializer.hpp"
+#include "../../shared/GameConstants.hpp"
 #include "../../ecs/include/components/NetworkId.hpp"
 #include "../../ecs/include/components/Position.hpp"
 #include "../../ecs/include/components/Velocity.hpp"
 #include "../../ecs/include/components/Drawable.hpp"
 #include "../../ecs/include/components/Controllable.hpp"
 #include "../../ecs/include/components/HitBox.hpp"
+#include "../../ecs/include/components/CollisionLayer.hpp"
 #include <iostream>
 #include <chrono>
 
@@ -119,12 +121,17 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 registry_.addComponent<rtype::ecs::component::Position>(entity, 100.0f, 100.0f);
                 registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
                 uint32_t sprite_index = (player_id_ - 1) % 4;
-                registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", 0, 0, 33, 0, 5.0f, 5.0f,
-                                                                        0, 0.1f, false, sprite_index,
-                                                                        static_cast<uint32_t>(2));
+                registry_.addComponent<rtype::ecs::component::Drawable>(
+                    entity, "player_ships", 0, 0, static_cast<uint32_t>(rtype::constants::PLAYER_WIDTH),
+                    static_cast<uint32_t>(rtype::constants::PLAYER_HEIGHT), rtype::constants::PLAYER_SCALE,
+                    rtype::constants::PLAYER_SCALE, 0, 0.1f, false, sprite_index, static_cast<uint32_t>(2));
                 registry_.addComponent<rtype::ecs::component::Controllable>(entity, true);
                 auto& drawable = registry_.getComponent<rtype::ecs::component::Drawable>(entity);
-                registry_.addComponent<rtype::ecs::component::HitBox>(entity, 96.0f, 96.0f);
+                registry_.addComponent<rtype::ecs::component::HitBox>(
+                    entity, rtype::constants::PLAYER_WIDTH * rtype::constants::PLAYER_SCALE,
+                    rtype::constants::PLAYER_HEIGHT * rtype::constants::PLAYER_SCALE);
+                registry_.addComponent<rtype::ecs::component::Collidable>(
+                    entity, rtype::ecs::component::CollisionLayer::Player);
                 drawable.animation_sequences["idle"] = {2};
                 drawable.animation_sequences["up"] = {2, 3, 4};
                 drawable.animation_sequences["down"] = {2, 1, 0};
@@ -145,11 +152,16 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                     registry_.addComponent<rtype::ecs::component::Position>(entity, 100.0f, 100.0f);
                     registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
                     uint32_t sprite_index = (join_data.player_id - 1) % 4;
-                    registry_.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", 0, 0, 33, 0, 5.0f,
-                                                                            5.0f, 0, 0.1f, false, sprite_index,
-                                                                            static_cast<uint32_t>(2));
+                    registry_.addComponent<rtype::ecs::component::Drawable>(
+                        entity, "player_ships", 0, 0, static_cast<uint32_t>(rtype::constants::PLAYER_WIDTH),
+                        static_cast<uint32_t>(rtype::constants::PLAYER_HEIGHT), rtype::constants::PLAYER_SCALE,
+                        rtype::constants::PLAYER_SCALE, 0, 0.1f, false, sprite_index, static_cast<uint32_t>(2));
                     auto& drawable = registry_.getComponent<rtype::ecs::component::Drawable>(entity);
-                    registry_.addComponent<rtype::ecs::component::HitBox>(entity, 96.0f, 96.0f);
+                    registry_.addComponent<rtype::ecs::component::HitBox>(
+                        entity, rtype::constants::PLAYER_WIDTH * rtype::constants::PLAYER_SCALE,
+                        rtype::constants::PLAYER_HEIGHT * rtype::constants::PLAYER_SCALE);
+                    registry_.addComponent<rtype::ecs::component::Collidable>(
+                        entity, rtype::ecs::component::CollisionLayer::Player);
                     drawable.animation_sequences["idle"] = {2};
                     drawable.animation_sequences["up"] = {2, 3, 4};
                     drawable.animation_sequences["down"] = {2, 1, 0};

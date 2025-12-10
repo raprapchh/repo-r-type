@@ -1,4 +1,5 @@
 #include "Server.hpp"
+#include "../../shared/GameConstants.hpp"
 #include "../shared/net/Protocol.hpp"
 #include "../shared/net/ProtocolAdapter.hpp"
 #include "../shared/net/MessageSerializer.hpp"
@@ -64,8 +65,19 @@ void Server::start() {
         registry_.addComponent<rtype::ecs::component::MapBounds>(boundsEntity, rtype::config::MAP_MIN_X,
                                                                  rtype::config::MAP_MIN_Y, rtype::config::MAP_MAX_X,
                                                                  rtype::config::MAP_MAX_Y);
+        Logger::instance().info("Map dimensions: 1920x1080");
+
+        auto obstacle = registry_.createEntity();
+
+        registry_.addComponent<rtype::ecs::component::Position>(obstacle, 400.0f, 100.0f);
+        registry_.addComponent<rtype::ecs::component::HitBox>(
+            obstacle, rtype::constants::OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE,
+            rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
+        registry_.addComponent<rtype::ecs::component::Collidable>(obstacle,
+                                                                  rtype::ecs::component::CollisionLayer::Obstacle);
+        registry_.addComponent<rtype::ecs::component::NetworkId>(obstacle, next_player_id_++);
+        registry_.addComponent<rtype::ecs::component::Tag>(obstacle, "Obstacle");
     }
-    Logger::instance().info("Map dimensions: 1920x1080");
     Logger::instance().info("Enemy spawner initialized (interval: 2.0s)");
 }
 
@@ -284,6 +296,10 @@ void Server::game_loop() {
                         spawn_data.entity_id = net_id;
                         spawn_data.entity_type = rtype::net::EntityType::PROJECTILE;
                         spawn_data.sub_type = 0;
+                        if (registry_.hasComponent<rtype::ecs::component::Collidable>(id)) {
+                            spawn_data.sub_type = static_cast<uint16_t>(
+                                registry_.getComponent<rtype::ecs::component::Collidable>(id).layer);
+                        }
                         spawn_data.position_x = pos.x;
                         spawn_data.position_y = pos.y;
                         spawn_data.velocity_x = vel.vx;
@@ -495,14 +511,16 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         entity = registry_.createEntity();
         registry_.addComponent<rtype::ecs::component::Position>(entity, start_x, start_y);
         registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
-        registry_.addComponent<rtype::ecs::component::HitBox>(entity, 66.0f, 110.0f);
+        registry_.addComponent<rtype::ecs::component::HitBox>(
+            entity, rtype::constants::PLAYER_WIDTH * rtype::constants::PLAYER_SCALE,
+            rtype::constants::PLAYER_HEIGHT * rtype::constants::PLAYER_SCALE);
         registry_.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
-        registry_.addComponent<rtype::ecs::component::Collidable>(entity,
-                                                                  rtype::ecs::component::CollisionLayer::Player);
         registry_.addComponent<rtype::ecs::component::Weapon>(entity);
         registry_.addComponent<rtype::ecs::component::Score>(entity, 0);
         registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
         registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
+        registry_.addComponent<rtype::ecs::component::Collidable>(entity,
+                                                                  rtype::ecs::component::CollisionLayer::Player);
 
         ClientInfo info;
         info.ip = client_ip;
@@ -537,6 +555,29 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
                 auto existing_response_data = protocol_adapter_->serialize(existing_response);
                 udp_server_->send(client_ip, client_port, existing_response_data);
             }
+        }
+    }
+
+    auto obstacle_view =
+        registry_.view<rtype::ecs::component::NetworkId, rtype::ecs::component::Position, rtype::ecs::component::Tag>();
+    for (auto entity : obstacle_view) {
+        auto& tag = registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
+        if (tag.name == "Obstacle") {
+            auto& net_id = registry_.getComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity));
+            auto& pos = registry_.getComponent<rtype::ecs::component::Position>(static_cast<size_t>(entity));
+
+            rtype::net::EntitySpawnData spawn_data;
+            spawn_data.entity_id = net_id.id;
+            spawn_data.entity_type = rtype::net::EntityType::OBSTACLE;
+            spawn_data.sub_type = 0;
+            spawn_data.position_x = pos.x;
+            spawn_data.position_y = pos.y;
+            spawn_data.velocity_x = 0;
+            spawn_data.velocity_y = 0;
+
+            rtype::net::Packet spawn_packet = message_serializer_->serialize_entity_spawn(spawn_data);
+            auto serialized_spawn = protocol_adapter_->serialize(spawn_packet);
+            udp_server_->send(client_ip, client_port, serialized_spawn);
         }
     }
 }

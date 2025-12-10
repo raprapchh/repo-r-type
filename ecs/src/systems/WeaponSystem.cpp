@@ -28,7 +28,14 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
             projComp.owner_id = static_cast<std::size_t>(entity);
 
             registry.addComponent<component::HitBox>(projectile, 58.0f, 66.0f);
-            registry.addComponent<component::Collidable>(projectile, component::CollisionLayer::PlayerProjectile);
+            component::CollisionLayer projLayer = component::CollisionLayer::PlayerProjectile;
+            if (registry.hasComponent<component::Collidable>(static_cast<std::size_t>(entity))) {
+                auto& ownerCollidable = registry.getComponent<component::Collidable>(static_cast<std::size_t>(entity));
+                if (ownerCollidable.layer == component::CollisionLayer::Enemy) {
+                    projLayer = component::CollisionLayer::EnemyProjectile;
+                }
+            }
+            registry.addComponent<component::Collidable>(projectile, projLayer);
 
             weapon.timeSinceLastFire = 0.0f;
             weapon.isShooting = false;
