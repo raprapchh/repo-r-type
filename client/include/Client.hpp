@@ -28,7 +28,7 @@ class Client {
     void connect();
     void disconnect();
     void run();
-    void update();
+    void update(double dt);
 
     void send_move(float vx, float vy);
     void send_shoot(int32_t x, int32_t y);
