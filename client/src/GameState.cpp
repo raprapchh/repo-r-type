@@ -74,7 +74,7 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
 
 void GameState::update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) {
     (void)state_manager;
-    client.update();
+    (void)delta_time;
 
     GameEngine::Registry& registry = client.get_registry();
     std::mutex& registry_mutex = client.get_registry_mutex();
