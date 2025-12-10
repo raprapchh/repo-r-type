@@ -5,7 +5,6 @@
 #include "../../include/components/Projectile.hpp"
 #include "../../include/components/HitBox.hpp"
 #include "../../include/components/CollisionLayer.hpp"
-#include <iostream>
 
 namespace rtype::ecs {
 
@@ -29,7 +28,6 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
             projComp.owner_id = static_cast<std::size_t>(entity);
 
             registry.addComponent<component::HitBox>(projectile, 58.0f, 66.0f);
-
             component::CollisionLayer projLayer = component::CollisionLayer::PlayerProjectile;
             if (registry.hasComponent<component::Collidable>(static_cast<std::size_t>(entity))) {
                 auto& ownerCollidable = registry.getComponent<component::Collidable>(static_cast<std::size_t>(entity));

@@ -21,6 +21,8 @@ class GameState : public IState {
   private:
     bool shoot_requested_ = false;
     Client* client_ = nullptr;
+    bool game_over_ = false;
+    bool all_players_dead_ = false;
 };
 
 } // namespace rtype::client

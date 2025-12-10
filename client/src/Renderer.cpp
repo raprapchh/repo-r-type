@@ -163,6 +163,69 @@ void Renderer::draw_ui() {
 
     window_->setView(current_view);
 }
+
+void Renderer::draw_game_over(bool all_players_dead) {
+    sf::View current_view = window_->getView();
+    window_->setView(window_->getDefaultView());
+
+    sf::Vector2u window_size = window_->getSize();
+    float center_x = static_cast<float>(window_size.x) / 2.0f;
+    float center_y = static_cast<float>(window_size.y) / 2.0f;
+
+    sf::Text game_over_text;
+    game_over_text.setFont(font_);
+    game_over_text.setString("GAME OVER");
+    game_over_text.setCharacterSize(72);
+    game_over_text.setFillColor(sf::Color::Red);
+    game_over_text.setStyle(sf::Text::Bold);
+
+    sf::FloatRect text_bounds = game_over_text.getLocalBounds();
+    game_over_text.setOrigin(text_bounds.left + text_bounds.width / 2.0f, text_bounds.top + text_bounds.height / 2.0f);
+    game_over_text.setPosition(center_x, center_y - 80.0f);
+
+    window_->draw(game_over_text);
+
+    if (!all_players_dead) {
+        sf::Text waiting_text;
+        waiting_text.setFont(font_);
+        waiting_text.setString("Waiting for other players...");
+        waiting_text.setCharacterSize(24);
+        waiting_text.setFillColor(sf::Color::White);
+
+        sf::FloatRect waiting_bounds = waiting_text.getLocalBounds();
+        waiting_text.setOrigin(waiting_bounds.left + waiting_bounds.width / 2.0f,
+                               waiting_bounds.top + waiting_bounds.height / 2.0f);
+        waiting_text.setPosition(center_x, center_y);
+
+        window_->draw(waiting_text);
+    }
+
+    if (all_players_dead) {
+        back_to_menu_button_.setSize(sf::Vector2f(280.0f, 65.0f));
+        back_to_menu_button_.setFillColor(sf::Color(70, 130, 180));
+        back_to_menu_button_.setOutlineThickness(2);
+        back_to_menu_button_.setOutlineColor(sf::Color::White);
+
+        sf::FloatRect button_bounds = back_to_menu_button_.getLocalBounds();
+        back_to_menu_button_.setOrigin(button_bounds.width / 2.0f, button_bounds.height / 2.0f);
+        back_to_menu_button_.setPosition(center_x, center_y + 60.0f);
+
+        back_to_menu_text_.setFont(font_);
+        back_to_menu_text_.setString("RETOUR AU MENU");
+        back_to_menu_text_.setCharacterSize(24);
+        back_to_menu_text_.setFillColor(sf::Color::White);
+
+        sf::FloatRect text_bounds_btn = back_to_menu_text_.getLocalBounds();
+        back_to_menu_text_.setOrigin(text_bounds_btn.left + text_bounds_btn.width / 2.0f,
+                                     text_bounds_btn.top + text_bounds_btn.height / 2.0f);
+        back_to_menu_text_.setPosition(center_x, center_y + 60.0f);
+
+        window_->draw(back_to_menu_button_);
+        window_->draw(back_to_menu_text_);
+    }
+
+    window_->setView(current_view);
+}
 void Renderer::draw_background() {
     if (textures_.count("background")) {
         window_->setView(view_);
@@ -238,6 +301,7 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/r-typesheet2-ezgif.com-crop.gif", "shot");
     load_texture("client/sprites/shot_death.png", "death");
     load_texture("client/sprites/obstacle1.png", "obstacle_1");
+    load_texture("client/sprites/explosion.gif", "explosion");
     load_texture("client/sprites/players_ship.png", "default");
 }
 
@@ -279,6 +343,10 @@ void Renderer::handle_resize(uint32_t width, uint32_t height) {
     view_.setSize(rtype::constants::SCREEN_WIDTH, rtype::constants::SCREEN_HEIGHT);
     view_.setCenter(rtype::constants::SCREEN_WIDTH / 2.0f, rtype::constants::SCREEN_HEIGHT / 2.0f);
     window_->setView(view_);
+}
+
+bool Renderer::is_game_over_back_to_menu_clicked(const sf::Vector2f& mouse_pos) const {
+    return back_to_menu_button_.getGlobalBounds().contains(mouse_pos);
 }
 
 } // namespace rtype::client

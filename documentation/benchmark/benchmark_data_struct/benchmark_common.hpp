@@ -10,15 +10,14 @@ struct Component {
     float x = 0.0f, y = 0.0f;
     float vx = 1.0f, vy = 1.0f;
     int sprite_id = 0;
-    char padding[32]; 
+    char padding[32];
 };
 
-template<typename Func>
-long long measure(const std::string& name, Func f) {
+template <typename Func> long long measure(const std::string& name, Func f) {
     auto start = std::chrono::high_resolution_clock::now();
     f();
     auto end = std::chrono::high_resolution_clock::now();
-    
+
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     return duration;
 }
