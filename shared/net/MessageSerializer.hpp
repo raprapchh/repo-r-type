@@ -209,6 +209,21 @@ class MessageSerializer : public IMessageSerializer {
         data.timestamp = deserializer.read<uint64_t>();
         return data;
     }
+
+    Packet serialize_map_resize(const MapResizeData& data) override {
+        Serializer serializer;
+        serializer.write(data.width);
+        serializer.write(data.height);
+        return Packet(static_cast<uint16_t>(MessageType::MapResize), serializer.get_data());
+    }
+
+    MapResizeData deserialize_map_resize(const Packet& packet) override {
+        Deserializer deserializer(packet.body);
+        MapResizeData data;
+        data.width = deserializer.read<float>();
+        data.height = deserializer.read<float>();
+        return data;
+    }
 };
 
 } // namespace rtype::net

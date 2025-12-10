@@ -33,6 +33,7 @@ class Client {
     void send_move(float vx, float vy);
     void send_shoot(int32_t x, int32_t y);
     void send_game_start_request();
+    void send_map_resize(float width, float height);
 
     void set_game_start_callback(GameStartCallback callback);
     void set_player_join_callback(PlayerJoinCallback callback);

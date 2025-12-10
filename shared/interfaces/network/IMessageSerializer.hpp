@@ -39,6 +39,9 @@ class IMessageSerializer {
     virtual Packet serialize_ping(const PingPongData& data) = 0;
     virtual Packet serialize_pong(const PingPongData& data) = 0;
     virtual PingPongData deserialize_ping_pong(const Packet& packet) = 0;
+
+    virtual Packet serialize_map_resize(const MapResizeData& data) = 0;
+    virtual MapResizeData deserialize_map_resize(const Packet& packet) = 0;
 };
 
 } // namespace rtype::net

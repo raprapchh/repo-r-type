@@ -3,6 +3,7 @@
 #include "../../ecs/include/systems/RenderSystem.hpp"
 #include "../../ecs/include/systems/MovementSystem.hpp"
 #include "../../ecs/include/systems/BoundarySystem.hpp"
+#include "../../ecs/include/components/MapBounds.hpp"
 #include <thread>
 #include <chrono>
 
@@ -13,6 +14,7 @@ GameState::GameState() {
 
 void GameState::on_enter(Renderer& renderer, Client& client) {
     (void)renderer;
+    client_ = &client;
     if (!client.is_connected()) {
         client.connect();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -22,6 +24,7 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
 void GameState::on_exit(Renderer& renderer, Client& client) {
     (void)renderer;
     (void)client;
+    client_ = nullptr;
 }
 
 void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
@@ -32,6 +35,33 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
             renderer.close_window();
         } else if (event.type == sf::Event::Resized) {
             renderer.handle_resize(event.size.width, event.size.height);
+            if (client_) {
+                client_->send_map_resize(static_cast<float>(event.size.width), static_cast<float>(event.size.height));
+
+                GameEngine::Registry& registry = client_->get_registry();
+                std::mutex& registry_mutex = client_->get_registry_mutex();
+                std::lock_guard<std::mutex> lock(registry_mutex);
+
+                try {
+                    auto view = registry.view<rtype::ecs::component::MapBounds>();
+                    bool found = false;
+                    for (auto entity : view) {
+                        auto& bounds =
+                            registry.getComponent<rtype::ecs::component::MapBounds>(static_cast<std::size_t>(entity));
+                        bounds.maxX = static_cast<float>(event.size.width);
+                        bounds.maxY = static_cast<float>(event.size.height);
+                        found = true;
+                        break;
+                    }
+                    if (!found) {
+                        auto entity = registry.createEntity();
+                        registry.addComponent<rtype::ecs::component::MapBounds>(entity, 0.0f, 0.0f,
+                                                                                static_cast<float>(event.size.width),
+                                                                                static_cast<float>(event.size.height));
+                    }
+                } catch (const std::exception&) {
+                }
+            }
         } else if (event.type == sf::Event::KeyPressed) {
             if (event.key.code == sf::Keyboard::Escape) {
             } else if (event.key.code == sf::Keyboard::Space) {
@@ -44,7 +74,7 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
 
 void GameState::update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) {
     (void)state_manager;
-    (void)delta_time;
+    client.update(delta_time);
 
     GameEngine::Registry& registry = client.get_registry();
     std::mutex& registry_mutex = client.get_registry_mutex();
