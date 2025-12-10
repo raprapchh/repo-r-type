@@ -476,9 +476,10 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         registry_.addComponent<rtype::ecs::component::Position>(entity, start_x, start_y);
         registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
         registry_.addComponent<rtype::ecs::component::HitBox>(entity, 66.0f, 110.0f);
-        registry_.addComponent<rtype::ecs::component::Weapon>(entity);
+        auto& weapon = registry_.addComponent<rtype::ecs::component::Weapon>(entity);
+        weapon.spawnOffsetX = 35.0f;
+        weapon.spawnOffsetY = 10.0f;
         registry_.addComponent<rtype::ecs::component::Score>(entity, 0);
-        registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
         registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
 
         ClientInfo info;

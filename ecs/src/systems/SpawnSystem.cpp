@@ -61,8 +61,8 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                 dirX = 0.0f;
                 dirY = 1.0f;
 
-                offX = 80.0f;
-                offY = -100.0f;
+                offX = 24.0f;
+                offY = -80.0f;
             } else if (direction == 1) {
                 std::uniform_real_distribution<float> xDist(0.0f, maxX - 50.0f);
                 spawnX = xDist(gen);
@@ -73,8 +73,8 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                 dirX = 0.0f;
                 dirY = -1.0f;
 
-                offX = 6.0f;
-                offY = 110.0f;
+                offX = 25.0f;
+                offY = 80.0f;
             } else if (direction == 2) {
                 std::uniform_real_distribution<float> yDist(0.0f, maxY - 50.0f);
                 spawnX = -60.0f;
@@ -85,8 +85,8 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                 dirX = 1.0f;
                 dirY = 0.0f;
 
-                offX = -100.0f;
-                offY = 0.0f;
+                offX = -20.0f;
+                offY = 20.0f;
             } else {
                 std::uniform_real_distribution<float> yDist(0.0f, maxY - 50.0f);
                 spawnX = maxX + 100.0f;
@@ -97,8 +97,8 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                 dirX = -1.0f;
                 dirY = 0.0f;
 
-                offX = 110.0f;
-                offY = 0.0f;
+                offX = 140.0f;
+                offY = 20.0f;
             }
 
             registry.addComponent<component::Position>(enemy, spawnX, spawnY);
