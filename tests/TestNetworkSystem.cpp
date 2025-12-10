@@ -3,6 +3,7 @@
 #include "Registry.hpp"
 #include "components/Position.hpp"
 #include "components/NetworkId.hpp"
+#include "components/CollisionLayer.hpp"
 #include "../../shared/net/MessageSerializer.hpp"
 #include <mutex>
 
