@@ -5,7 +5,6 @@
 #include "Packet.hpp"
 #include "Serializer.hpp"
 #include "Deserializer.hpp"
-#include <vector>
 #include <cstdint>
 
 namespace rtype::net {
@@ -171,9 +170,9 @@ class MessageSerializer : public IMessageSerializer {
         serializer.write(data.enemies_remaining);
         serializer.write(data.score);
         serializer.write(data.game_state);
+        serializer.write(data.lives);
         serializer.write(data.padding[0]);
         serializer.write(data.padding[1]);
-        serializer.write(data.padding[2]);
         return Packet(static_cast<uint16_t>(MessageType::GameState), serializer.get_data());
     }
 
@@ -185,9 +184,9 @@ class MessageSerializer : public IMessageSerializer {
         data.enemies_remaining = deserializer.read<uint16_t>();
         data.score = deserializer.read<uint32_t>();
         data.game_state = deserializer.read<uint8_t>();
+        data.lives = deserializer.read<uint8_t>();
         data.padding[0] = deserializer.read<uint8_t>();
         data.padding[1] = deserializer.read<uint8_t>();
-        data.padding[2] = deserializer.read<uint8_t>();
         return data;
     }
 
