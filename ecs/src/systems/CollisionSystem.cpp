@@ -20,6 +20,16 @@ void CollisionSystem::update(GameEngine::Registry& registry, double dt) {
 
     for (size_t i = 0; i < entities.size(); ++i) {
         auto entity1 = entities[i];
+        if (!registry.isValid(entity1)) {
+            continue;
+        }
+
+        if (!registry.hasComponent<component::Position>(entity1) ||
+            !registry.hasComponent<component::HitBox>(entity1) ||
+            !registry.hasComponent<component::Collidable>(entity1)) {
+            continue;
+        }
+
         auto entt_entity1 = static_cast<entt::entity>(entity1);
         auto& pos1 = view.get<component::Position>(entt_entity1);
         auto& hitbox1 = view.get<component::HitBox>(entt_entity1);
@@ -31,6 +41,16 @@ void CollisionSystem::update(GameEngine::Registry& registry, double dt) {
 
         for (size_t j = i + 1; j < entities.size(); ++j) {
             auto entity2 = entities[j];
+            if (!registry.isValid(entity2)) {
+                continue;
+            }
+
+            if (!registry.hasComponent<component::Position>(entity2) ||
+                !registry.hasComponent<component::HitBox>(entity2) ||
+                !registry.hasComponent<component::Collidable>(entity2)) {
+                continue;
+            }
+
             auto entt_entity2 = static_cast<entt::entity>(entity2);
             auto& pos2 = view.get<component::Position>(entt_entity2);
             auto& hitbox2 = view.get<component::HitBox>(entt_entity2);

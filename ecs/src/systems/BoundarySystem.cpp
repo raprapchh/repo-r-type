@@ -63,6 +63,8 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
             return;
         }
 
+        bool is_player = registry.hasComponent<component::Weapon>(static_cast<std::size_t>(entity));
+
         if (pos.x < minX)
             pos.x = minX;
         if (pos.x + width > maxX)
@@ -71,8 +73,13 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
         if (pos.y < minY) {
             pos.y = minY;
         }
-        if (pos.y + height > maxY) {
-            pos.y = maxY - height;
+        if (pos.y + height >= maxY) {
+            if (is_player && registry.hasComponent<component::Health>(static_cast<std::size_t>(entity))) {
+                auto& health = registry.getComponent<component::Health>(static_cast<std::size_t>(entity));
+                health.hp = 0;
+            } else {
+                pos.y = maxY - height;
+            }
         }
     });
 
