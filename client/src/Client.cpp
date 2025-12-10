@@ -133,7 +133,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 drawable.animation_timer = 0.0f;
                 drawable.animation_speed = 0.1f;
                 drawable.current_sprite = 2;
-                drawable.animation_frame = 2;
+                drawable.animation_frame = 0;
 
             } else {
                 std::cout << "Player " << join_data.player_id << " has joined the game." << std::endl;
@@ -158,7 +158,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                     drawable.animation_timer = 0.0f;
                     drawable.animation_speed = 0.1f;
                     drawable.current_sprite = 2;
-                    drawable.animation_frame = 2;
+                    drawable.animation_frame = 0;
                 }
 
                 if (player_join_callback_) {
@@ -259,7 +259,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                         if (new_state != drawable.last_state) {
                             drawable.current_state = new_state;
                             drawable.animation_timer = 0.0f;
-                            drawable.animation_frame = drawable.animation_sequences[new_state][0];
+                            drawable.animation_frame = 0;
 
                             drawable.last_state = new_state;
                         }
