@@ -23,6 +23,7 @@
 #include "../../ecs/include/components/NetworkId.hpp"
 #include "../../ecs/include/components/MapBounds.hpp"
 #include "../../shared/utils/Logger.hpp"
+#include "../../shared/utils/GameConfig.hpp"
 #include <unordered_set>
 
 namespace rtype::server {
@@ -59,7 +60,9 @@ void Server::start() {
     {
         std::lock_guard<std::mutex> registry_lock(registry_mutex_);
         auto boundsEntity = registry_.createEntity();
-        registry_.addComponent<rtype::ecs::component::MapBounds>(boundsEntity, 0.0f, 0.0f, 1920.0f, 1080.0f);
+        registry_.addComponent<rtype::ecs::component::MapBounds>(boundsEntity, rtype::config::MAP_MIN_X,
+                                                                 rtype::config::MAP_MIN_Y, rtype::config::MAP_MAX_X,
+                                                                 rtype::config::MAP_MAX_Y);
     }
     Logger::instance().info("Map dimensions: 1920x1080");
     Logger::instance().info("Enemy spawner initialized (interval: 2.0s)");
@@ -423,6 +426,10 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
         handle_game_start(client_ip, client_port, packet);
     } break;
 
+    case rtype::net::MessageType::MapResize: {
+        handle_map_resize(client_ip, client_port, packet);
+    } break;
+
     default:
         Logger::instance().warn("Unknown message type: " + std::to_string(packet.header.message_type));
     }
@@ -614,6 +621,33 @@ void Server::handle_game_start(const std::string& client_ip, uint16_t client_por
         }
     } catch (const std::exception& e) {
         Logger::instance().error("Error handling game start: " + std::string(e.what()));
+    }
+}
+
+void Server::handle_map_resize(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet) {
+    if (!message_serializer_) {
+        return;
+    }
+
+    try {
+        auto resize_data = message_serializer_->deserialize_map_resize(packet);
+
+        {
+            std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+            auto view = registry_.view<rtype::ecs::component::MapBounds>();
+            for (auto entity : view) {
+                auto& bounds =
+                    registry_.getComponent<rtype::ecs::component::MapBounds>(static_cast<std::size_t>(entity));
+                bounds.maxX = resize_data.width;
+                bounds.maxY = resize_data.height;
+                break;
+            }
+        }
+
+        Logger::instance().info("Map resized to " + std::to_string(resize_data.width) + "x" +
+                                std::to_string(resize_data.height));
+    } catch (const std::exception& e) {
+        Logger::instance().error("Error handling map resize: " + std::string(e.what()));
     }
 }
 
