@@ -2,6 +2,7 @@
 #include "../../include/components/Position.hpp"
 #include "../../include/components/HitBox.hpp"
 #include "../../include/components/MapBounds.hpp"
+#include "../../../shared/GameConstants.hpp"
 #include "../../include/Registry.hpp"
 
 namespace rtype::ecs {
@@ -11,8 +12,8 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
 
     float minX = 0.0f;
     float minY = 0.0f;
-    float maxX = 1920.0f;
-    float maxY = 1080.0f;
+    float maxX = rtype::constants::SCREEN_WIDTH;
+    float maxY = rtype::constants::SCREEN_HEIGHT;
 
     try {
         auto mapBoundsView = registry.view<component::MapBounds>();
