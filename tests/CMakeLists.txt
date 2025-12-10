@@ -11,6 +11,7 @@ FetchContent_MakeAvailable(Catch2)
 add_executable(unit_tests
     TestMovement.cpp
     TestNetworkSystem.cpp
+    TestCollisionBehavior.cpp
     TestWeapon.cpp
     ${CMAKE_SOURCE_DIR}/client/src/NetworkSystem.cpp
 )

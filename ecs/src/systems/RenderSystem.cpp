@@ -103,6 +103,8 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
 
             texture_rect = sf::IntRect(drawable.rect_x + (drawable.current_sprite * drawable.rect_width),
                                        drawable.rect_y, rect_width, rect_height);
+        } else if (drawable.texture_name == "obstacle_1") {
+            texture_rect = sf::IntRect(0, 1, texture_size.x, texture_size.y - 1);
         } else {
             const uint32_t columns = 5;
             uint32_t sprite_width = texture_size.x / columns;
@@ -122,47 +124,6 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
 
     for (auto explosion_entity : explosions_to_destroy) {
         registry.destroyEntity(explosion_entity);
-    }
-
-    auto hitbox_view = registry.view<component::Position, component::HitBox>();
-    for (auto entity : hitbox_view) {
-        GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
-        auto& pos = registry.getComponent<component::Position>(static_cast<size_t>(entity_id));
-        auto& hitbox = registry.getComponent<component::HitBox>(static_cast<size_t>(entity_id));
-
-        float sprite_center_x = pos.x;
-        float sprite_center_y = pos.y;
-
-        if (registry.hasComponent<component::Drawable>(entity_id)) {
-            auto& drawable = registry.getComponent<component::Drawable>(static_cast<size_t>(entity_id));
-            if (textures_.find(drawable.texture_name) != textures_.end()) {
-                const sf::Texture& texture = textures_.at(drawable.texture_name);
-                sf::Vector2u texture_size = texture.getSize();
-
-                float sprite_width = 0.0f;
-                float sprite_height = 0.0f;
-
-                if (drawable.rect_width > 0 && drawable.rect_height > 0) {
-                    sprite_width = drawable.rect_width * drawable.scale_x;
-                    sprite_height = drawable.rect_height * drawable.scale_y;
-                } else {
-                    sprite_width = (texture_size.x / 5.0f) * drawable.scale_x;
-                    sprite_height = (texture_size.y / 5.0f) * drawable.scale_y;
-                }
-
-                sprite_center_x = pos.x + sprite_width / 2.0f;
-                sprite_center_y = pos.y + sprite_height / 2.0f;
-            }
-        }
-
-        sf::RectangleShape hitbox_rect;
-        hitbox_rect.setSize(sf::Vector2f(hitbox.width, hitbox.height));
-        hitbox_rect.setPosition(sprite_center_x - hitbox.width / 2.0f, sprite_center_y - hitbox.height / 2.0f);
-        hitbox_rect.setFillColor(sf::Color::Transparent);
-        hitbox_rect.setOutlineColor(sf::Color::Red);
-        hitbox_rect.setOutlineThickness(1.0f);
-
-        window_.draw(hitbox_rect);
     }
 }
 
