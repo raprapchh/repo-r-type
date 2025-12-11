@@ -436,8 +436,8 @@ void Client::update(double dt) {
 
     {
         std::lock_guard<std::mutex> lock(registry_mutex_);
-        auto interp_view = registry_.view<rtype::ecs::component::NetworkInterpolation,
-                                           rtype::ecs::component::Position, rtype::ecs::component::Velocity>();
+        auto interp_view = registry_.view<rtype::ecs::component::NetworkInterpolation, rtype::ecs::component::Position,
+                                          rtype::ecs::component::Velocity>();
         auto now = std::chrono::steady_clock::now();
         constexpr auto timeout = std::chrono::milliseconds(500);
 
@@ -447,8 +447,9 @@ void Client::update(double dt) {
             auto& pos = registry_.getComponent<rtype::ecs::component::Position>(entity_id);
             auto& vel = registry_.getComponent<rtype::ecs::component::Velocity>(entity_id);
 
-            auto time_since_update = std::chrono::duration_cast<std::chrono::milliseconds>(now - interp.last_update_time);
-            
+            auto time_since_update =
+                std::chrono::duration_cast<std::chrono::milliseconds>(now - interp.last_update_time);
+
             if (time_since_update > timeout) {
                 pos.x = interp.target_x;
                 pos.y = interp.target_y;

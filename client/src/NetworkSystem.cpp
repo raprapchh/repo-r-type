@@ -82,9 +82,8 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             if (is_local) {
                 registry.addComponent<rtype::ecs::component::Controllable>(entity, true);
             } else {
-                registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, data.position_x,
-                                                                                    data.position_y, data.velocity_x,
-                                                                                    data.velocity_y);
+                registry.addComponent<rtype::ecs::component::NetworkInterpolation>(
+                    entity, data.position_x, data.position_y, data.velocity_x, data.velocity_y);
             }
             registry.addComponent<rtype::ecs::component::Tag>(entity, "Player");
             registry.addComponent<rtype::ecs::component::HitBox>(entity, 165.0f, 110.0f);
@@ -105,9 +104,8 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             registry.addComponent<rtype::ecs::component::HitBox>(entity, 150.0f, 150.0f);
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::Enemy);
-            registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, data.position_x,
-                                                                                data.position_y, data.velocity_x,
-                                                                                data.velocity_y);
+            registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, data.position_x, data.position_y,
+                                                                               data.velocity_x, data.velocity_y);
         } else if (data.entity_type == rtype::net::EntityType::PROJECTILE) {
             std::string sprite_name = "shot";
             float width = 87.0f;
@@ -206,7 +204,7 @@ void NetworkSystem::handle_move(GameEngine::Registry& registry, const rtype::net
                     if (!registry.hasComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs)) {
                         auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id_ecs);
                         registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs, pos.x, pos.y,
-                                                                                            vx, vy);
+                                                                                           vx, vy);
                     }
 
                     auto& interp = registry.getComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs);

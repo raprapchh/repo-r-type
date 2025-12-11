@@ -23,4 +23,3 @@ struct NetworkInterpolation {
 };
 
 } // namespace rtype::ecs::component
-
