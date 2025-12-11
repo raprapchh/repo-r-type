@@ -85,7 +85,15 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
         sf::Vector2u texture_size = texture.getSize();
         sf::IntRect texture_rect;
 
-        if (drawable.rect_width > 0 && drawable.rect_height > 0) {
+        if (drawable.texture_name == "player_ships") {
+            const uint32_t columns = 5;
+            const uint32_t rows = 5;
+            uint32_t sprite_width = texture_size.x / columns;
+            uint32_t sprite_height = texture_size.y / rows;
+            uint32_t row = drawable.sprite_index;
+            uint32_t col = drawable.current_sprite % columns;
+            texture_rect = sf::IntRect(col * sprite_width, row * sprite_height, sprite_width, sprite_height);
+        } else if (drawable.rect_width > 0 && drawable.rect_height > 0) {
             int rect_width = drawable.rect_width;
             int rect_height = drawable.rect_height;
 
@@ -106,20 +114,10 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
         } else if (drawable.texture_name == "obstacle_1") {
             texture_rect = sf::IntRect(0, 1, texture_size.x, texture_size.y - 1);
         } else {
-            if (drawable.texture_name == "player_ships") {
-                const uint32_t columns = 5;
-                uint32_t sprite_width = texture_size.x / columns;
-                uint32_t sprite_height = texture_size.y / 5;
-                uint32_t row = drawable.sprite_index;
-                uint32_t col = drawable.current_sprite % columns;
-
-                texture_rect = sf::IntRect(col * sprite_width, row * sprite_height, sprite_width, sprite_height);
-            } else {
-                uint32_t frame_count = (drawable.frame_count > 0) ? drawable.frame_count : 1;
-                uint32_t sprite_width = texture_size.x / frame_count;
-                uint32_t sprite_height = texture_size.y;
-                texture_rect = sf::IntRect(drawable.current_sprite * sprite_width, 0, sprite_width, sprite_height);
-            }
+            uint32_t frame_count = (drawable.frame_count > 0) ? drawable.frame_count : 1;
+            uint32_t sprite_width = texture_size.x / frame_count;
+            uint32_t sprite_height = texture_size.y;
+            texture_rect = sf::IntRect(drawable.current_sprite * sprite_width, 0, sprite_width, sprite_height);
         }
 
         sf::Sprite sprite(texture, texture_rect);
