@@ -13,4 +13,3 @@ struct InvincibilityTimer {
 };
 
 } // namespace rtype::ecs::component
-

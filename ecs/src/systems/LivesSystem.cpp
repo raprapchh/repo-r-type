@@ -23,39 +23,41 @@ void LivesSystem::update(GameEngine::Registry& registry, double dt) {
 
             if (lives.remaining > 0) {
                 health.hp = health.max_hp;
-                
+
                 if (registry.hasComponent<component::Velocity>(static_cast<std::size_t>(entity))) {
                     auto& velocity = registry.getComponent<component::Velocity>(static_cast<std::size_t>(entity));
                     velocity.vx = 0.0f;
                     velocity.vy = 0.0f;
                 }
-                
+
                 if (registry.hasComponent<component::Collidable>(static_cast<std::size_t>(entity))) {
                     auto& collidable = registry.getComponent<component::Collidable>(static_cast<std::size_t>(entity));
                     collidable.is_active = false;
                 }
-                
+
                 if (!registry.hasComponent<component::InvincibilityTimer>(static_cast<std::size_t>(entity))) {
                     registry.addComponent<component::InvincibilityTimer>(static_cast<std::size_t>(entity), 2.0f);
                 } else {
-                    auto& invincibility = registry.getComponent<component::InvincibilityTimer>(static_cast<std::size_t>(entity));
+                    auto& invincibility =
+                        registry.getComponent<component::InvincibilityTimer>(static_cast<std::size_t>(entity));
                     invincibility.timeRemaining = 2.0f;
                 }
-                
+
                 auto& position = registry.getComponent<component::Position>(static_cast<std::size_t>(entity));
-                Logger::instance().info("Player respawned at (" + std::to_string(position.x) + ", " + std::to_string(position.y) + ")");
+                Logger::instance().info("Player respawned at (" + std::to_string(position.x) + ", " +
+                                        std::to_string(position.y) + ")");
             } else {
                 Logger::instance().info("Game Over for player " + std::to_string(static_cast<std::size_t>(entity)));
                 registry.destroyEntity(static_cast<std::size_t>(entity));
             }
         }
     }
-    
+
     auto invincibility_view = registry.view<component::InvincibilityTimer>();
     for (auto entity : invincibility_view) {
         auto& invincibility = invincibility_view.get<component::InvincibilityTimer>(entity);
         invincibility.timeRemaining -= static_cast<float>(dt);
-        
+
         if (invincibility.timeRemaining <= 0.0f) {
             if (registry.hasComponent<component::Collidable>(static_cast<std::size_t>(entity))) {
                 auto& collidable = registry.getComponent<component::Collidable>(static_cast<std::size_t>(entity));
