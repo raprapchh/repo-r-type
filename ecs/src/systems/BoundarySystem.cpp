@@ -5,6 +5,7 @@
 #include "../../include/components/Weapon.hpp"
 #include "../../include/components/Projectile.hpp"
 #include "../../include/components/MapBounds.hpp"
+#include "../../include/components/Tag.hpp"
 #include "../../include/Registry.hpp"
 #include <vector>
 
@@ -47,39 +48,29 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
             height = hitbox.height;
         }
 
-        bool is_enemy = registry.hasComponent<component::Health>(static_cast<std::size_t>(entity)) &&
-                        !registry.hasComponent<component::Weapon>(static_cast<std::size_t>(entity));
-
-        if (is_enemy && pos.x + width < rtype::config::ENEMY_DESPAWN_OFFSET) {
-            entities_to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
-            return;
-        }
-
-        if (is_enemy) {
-            return;
-        }
-
-        if (registry.hasComponent<component::Projectile>(static_cast<std::size_t>(entity))) {
-            return;
-        }
-
-        bool is_player = registry.hasComponent<component::Weapon>(static_cast<std::size_t>(entity));
-
-        if (pos.x < minX)
-            pos.x = minX;
-        if (pos.x + width > maxX)
-            pos.x = maxX - width;
-
-        if (pos.y < minY) {
-            pos.y = minY;
-        }
-        if (pos.y + height >= maxY) {
-            if (is_player && registry.hasComponent<component::Health>(static_cast<std::size_t>(entity))) {
-                auto& health = registry.getComponent<component::Health>(static_cast<std::size_t>(entity));
-                health.hp = 0;
-            } else {
-                pos.y = maxY - height;
+        bool is_player = false;
+        if (registry.hasComponent<component::Tag>(static_cast<std::size_t>(entity))) {
+            const auto& tag = registry.getComponent<component::Tag>(static_cast<std::size_t>(entity));
+            if (tag.name == "Player") {
+                is_player = true;
             }
+        }
+
+        if (is_player) {
+            if (pos.x < minX)
+                pos.x = minX;
+            if (pos.x + width > maxX)
+                pos.x = maxX - width;
+            if (pos.y < minY)
+                pos.y = minY;
+            if (pos.y + height > maxY)
+                pos.y = maxY - height;
+            return;
+        }
+
+        float buffer = 200.0f;
+        if (pos.x < minX - buffer || pos.x > maxX + buffer || pos.y < minY - buffer || pos.y > maxY + buffer) {
+            entities_to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
         }
     });
 

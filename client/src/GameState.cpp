@@ -24,6 +24,7 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
         client.connect();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
+    client.send_game_start_request();
 }
 
 void GameState::on_exit(Renderer& renderer, Client& client) {
@@ -94,6 +95,11 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
 
     {
         std::lock_guard<std::mutex> lock(registry_mutex);
+
+        if (!client.is_connected()) {
+            return;
+        }
+
         uint32_t player_id = client.get_player_id();
         bool player_exists = false;
         bool player_dead = false;
