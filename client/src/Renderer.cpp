@@ -146,6 +146,21 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
 
     if (entity.type == rtype::net::EntityType::PROJECTILE) {
         sprite.setTextureRect(sf::IntRect(entity.animation_frame * 29, 0, 29, 33));
+    } else if (entity.type == rtype::net::EntityType::PLAYER) {
+        if (textures_.count("player_ships")) {
+            sf::Vector2u texture_size = textures_["player_ships"].getSize();
+            uint32_t columns = 5;
+            uint32_t rows = 5;
+            uint32_t sprite_width = texture_size.x / columns;
+            uint32_t sprite_height = texture_size.y / rows;
+
+            uint32_t sprite_index = (entity.id - 1) % 4;
+            uint32_t row = sprite_index;
+            uint32_t col = entity.animation_frame % columns;
+
+            sprite.setTextureRect(sf::IntRect(col * sprite_width, row * sprite_height, sprite_width, sprite_height));
+            sprite.setScale(1.7f, 1.7f);
+        }
     }
 
     sprite.setPosition(entity.x, entity.y);
