@@ -19,6 +19,7 @@ struct Entity {
     int animation_frame = 2;
     float animation_timer = 0.0f;
     int player_state = 0;
+    uint16_t sub_type = 0;
 };
 
 class Renderer {
