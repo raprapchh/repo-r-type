@@ -310,10 +310,6 @@ void Server::game_loop() {
                         spawn_data.entity_id = net_id;
                         spawn_data.entity_type = rtype::net::EntityType::PROJECTILE;
                         spawn_data.sub_type = sub_type;
-                        if (registry_.hasComponent<rtype::ecs::component::Collidable>(id)) {
-                            spawn_data.sub_type = static_cast<uint16_t>(
-                                registry_.getComponent<rtype::ecs::component::Collidable>(id).layer);
-                        }
                         spawn_data.position_x = pos.x;
                         spawn_data.position_y = pos.y;
                         spawn_data.velocity_x = vel.vx;
