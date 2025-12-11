@@ -76,6 +76,16 @@ void Server::start() {
                                                                   rtype::ecs::component::CollisionLayer::Obstacle);
         registry_.addComponent<rtype::ecs::component::NetworkId>(obstacle, next_player_id_++);
         registry_.addComponent<rtype::ecs::component::Tag>(obstacle, "Obstacle");
+
+        auto floor_obstacle = registry_.createEntity();
+        registry_.addComponent<rtype::ecs::component::Position>(floor_obstacle, 1000.0f, 1030.0f);
+        registry_.addComponent<rtype::ecs::component::HitBox>(
+            floor_obstacle, rtype::constants::FLOOR_OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE,
+            rtype::constants::FLOOR_OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
+        registry_.addComponent<rtype::ecs::component::Collidable>(floor_obstacle,
+                                                                  rtype::ecs::component::CollisionLayer::Obstacle);
+        registry_.addComponent<rtype::ecs::component::NetworkId>(floor_obstacle, next_player_id_++);
+        registry_.addComponent<rtype::ecs::component::Tag>(floor_obstacle, "Obstacle_Floor");
     }
     Logger::instance().info("Enemy spawner initialized (interval: 2.0s)");
 }
@@ -584,14 +594,14 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
                 .view<rtype::ecs::component::NetworkId, rtype::ecs::component::Position, rtype::ecs::component::Tag>();
         for (auto entity : obstacle_view) {
             auto& tag = registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
-            if (tag.name == "Obstacle") {
+            if (tag.name == "Obstacle" || tag.name == "Obstacle_Floor") {
                 auto& net_id = registry_.getComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity));
                 auto& pos = registry_.getComponent<rtype::ecs::component::Position>(static_cast<size_t>(entity));
 
                 rtype::net::EntitySpawnData spawn_data;
                 spawn_data.entity_id = net_id.id;
                 spawn_data.entity_type = rtype::net::EntityType::OBSTACLE;
-                spawn_data.sub_type = 0;
+                spawn_data.sub_type = (tag.name == "Obstacle_Floor") ? 1 : 0;
                 spawn_data.position_x = pos.x;
                 spawn_data.position_y = pos.y;
                 spawn_data.velocity_x = 0;
