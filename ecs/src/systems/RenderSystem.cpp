@@ -106,9 +106,7 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
         } else if (drawable.texture_name == "obstacle_1") {
             texture_rect = sf::IntRect(0, 1, texture_size.x, texture_size.y - 1);
         } else {
-            if (drawable.texture_name.find("monster_0-") == 0) {
-                texture_rect = sf::IntRect(0, 0, texture_size.x, texture_size.y);
-            } else {
+            if (drawable.texture_name == "player_ships") {
                 const uint32_t columns = 5;
                 uint32_t sprite_width = texture_size.x / columns;
                 uint32_t sprite_height = texture_size.y / 5;
@@ -116,6 +114,11 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
                 uint32_t col = drawable.current_sprite % columns;
 
                 texture_rect = sf::IntRect(col * sprite_width, row * sprite_height, sprite_width, sprite_height);
+            } else {
+                uint32_t frame_count = (drawable.frame_count > 0) ? drawable.frame_count : 1;
+                uint32_t sprite_width = texture_size.x / frame_count;
+                uint32_t sprite_height = texture_size.y;
+                texture_rect = sf::IntRect(drawable.current_sprite * sprite_width, 0, sprite_width, sprite_height);
             }
         }
 

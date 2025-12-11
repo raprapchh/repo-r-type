@@ -101,16 +101,42 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                                                                      rtype::ecs::component::CollisionLayer::Enemy);
         } else if (data.entity_type == rtype::net::EntityType::PROJECTILE) {
             std::string sprite_name = "shot";
+            float width = 87.0f;
+            float height = 99.0f;
+
             if (data.sub_type == 1) {
                 sprite_name = "monster_0-ball";
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
                                                                        static_cast<uint32_t>(0), 3.0f, 3.0f);
+            } else if (data.sub_type >= 10 && data.sub_type <= 13) {
+                int frameW = 0;
+                int frameH = 0;
+                if (data.sub_type == 10) {
+                    sprite_name = "shot_death-charge1";
+                    width = 90.0f;
+                    height = 90.0f;
+                } else if (data.sub_type == 11) {
+                    sprite_name = "shot_death-charge2";
+                    width = 120.0f;
+                    height = 120.0f;
+                } else if (data.sub_type == 12) {
+                    sprite_name = "shot_death-charge3";
+                    width = 150.0f;
+                    height = 150.0f;
+                } else if (data.sub_type == 13) {
+                    sprite_name = "shot_death-charge4";
+                    width = 180.0f;
+                    height = 180.0f;
+                }
+
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, frameW, frameH, 3.0f,
+                                                                       3.0f, 2, 0.05f, false);
             } else {
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 29, 33, 3.0f, 3.0f, 4,
                                                                        0.05f, false);
             }
             registry.addComponent<rtype::ecs::component::Projectile>(entity, 10.0f, 5.0f);
-            registry.addComponent<rtype::ecs::component::HitBox>(entity, 87.0f, 99.0f);
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, width, height);
 
         } else if (data.entity_type == rtype::net::EntityType::OBSTACLE) {
             registry.addComponent<rtype::ecs::component::Drawable>(
@@ -215,14 +241,14 @@ void NetworkSystem::handle_destroy(GameEngine::Registry& registry, const rtype::
                         registry.addComponent<rtype::ecs::component::Position>(explosion_entity, explosion_x,
                                                                                explosion_y);
                         registry.addComponent<rtype::ecs::component::Explosion>(explosion_entity);
-                        registry.addComponent<rtype::ecs::component::Drawable>(explosion_entity, "explosion", 0, 0, 34,
-                                                                               44, 4.0f, 4.0f, 12, 0.1f, false);
+                        registry.addComponent<rtype::ecs::component::Drawable>(explosion_entity, "explosion", 5, 0, 37,
+                                                                               44, 4.0f, 4.0f, 6, 0.1f, false);
                         auto& explosion_drawable =
                             registry.getComponent<rtype::ecs::component::Drawable>(explosion_entity);
-                        constexpr int EXPLOSION_FRAME_WIDTH = 33;
+                        constexpr int EXPLOSION_FRAME_WIDTH = 37;
                         constexpr int EXPLOSION_FRAME_HEIGHT = 44;
-                        constexpr int EXPLOSION_FRAMES_PER_ROW = 12;
-                        explosion_drawable.rect_x = 0;
+                        constexpr int EXPLOSION_FRAMES_PER_ROW = 6;
+                        explosion_drawable.rect_x = 5;
                         explosion_drawable.rect_y = 0;
                         explosion_drawable.rect_width = EXPLOSION_FRAME_WIDTH;
                         explosion_drawable.rect_height = EXPLOSION_FRAME_HEIGHT;
@@ -230,8 +256,10 @@ void NetworkSystem::handle_destroy(GameEngine::Registry& registry, const rtype::
                         explosion_drawable.animation_speed = 0.1f;
                         explosion_drawable.loop = false;
                         explosion_drawable.current_sprite = 0;
+                        explosion_drawable.animation_sequences["explosion"] = {5, 4, 3, 2, 1, 0};
+                        explosion_drawable.current_state = "explosion";
+                        explosion_drawable.animation_frame = 5;
                     }
-
                     registry.destroyEntity(entity_id_ecs);
                     return;
                 }

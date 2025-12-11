@@ -1,6 +1,7 @@
 #pragma once
 
 #include "States.hpp"
+#include <chrono>
 
 namespace rtype::client {
 
@@ -23,6 +24,8 @@ class GameState : public IState {
     Client* client_ = nullptr;
     bool game_over_ = false;
     bool all_players_dead_ = false;
+    bool is_charging_ = false;
+    std::chrono::steady_clock::time_point charge_start_time_;
 };
 
 } // namespace rtype::client
