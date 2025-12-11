@@ -217,6 +217,9 @@ void Server::game_loop() {
                 rtype::ecs::CollisionSystem collision_system;
                 collision_system.update(registry_, dt);
 
+                rtype::ecs::LivesSystem lives_system;
+                lives_system.update(registry_, dt);
+
                 rtype::ecs::WeaponSystem weapon_system;
                 weapon_system.update(registry_, dt);
 
@@ -271,9 +274,6 @@ void Server::game_loop() {
 
                 rtype::ecs::ScoreSystem score_system;
                 score_system.update(registry_, dt);
-
-                rtype::ecs::LivesSystem lives_system;
-                lives_system.update(registry_, dt);
 
                 auto projectile_view =
                     registry_.view<rtype::ecs::component::Projectile, rtype::ecs::component::Position,
@@ -691,6 +691,9 @@ void Server::handle_player_shoot(const std::string& client_ip, uint16_t client_p
 
         {
             std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+            if (!registry_.isValid(entity_id)) {
+                return;
+            }
             if (registry_.hasComponent<rtype::ecs::component::Weapon>(entity_id)) {
                 auto& weapon = registry_.getComponent<rtype::ecs::component::Weapon>(entity_id);
                 weapon.isShooting = true;

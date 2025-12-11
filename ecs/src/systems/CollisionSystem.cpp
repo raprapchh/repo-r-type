@@ -120,6 +120,9 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
 
         if (registry.hasComponent<component::Health>(player_entity)) {
             auto& health = registry.getComponent<component::Health>(player_entity);
+            if (health.hp <= 0) {
+                return;
+            }
             health.hp -= 10;
 
             if (health.hp <= 0) {
@@ -167,6 +170,9 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
 
         if (registry.hasComponent<component::Health>(player_entity)) {
             auto& health = registry.getComponent<component::Health>(player_entity);
+            if (health.hp <= 0) {
+                return;
+            }
             health.hp -= 20;
 
             if (health.hp <= 0) {
