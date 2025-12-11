@@ -19,11 +19,11 @@ void MenuState::setup_ui() {
     }
     font_loaded_ = true;
 
-    title_text_.setFont(font_);
-    title_text_.setString("R-TYPE");
-    title_text_.setCharacterSize(80);
-    title_text_.setFillColor(sf::Color::White);
-    title_text_.setStyle(sf::Text::Bold);
+    if (!logo_texture_.loadFromFile("client/sprites/r-type_logo.png")) {
+        std::cerr << "Warning: Could not load logo from client/sprites/r-type_logo.png" << std::endl;
+    }
+    logo_sprite_.setTexture(logo_texture_);
+    logo_sprite_.setScale(1.5f, 1.5f);
 
     start_button_.setSize(sf::Vector2f(300, 60));
     start_button_.setFillColor(sf::Color(100, 150, 200));
@@ -112,7 +112,7 @@ void MenuState::render(Renderer& renderer, Client& /* client */) {
     renderer.clear();
 
     if (font_loaded_) {
-        renderer.draw_text(title_text_);
+        renderer.get_window()->draw(logo_sprite_);
         renderer.draw_rectangle(start_button_);
         renderer.draw_text(start_button_text_);
         renderer.draw_rectangle(quit_button_);
@@ -127,7 +127,7 @@ void MenuState::update_positions(const sf::Vector2u& window_size) {
     float button_start_y = window_size.y * 0.5f;
     float button_spacing = window_size.y * 0.12f;
 
-    title_text_.setPosition((window_size.x - title_text_.getLocalBounds().width) / 2.0f, title_y);
+    logo_sprite_.setPosition((window_size.x - logo_sprite_.getGlobalBounds().width) / 2.0f, title_y);
 
     float button_width = std::min(300.0f, window_size.x * 0.25f);
     float button_height = std::min(60.0f, window_size.y * 0.08f);

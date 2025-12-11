@@ -22,6 +22,7 @@
 #include "../../ecs/include/components/Projectile.hpp"
 #include "../../ecs/include/components/NetworkId.hpp"
 #include "../../ecs/include/components/MapBounds.hpp"
+#include "../../ecs/include/components/CollisionLayer.hpp"
 #include "../../shared/utils/Logger.hpp"
 #include "../../shared/utils/GameConfig.hpp"
 #include <unordered_set>
@@ -136,6 +137,11 @@ void Server::game_loop() {
                                                        rtype::ecs::component::Health>();
                 enemy_spawn_view.each([&](const auto entity, rtype::ecs::component::Position& pos,
                                           rtype::ecs::component::Velocity& vel, rtype::ecs::component::Health&) {
+                    // Skip players (entities with Weapon component)
+                    if (registry_.hasComponent<rtype::ecs::component::Weapon>(static_cast<size_t>(entity))) {
+                        return;
+                    }
+
                     // Check if enemy already has NetworkId (already broadcasted)
                     if (!registry_.hasComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity))) {
                         // Add NetworkId to mark as broadcasted
@@ -301,6 +307,9 @@ void Server::game_loop() {
                         if (!client.is_connected)
                             continue;
 
+                        if (!registry_.isValid(client.entity_id))
+                            continue;
+
                         if (registry_.hasComponent<rtype::ecs::component::Position>(client.entity_id) &&
                             registry_.hasComponent<rtype::ecs::component::Velocity>(client.entity_id)) {
 
@@ -365,18 +374,24 @@ void Server::game_loop() {
                     std::lock_guard<std::mutex> clients_lock(clients_mutex_);
                     for (const auto& [key, client] : clients_) {
                         if (client.is_connected && udp_server_) {
-                            if (registry_.hasComponent<rtype::ecs::component::Score>(client.entity_id)) {
-                                game_state_data.score =
-                                    registry_.getComponent<rtype::ecs::component::Score>(client.entity_id).value;
-                            } else {
+                            if (!registry_.isValid(client.entity_id)) {
                                 game_state_data.score = 0;
-                            }
-
-                            if (registry_.hasComponent<rtype::ecs::component::Lives>(client.entity_id)) {
-                                game_state_data.lives =
-                                    registry_.getComponent<rtype::ecs::component::Lives>(client.entity_id).remaining;
-                            } else {
                                 game_state_data.lives = 0;
+                            } else {
+                                if (registry_.hasComponent<rtype::ecs::component::Score>(client.entity_id)) {
+                                    game_state_data.score =
+                                        registry_.getComponent<rtype::ecs::component::Score>(client.entity_id).value;
+                                } else {
+                                    game_state_data.score = 0;
+                                }
+
+                                if (registry_.hasComponent<rtype::ecs::component::Lives>(client.entity_id)) {
+                                    game_state_data.lives =
+                                        registry_.getComponent<rtype::ecs::component::Lives>(client.entity_id)
+                                            .remaining;
+                                } else {
+                                    game_state_data.lives = 0;
+                                }
                             }
 
                             game_state_data.game_state = 0;
@@ -663,6 +678,8 @@ void Server::handle_game_start(const std::string& client_ip, uint16_t client_por
 }
 
 void Server::handle_map_resize(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet) {
+    (void)client_ip;
+    (void)client_port;
     if (!message_serializer_) {
         return;
     }
