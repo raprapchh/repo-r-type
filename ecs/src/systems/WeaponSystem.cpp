@@ -5,6 +5,7 @@
 #include "../../include/components/Projectile.hpp"
 #include "../../include/components/HitBox.hpp"
 #include "../../include/components/Tag.hpp"
+#include "../../include/components/CollisionLayer.hpp"
 #include <iostream>
 
 namespace rtype::ecs {
@@ -31,6 +32,17 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
 
             registry.addComponent<component::HitBox>(projectile, 58.0f, 66.0f);
             registry.addComponent<component::Tag>(projectile, weapon.projectileTag);
+
+            component::CollisionLayer layer = component::CollisionLayer::None;
+            if (registry.hasComponent<component::Tag>(static_cast<std::size_t>(entity))) {
+                const auto& tag = registry.getComponent<component::Tag>(static_cast<std::size_t>(entity));
+                if (tag.name == "Player") {
+                    layer = component::CollisionLayer::PlayerProjectile;
+                } else if (tag.name.find("Monster") != std::string::npos) {
+                    layer = component::CollisionLayer::EnemyProjectile;
+                }
+            }
+            registry.addComponent<component::Collidable>(projectile, layer);
 
             weapon.timeSinceLastFire = 0.0f;
             if (!weapon.autoFire) {

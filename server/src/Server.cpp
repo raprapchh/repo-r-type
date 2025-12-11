@@ -137,9 +137,12 @@ void Server::game_loop() {
                                                        rtype::ecs::component::Health>();
                 enemy_spawn_view.each([&](const auto entity, rtype::ecs::component::Position& pos,
                                           rtype::ecs::component::Velocity& vel, rtype::ecs::component::Health&) {
-                    // Skip players (entities with Weapon component)
-                    if (registry_.hasComponent<rtype::ecs::component::Weapon>(static_cast<size_t>(entity))) {
-                        return;
+                    if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {
+                        const auto& tag =
+                            registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
+                        if (tag.name == "Player") {
+                            return;
+                        }
                     }
 
                     // Check if enemy already has NetworkId (already broadcasted)
@@ -193,8 +196,16 @@ void Server::game_loop() {
                         registry_.view<rtype::ecs::component::Health, rtype::ecs::component::NetworkId>();
                     enemy_track_view.each([&](const auto entity, rtype::ecs::component::Health&,
                                               rtype::ecs::component::NetworkId& net_id) {
-                        // Only track enemies (no Weapon component)
-                        if (!registry_.hasComponent<rtype::ecs::component::Weapon>(static_cast<size_t>(entity))) {
+                        bool is_player = false;
+                        if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {
+                            const auto& tag =
+                                registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
+                            if (tag.name == "Player") {
+                                is_player = true;
+                            }
+                        }
+
+                        if (!is_player) {
                             enemies_before.insert(net_id.id);
                         }
                     });
@@ -219,8 +230,16 @@ void Server::game_loop() {
                             registry_.view<rtype::ecs::component::Health, rtype::ecs::component::NetworkId>();
                         enemy_track_view.each([&](const auto entity, rtype::ecs::component::Health&,
                                                   rtype::ecs::component::NetworkId& net_id) {
-                            // Only track enemies (no Weapon component)
-                            if (!registry_.hasComponent<rtype::ecs::component::Weapon>(static_cast<size_t>(entity))) {
+                            bool is_player = false;
+                            if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {
+                                const auto& tag =
+                                    registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
+                                if (tag.name == "Player") {
+                                    is_player = true;
+                                }
+                            }
+
+                            if (!is_player) {
                                 enemies_after.insert(net_id.id);
                             }
                         });
@@ -338,9 +357,12 @@ void Server::game_loop() {
                                                  rtype::ecs::component::Health>();
                 enemy_view.each([&](const auto entity, rtype::ecs::component::Position& pos,
                                     rtype::ecs::component::Velocity& vel, rtype::ecs::component::Health&) {
-                    // Skip players (entities with Weapon component)
-                    if (registry_.hasComponent<rtype::ecs::component::Weapon>(static_cast<size_t>(entity))) {
-                        return;
+                    if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {
+                        const auto& tag =
+                            registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
+                        if (tag.name == "Player") {
+                            return;
+                        }
                     }
 
                     rtype::net::EntityMoveData enemy_move_data;
@@ -496,6 +518,10 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         weapon.spawnOffsetY = 10.0f;
         registry_.addComponent<rtype::ecs::component::Score>(entity, 0);
         registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
+        registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
+        registry_.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
+        registry_.addComponent<rtype::ecs::component::Collidable>(entity,
+                                                                  rtype::ecs::component::CollisionLayer::Player);
 
         ClientInfo info;
         info.ip = client_ip;
@@ -542,6 +568,13 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
             auto& net_id = registry_.getComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity));
             auto& pos = registry_.getComponent<rtype::ecs::component::Position>(static_cast<size_t>(entity));
             auto& vel = registry_.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
+
+            if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {
+                const auto& tag = registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
+                if (tag.name == "Player") {
+                    continue;
+                }
+            }
 
             uint16_t sub_type = 0;
             if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {

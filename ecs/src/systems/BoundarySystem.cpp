@@ -5,6 +5,7 @@
 #include "../../include/components/Weapon.hpp"
 #include "../../include/components/Projectile.hpp"
 #include "../../include/components/MapBounds.hpp"
+#include "../../include/components/Tag.hpp"
 #include "../../include/Registry.hpp"
 #include <vector>
 
@@ -47,9 +48,13 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
             height = hitbox.height;
         }
 
-        bool is_player = registry.hasComponent<component::Weapon>(static_cast<std::size_t>(entity)) &&
-                         registry.hasComponent<component::Health>(static_cast<std::size_t>(entity)) &&
-                         !registry.hasComponent<component::Projectile>(static_cast<std::size_t>(entity));
+        bool is_player = false;
+        if (registry.hasComponent<component::Tag>(static_cast<std::size_t>(entity))) {
+            const auto& tag = registry.getComponent<component::Tag>(static_cast<std::size_t>(entity));
+            if (tag.name == "Player") {
+                is_player = true;
+            }
+        }
 
         if (is_player) {
             if (pos.x < minX)
