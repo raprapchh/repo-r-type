@@ -189,13 +189,11 @@ void Server::game_loop() {
                 rtype::ecs::MovementSystem movement_system;
                 movement_system.update(registry_, dt);
 
-                // Track enemy entities before BoundarySystem (to detect destroyed ones)
-                std::unordered_set<uint32_t> enemies_before;
+                // Track networked entities before systems (to detect destroyed ones)
+                std::unordered_set<uint32_t> entities_before;
                 {
-                    auto enemy_track_view =
-                        registry_.view<rtype::ecs::component::Health, rtype::ecs::component::NetworkId>();
-                    enemy_track_view.each([&](const auto entity, rtype::ecs::component::Health&,
-                                              rtype::ecs::component::NetworkId& net_id) {
+                    auto network_view = registry_.view<rtype::ecs::component::NetworkId>();
+                    network_view.each([&](const auto entity, rtype::ecs::component::NetworkId& net_id) {
                         bool is_player = false;
                         if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {
                             const auto& tag =
@@ -206,7 +204,7 @@ void Server::game_loop() {
                         }
 
                         if (!is_player) {
-                            enemies_before.insert(net_id.id);
+                            entities_before.insert(net_id.id);
                         }
                     });
                 }
@@ -227,12 +225,10 @@ void Server::game_loop() {
                 if (protocol_adapter_ && message_serializer_) {
                     std::lock_guard<std::mutex> lock(clients_mutex_);
 
-                    std::unordered_set<uint32_t> enemies_after;
+                    std::unordered_set<uint32_t> entities_after;
                     {
-                        auto enemy_track_view =
-                            registry_.view<rtype::ecs::component::Health, rtype::ecs::component::NetworkId>();
-                        enemy_track_view.each([&](const auto entity, rtype::ecs::component::Health&,
-                                                  rtype::ecs::component::NetworkId& net_id) {
+                        auto network_view = registry_.view<rtype::ecs::component::NetworkId>();
+                        network_view.each([&](const auto entity, rtype::ecs::component::NetworkId& net_id) {
                             bool is_player = false;
                             if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {
                                 const auto& tag =
@@ -243,17 +239,15 @@ void Server::game_loop() {
                             }
 
                             if (!is_player) {
-                                enemies_after.insert(net_id.id);
+                                entities_after.insert(net_id.id);
                             }
                         });
                     }
 
-                    // Find destroyed enemies (in before but not in after)
-                    for (uint32_t enemy_id : enemies_before) {
-                        if (enemies_after.find(enemy_id) == enemies_after.end()) {
-                            // Enemy was destroyed - broadcast to clients
+                    for (uint32_t entity_id : entities_before) {
+                        if (entities_after.find(entity_id) == entities_after.end()) {
                             rtype::net::EntityDestroyData destroy_data;
-                            destroy_data.entity_id = enemy_id;
+                            destroy_data.entity_id = entity_id;
                             destroy_data.reason = rtype::net::DestroyReason::TIMEOUT;
 
                             rtype::net::Packet destroy_packet =
@@ -266,8 +260,8 @@ void Server::game_loop() {
                                 }
                             }
 
-                            Logger::instance().info("Enemy destroyed and broadcasted: entity_id=" +
-                                                    std::to_string(enemy_id));
+                            Logger::instance().info("Entity destroyed and broadcasted: entity_id=" +
+                                                    std::to_string(entity_id));
                         }
                     }
                 }
@@ -292,6 +286,14 @@ void Server::game_loop() {
                             auto& tag = registry_.getComponent<rtype::ecs::component::Tag>(id);
                             if (tag.name == "Monster_0_Ball")
                                 sub_type = 1;
+                            else if (tag.name == "shot_death-charge1")
+                                sub_type = 10;
+                            else if (tag.name == "shot_death-charge2")
+                                sub_type = 11;
+                            else if (tag.name == "shot_death-charge3")
+                                sub_type = 12;
+                            else if (tag.name == "shot_death-charge4")
+                                sub_type = 13;
                         }
 
                         rtype::net::EntitySpawnData spawn_data;
@@ -516,6 +518,8 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         auto& weapon = registry_.addComponent<rtype::ecs::component::Weapon>(entity);
         weapon.spawnOffsetX = 35.0f;
         weapon.spawnOffsetY = 10.0f;
+        weapon.fireRate = 0.1f;
+        weapon.projectileSpeed = 1500.0f;
         registry_.addComponent<rtype::ecs::component::Score>(entity, 0);
         registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
         registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
@@ -608,6 +612,14 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
                 auto& tag = registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
                 if (tag.name == "Monster_0_Ball")
                     sub_type = 1;
+                else if (tag.name == "shot_death-charge1")
+                    sub_type = 10;
+                else if (tag.name == "shot_death-charge2")
+                    sub_type = 11;
+                else if (tag.name == "shot_death-charge3")
+                    sub_type = 12;
+                else if (tag.name == "shot_death-charge4")
+                    sub_type = 13;
             }
 
             rtype::net::EntitySpawnData spawn_data;
@@ -674,10 +686,8 @@ void Server::handle_player_shoot(const std::string& client_ip, uint16_t client_p
         return;
     }
 
-    Logger::instance().info("Player " + std::to_string(player_id) + " shot");
-
     try {
-        message_serializer_->deserialize_player_shoot(packet);
+        auto shoot_data = message_serializer_->deserialize_player_shoot(packet);
 
         GameEngine::entity_t entity_id;
         {
@@ -689,6 +699,10 @@ void Server::handle_player_shoot(const std::string& client_ip, uint16_t client_p
             entity_id = it->second.entity_id;
         }
 
+        Logger::instance().info("Player " + std::to_string(player_id) + " shot (Entity " +
+                                std::to_string(static_cast<uint32_t>(entity_id)) +
+                                ") Charge: " + std::to_string(shoot_data.weapon_type));
+
         {
             std::lock_guard<std::mutex> registry_lock(registry_mutex_);
             if (!registry_.isValid(entity_id)) {
@@ -697,6 +711,7 @@ void Server::handle_player_shoot(const std::string& client_ip, uint16_t client_p
             if (registry_.hasComponent<rtype::ecs::component::Weapon>(entity_id)) {
                 auto& weapon = registry_.getComponent<rtype::ecs::component::Weapon>(entity_id);
                 weapon.isShooting = true;
+                weapon.chargeLevel = shoot_data.weapon_type;
             }
         }
 

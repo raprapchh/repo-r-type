@@ -70,7 +70,35 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
         } else if (event.type == sf::Event::KeyPressed) {
             if (event.key.code == sf::Keyboard::Escape) {
             } else if (event.key.code == sf::Keyboard::Space) {
-                shoot_requested_ = true;
+                if (!is_charging_) {
+                    is_charging_ = true;
+                    charge_start_time_ = std::chrono::steady_clock::now();
+                }
+            }
+        } else if (event.type == sf::Event::KeyReleased) {
+            if (event.key.code == sf::Keyboard::Space) {
+                if (is_charging_) {
+                    auto now = std::chrono::steady_clock::now();
+                    auto duration =
+                        std::chrono::duration_cast<std::chrono::milliseconds>(now - charge_start_time_).count();
+                    int chargeLevel = 0;
+
+                    if (duration < 500) {
+                        chargeLevel = 0;
+                    } else if (duration < 1000) {
+                        chargeLevel = 1;
+                    } else if (duration < 1500) {
+                        chargeLevel = 2;
+                    } else {
+                        chargeLevel = 3;
+                    }
+
+                    is_charging_ = false;
+                    renderer.set_charge_percentage(0.0f);
+                    if (client_) {
+                        client_->send_shoot(0, 0, chargeLevel);
+                    }
+                }
             }
         } else if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
             if (game_over_ && all_players_dead_) {
@@ -83,6 +111,15 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
             }
         }
     }
+    if (is_charging_) {
+        auto now = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - charge_start_time_).count();
+        float percentage = static_cast<float>(duration) / 1500.0f;
+        if (percentage > 1.0f)
+            percentage = 1.0f;
+        renderer.set_charge_percentage(percentage);
+    }
+
     renderer.handle_input();
 }
 
@@ -241,6 +278,20 @@ void GameState::render(Renderer& renderer, Client& client) {
         std::lock_guard<std::mutex> lock(registry_mutex);
         rtype::ecs::RenderSystem render_system(*renderer.get_window(), renderer.get_textures());
         render_system.update(registry, 0.016f);
+
+        if (is_charging_) {
+            auto view = registry.view<rtype::ecs::component::NetworkId, rtype::ecs::component::Position>();
+            for (auto entity : view) {
+                auto& net_id =
+                    registry.getComponent<rtype::ecs::component::NetworkId>(static_cast<GameEngine::entity_t>(entity));
+                if (net_id.id == client.get_player_id()) {
+                    auto& pos = registry.getComponent<rtype::ecs::component::Position>(
+                        static_cast<GameEngine::entity_t>(entity));
+                    renderer.draw_charge_effect(sf::Vector2f(pos.x, pos.y), 0.016f);
+                    break;
+                }
+            }
+        }
     }
 
     renderer.draw_ui();
