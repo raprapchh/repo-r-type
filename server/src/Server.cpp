@@ -68,7 +68,7 @@ void Server::start() {
         Logger::instance().info("Map dimensions: 1920x1080");
 
         auto obstacle = registry_.createEntity();
-        registry_.addComponent<rtype::ecs::component::Position>(obstacle, 600.0f, 850.0f);
+        registry_.addComponent<rtype::ecs::component::Position>(obstacle, 600.0f, 936.0f);
         registry_.addComponent<rtype::ecs::component::HitBox>(
             obstacle, rtype::constants::OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE,
             rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
