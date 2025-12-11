@@ -5,6 +5,7 @@
 #include "../../ecs/include/components/Projectile.hpp"
 #include "../../ecs/include/components/Explosion.hpp"
 #include "../../ecs/include/components/Weapon.hpp"
+#include "../../ecs/include/components/Tag.hpp"
 
 namespace rtype::client {
 
@@ -69,6 +70,8 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             if (is_local) {
                 registry.addComponent<rtype::ecs::component::Controllable>(entity, true);
             }
+            registry.addComponent<rtype::ecs::component::Tag>(entity, "Player");
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, 165.0f, 110.0f);
         } else if (data.entity_type == rtype::net::EntityType::ENEMY) {
             std::string sprite_name = "enemy_basic";
             if (data.sub_type == 1)
