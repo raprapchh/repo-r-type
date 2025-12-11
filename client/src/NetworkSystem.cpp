@@ -146,12 +146,22 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             registry.addComponent<rtype::ecs::component::HitBox>(entity, width, height);
 
         } else if (data.entity_type == rtype::net::EntityType::OBSTACLE) {
+            std::string sprite_name = "obstacle_1";
+            if (data.sub_type == 1) {
+                sprite_name = "floor_obstacle";
+            }
             registry.addComponent<rtype::ecs::component::Drawable>(
-                entity, "obstacle_1", static_cast<uint32_t>(0), static_cast<uint32_t>(0),
+                entity, sprite_name, static_cast<uint32_t>(0), static_cast<uint32_t>(0),
                 rtype::constants::OBSTACLE_SCALE, rtype::constants::OBSTACLE_SCALE);
-            registry.addComponent<rtype::ecs::component::HitBox>(
-                entity, rtype::constants::OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE,
-                rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
+            float obs_w = rtype::constants::OBSTACLE_WIDTH;
+            float obs_h = rtype::constants::OBSTACLE_HEIGHT;
+            if (data.sub_type == 1) {
+                obs_w = rtype::constants::FLOOR_OBSTACLE_WIDTH;
+                obs_h = rtype::constants::FLOOR_OBSTACLE_HEIGHT;
+            }
+
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, obs_w * rtype::constants::OBSTACLE_SCALE,
+                                                                 obs_h * rtype::constants::OBSTACLE_SCALE);
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::Obstacle);
         }
