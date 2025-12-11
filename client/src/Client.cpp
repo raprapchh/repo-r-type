@@ -12,8 +12,10 @@
 #include "../../ecs/include/components/Lives.hpp"
 #include "../../ecs/include/components/Health.hpp"
 #include "../../ecs/include/components/Tag.hpp"
+#include "../../ecs/include/components/NetworkInterpolation.hpp"
 #include <iostream>
 #include <chrono>
+#include <algorithm>
 
 namespace rtype::client {
 
@@ -265,15 +267,20 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
 
             if (found) {
                 try {
-                    if (registry_.hasComponent<rtype::ecs::component::Position>(found_entity_id)) {
-                        auto& pos = registry_.getComponent<rtype::ecs::component::Position>(found_entity_id);
-                        pos.x = move_data.position_x;
-                        pos.y = move_data.position_y;
-                    }
-                    if (registry_.hasComponent<rtype::ecs::component::Velocity>(found_entity_id)) {
-                        auto& vel = registry_.getComponent<rtype::ecs::component::Velocity>(found_entity_id);
-                        vel.vx = move_data.velocity_x;
-                        vel.vy = move_data.velocity_y;
+                    if (!registry_.hasComponent<rtype::ecs::component::NetworkInterpolation>(found_entity_id)) {
+                        if (registry_.hasComponent<rtype::ecs::component::Position>(found_entity_id)) {
+                            registry_.addComponent<rtype::ecs::component::NetworkInterpolation>(
+                                found_entity_id, move_data.position_x, move_data.position_y, move_data.velocity_x,
+                                move_data.velocity_y);
+                        }
+                    } else {
+                        auto& interp =
+                            registry_.getComponent<rtype::ecs::component::NetworkInterpolation>(found_entity_id);
+                        interp.target_x = move_data.position_x;
+                        interp.target_y = move_data.position_y;
+                        interp.target_vx = move_data.velocity_x;
+                        interp.target_vy = move_data.velocity_y;
+                        interp.last_update_time = std::chrono::steady_clock::now();
                     }
                     if (registry_.hasComponent<rtype::ecs::component::Drawable>(found_entity_id)) {
                         auto& drawable = registry_.getComponent<rtype::ecs::component::Drawable>(found_entity_id);
@@ -426,6 +433,37 @@ void Client::send_map_resize(float width, float height) {
 void Client::update(double dt) {
     audio_system_.update(registry_, dt);
     network_system_.update(registry_, registry_mutex_);
+
+    {
+        std::lock_guard<std::mutex> lock(registry_mutex_);
+        auto interp_view = registry_.view<rtype::ecs::component::NetworkInterpolation, rtype::ecs::component::Position,
+                                          rtype::ecs::component::Velocity>();
+        auto now = std::chrono::steady_clock::now();
+        constexpr auto timeout = std::chrono::milliseconds(500);
+
+        for (auto entity : interp_view) {
+            GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
+            auto& interp = registry_.getComponent<rtype::ecs::component::NetworkInterpolation>(entity_id);
+            auto& pos = registry_.getComponent<rtype::ecs::component::Position>(entity_id);
+            auto& vel = registry_.getComponent<rtype::ecs::component::Velocity>(entity_id);
+
+            auto time_since_update =
+                std::chrono::duration_cast<std::chrono::milliseconds>(now - interp.last_update_time);
+
+            if (time_since_update > timeout) {
+                pos.x = interp.target_x;
+                pos.y = interp.target_y;
+                vel.vx = 0.0f;
+                vel.vy = 0.0f;
+            } else {
+                float lerp_factor = std::min(1.0f, interp.interpolation_speed * static_cast<float>(dt));
+                pos.x = pos.x + (interp.target_x - pos.x) * lerp_factor;
+                pos.y = pos.y + (interp.target_y - pos.y) * lerp_factor;
+                vel.vx = interp.target_vx;
+                vel.vy = interp.target_vy;
+            }
+        }
+    }
 
     std::lock_guard<std::mutex> lock(registry_mutex_);
     auto view = registry_.view<rtype::ecs::component::Drawable, rtype::ecs::component::Velocity>();
