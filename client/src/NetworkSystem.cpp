@@ -191,7 +191,6 @@ void NetworkSystem::handle_destroy(GameEngine::Registry& registry, const rtype::
                         explosion_drawable.animation_sequences["explosion"] = {5, 4, 3, 2, 1, 0};
                         explosion_drawable.current_state = "explosion";
                         explosion_drawable.animation_frame = 5;
-
                     }
                     registry.destroyEntity(entity_id_ecs);
                     return;
