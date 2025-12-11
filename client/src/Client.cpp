@@ -348,7 +348,7 @@ void Client::send_move(float vx, float vy) {
     udp_client_->send(packet_data);
 }
 
-void Client::send_shoot(int32_t x, int32_t y) {
+void Client::send_shoot(int32_t x, int32_t y, int chargeLevel) {
     (void)x;
     (void)y;
     if (!connected_.load())
@@ -375,7 +375,7 @@ void Client::send_shoot(int32_t x, int32_t y) {
         }
     }
 
-    shoot_data.weapon_type = 0;
+    shoot_data.weapon_type = static_cast<uint16_t>(chargeLevel);
     shoot_data.position_x = pos_x;
     shoot_data.position_y = pos_y;
     shoot_data.direction_x = 1.0f;

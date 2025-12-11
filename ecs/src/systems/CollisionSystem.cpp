@@ -1,4 +1,6 @@
 #include "../../include/systems/CollisionSystem.hpp"
+#include <iostream>
+#include <vector>
 #include "../../include/components/Position.hpp"
 #include "../../include/components/HitBox.hpp"
 #include "../../include/components/CollisionLayer.hpp"
@@ -6,6 +8,7 @@
 #include "../../include/components/Projectile.hpp"
 #include "../../include/components/Score.hpp"
 #include "../../include/components/Lives.hpp"
+#include "../../include/components/Tag.hpp"
 
 namespace rtype::ecs {
 
@@ -107,6 +110,11 @@ bool CollisionSystem::ShouldCollide(component::CollisionLayer layer1, component:
     if (layer1 == CL::Obstacle || layer2 == CL::Obstacle)
         return true;
 
+    if (layer1 == CL::PlayerProjectile && layer2 == CL::EnemyProjectile)
+        return true;
+    if (layer1 == CL::EnemyProjectile && layer2 == CL::PlayerProjectile)
+        return true;
+
     return false;
 }
 
@@ -140,7 +148,17 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
             scorer_id = registry.getComponent<component::Projectile>(projectile_entity).owner_id;
         }
 
-        registry.destroyEntity(projectile_entity);
+        bool is_charged = false;
+        if (registry.hasComponent<component::Tag>(projectile_entity)) {
+            const auto& tag = registry.getComponent<component::Tag>(projectile_entity);
+            if (tag.name.find("charge") != std::string::npos) {
+                is_charged = true;
+            }
+        }
+
+        if (!is_charged) {
+            registry.destroyEntity(projectile_entity);
+        }
 
         if (registry.hasComponent<component::Health>(enemy_entity)) {
             auto& health = registry.getComponent<component::Health>(enemy_entity);
@@ -190,6 +208,25 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
         }
 
         registry.destroyEntity(powerup_entity);
+    }
+
+    if ((layer1 == CL::PlayerProjectile && layer2 == CL::EnemyProjectile) ||
+        (layer1 == CL::EnemyProjectile && layer2 == CL::PlayerProjectile)) {
+        auto player_projectile = (layer1 == CL::PlayerProjectile) ? entity1 : entity2;
+        auto enemy_projectile = (layer1 == CL::EnemyProjectile) ? entity1 : entity2;
+
+        bool is_charged = false;
+        if (registry.hasComponent<component::Tag>(player_projectile)) {
+            const auto& tag = registry.getComponent<component::Tag>(player_projectile);
+            if (tag.name.find("charge") != std::string::npos) {
+                is_charged = true;
+            }
+        }
+
+        if (!is_charged) {
+            registry.destroyEntity(player_projectile);
+        }
+        registry.destroyEntity(enemy_projectile);
     }
 }
 
