@@ -16,6 +16,7 @@ struct Weapon {
     float spawnOffsetX = 20.0f;
     float spawnOffsetY = 0.0f;
     std::string projectileTag = "BasicProjectile";
+    int chargeLevel = 0;
 };
 
 } // namespace rtype::ecs::component
