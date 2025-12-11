@@ -25,7 +25,8 @@ class MenuState : public IState {
     void update_positions(const sf::Vector2u& window_size);
 
     sf::Font font_;
-    sf::Text title_text_;
+    sf::Texture logo_texture_;
+    sf::Sprite logo_sprite_;
     sf::Text start_button_text_;
     sf::Text quit_button_text_;
     sf::RectangleShape start_button_;

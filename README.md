@@ -1,102 +1,135 @@
-# R-Type EPITECH PARIS
+# R-Type - Epitech Project
 
-This is a 3rd year project, where we had to recreate the old game "R-Type" and add a multiplayer mode. We had to create a UDP server and client for the network transmission and we used SFML for the graphical client.
+<p align="center">
+  <img src="https://fs-prod-cdn.nintendo-europe.com/media/images/10_share_images/games_15/virtual_console_wii_u_7/H2x1_WiiUVC_RType.jpg" alt="R-Type Banner" width="100%">
+</p>
 
-# Game Engine
+## 🚀 Introduction
 
-This game runs on a custom **ECS (Entity Component System)**.
-This system makes the code cleaner and faster by strictly separating **Data** from **Logic**.
+This project is a recreation of the classic **R-Type** arcade game, developed as part of the **Advanced C++ Knowledge (B-CPP-500)** module at Epitech.
+It features a custom game engine built on an **Entity Component System (ECS)** architecture and a networked multiplayer mode using **UDP** for real-time communication. The client is powered by **SFML**.
 
-It works in three simple parts:
+<br>
 
-* **Entities:** Simple ID tags representing objects (like a Player, an Enemy, or a Bullet).
-* **Components:** Pure data attached to an entity (e.g., Position, Health, Speed).
-* **Systems:** The logic that processes the components to make things happen (e.g., a *MovementSystem* that updates the *Position* based on the *Speed*).
+## ✨ Features
 
-![image](https://fs-prod-cdn.nintendo-europe.com/media/images/10_share_images/games_15/virtual_console_wii_u_7/H2x1_WiiUVC_RType.jpg)
+- **Custom ECS Engine**: A high-performance, data-oriented architecture separating Entities, Components, and Systems.
+- **Networked Multiplayer**: Real-time gameplay supporting multiple players via a custom UDP protocol.
+- **Game States**: Includes Menu, Lobby, and Gameplay states.
+- **Configuration**: Data-driven design with configuration files.
 
-# Project Architecture
+<br>
 
-The project is organized into several modules:
+## 🛠️ Prerequisites
 
-## Server (`server/`)
+Before building the project, ensure you have the following installed:
 
-The server handles game logic, client connections, and maintains the authoritative state of the game. It communicates with clients via UDP, sending updates about entities (players, enemies, projectiles).
+Before building the project, ensure you have the following installed:
 
-## Client (`client/`)
+- **C++ Compiler** (supporting C++20)
+- **CMake** (v3.20 or newer)
+- **Git**
 
-The client handles the graphical rendering (using SFML) and user input. It sends player actions to the server and renders the game state received from the server.
+> **Note:** This project uses **vcpkg** for dependency management. CMake will automatically handle the installation of all necessary libraries (such as ASIO and EnTT) when you run the build command for the first time.
 
-## ECS (`ecs/`)
+<br>
 
-The Entity Component System (ECS) library. This core module manages entities, components, and systems, separating data from behavior to improve performance and code reusability.
+## 🏗️ Installation & Compilation
 
-## Shared (`shared/`)
+1. **Clone the repository:**
 
-Contains code and resources shared between the Client and Server, such as network protocols, common data structures, and game constants.
+   ```bash
+   git clone git@github.com:EpitechPGE3-2025/G-CPP-500-PAR-5-2-rtype-3.git
+   cd G-CPP-500-PAR-5-2-rtype-3
+   ```
 
-## Config (`config/`)
+2. **Build the project:**
+   We provide a helper script to automate the build process.
 
-Stores configuration files used to tune game parameters and settings without recompiling the code.
+   ```bash
+   chmod +x ./build.sh
+   ./build.sh
+   ```
 
-# How to Play
+   _Alternatively, you can build manually:_
 
-## Compilation
+   ```bash
+   mkdir build && cd build
+   cmake .. -DCMAKE_BUILD_TYPE=Release
+   make -j$(nproc)
+   ```
 
-To compile the project, use CMake:
+3. **Clean the project:**
+   ```bash
+   chmod +x ./clean.sh
+   ./clean.sh
+   ```
+
+<br>
+
+## 🎮 Usage
+
+### 1. Start the Server
+
+The server manages the game state and synchronization. Run it first.
 
 ```bash
-mkdir build
-cd build
-cmake ..
-make
+./r-type_server [port]
 ```
 
-You will get `r-type_server` and `r-type_client`.
+_(Default port is 4242)_
 
-## Execution
+### 2. Start the Client
 
-1. Execute the server:
-
-```bash
-./r-type_server
-```
-
-2. Execute the client:
+Launch the client to connect to the server.
 
 ```bash
 ./r-type_client [ip] [port]
 ```
-(Default port is 4242)
 
-# Goal of the game
+- **ip**: The IP address of the server (default: `127.0.0.1` or `localhost`).
+- **port**: The port the server is listening on (default: `4242`).
 
-You have to play from 1 to 4 players against enemies that spawn randomly from the right part of your screen. If you kill enough enemies, they become stronger and stronger, and finally, the final boss appears and shoots a big laser ray. You start the game with 5 hp and can recuperate some hp by taking the little hearts on the map. There is no friendly fire and once you have no more hp, you can't play anymore.
+<br>
 
-# Move and shoot
+## 🕹️ Controls
 
-- Move: `Z` `Q` `S` `D` (AZERTY Layout)
-- Shoot: `Left Mouse Click`
-- Menu: `Esc`
+| Action         | Key (AZERTY) | Key (QWERTY) | Key (Arrows) | description              |
+| :------------- | :----------: | :----------: | :----------: | :----------------------- |
+| **Move Up**    |     `Z`      |     `W`      |     `↑`      | Move spaceship up        |
+| **Move Down**  |     `S`      |     `S`      |     `↓`      | Move spaceship down      |
+| **Move Left**  |     `Q`      |     `A`      |     `←`      | Move spaceship left      |
+| **Move Right** |     `D`      |     `D`      |     `→`      | Move spaceship right     |
+| **Shoot**      |   `Space`    |   `Space`    |   `Space`    | Fire standard projectile |
 
-# Developer
+<br>
 
-If you are a developer, please refer to the `documentation` folder.
+## 📂 Project Architecture
 
-# Authors
+The codebase is modularized for clarity and scalability:
 
-Developed by:
+- **`server/`**: Handles game logic, authoritative state, and UDP communication.
+- **`client/`**: manages rendering (SFML), input handling, and interpolation.
+- **`ecs/`**: The core Entity Component System library (Entities, Components, Systems).
+- **`shared/`**: Common resources, network protocols, and data structures.
+- **`config/`**: JSON/YAML configuration files for game balancing.
+- **`documentation/`**: Developer guides and technical documentation.
 
-- Raphaël Chanliongco
-- Hubert Touraine
-- Jean-Baptiste Boshra
-- Gabin Rudigoz
-- Ylan Cuvier
-- Swann Grandin
+<br>
+
+## 👥 Authors
+
+**Epitech Paris**
+
+- **Raphaël Chanliongco**
+- **Hubert Touraine**
+- **Jean-Baptiste Boshra**
+- **Gabin Rudigoz**
+- **Ylan Cuvier**
+- **Swann Grandin**
 
 <br>
 <hr>
 <p align="center">
   <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Epitech.png/320px-Epitech.png" alt="Epitech Logo" width="200">
-  <br>
 </p>

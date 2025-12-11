@@ -211,8 +211,8 @@ void Renderer::draw_game_over(bool all_players_dead) {
         back_to_menu_button_.setPosition(center_x, center_y + 60.0f);
 
         back_to_menu_text_.setFont(font_);
-        back_to_menu_text_.setString("RETOUR AU MENU");
-        back_to_menu_text_.setCharacterSize(24);
+        back_to_menu_text_.setString("BACK TO MENU");
+        back_to_menu_text_.setCharacterSize(23);
         back_to_menu_text_.setFillColor(sf::Color::White);
 
         sf::FloatRect text_bounds_btn = back_to_menu_text_.getLocalBounds();
@@ -298,6 +298,11 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/star_bg.png", "background_stars");
     load_texture("client/sprites/star_2_bg.png", "background_stars2");
     load_texture("client/sprites/monster_0.png", "enemy_basic");
+    load_texture("client/sprites/monster_0-top.gif", "monster_0-top");
+    load_texture("client/sprites/monster_0-bot.gif", "monster_0-bot");
+    load_texture("client/sprites/monster_0-left.gif", "monster_0-left");
+    load_texture("client/sprites/monster_0-right.gif", "monster_0-right");
+    load_texture("client/sprites/monster_0-ball.gif", "monster_0-ball");
     load_texture("client/sprites/r-typesheet2-ezgif.com-crop.gif", "shot");
     load_texture("client/sprites/shot_death.png", "death");
     load_texture("client/sprites/obstacle1.png", "obstacle_1");

@@ -9,6 +9,9 @@
 #include "../../ecs/include/components/Controllable.hpp"
 #include "../../ecs/include/components/HitBox.hpp"
 #include "../../ecs/include/components/CollisionLayer.hpp"
+#include "../../ecs/include/components/Lives.hpp"
+#include "../../ecs/include/components/Health.hpp"
+#include "../../ecs/include/components/Tag.hpp"
 #include <iostream>
 #include <chrono>
 
@@ -112,9 +115,6 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             if (!connected_.load()) {
                 player_id_ = join_data.player_id;
                 network_system_.set_player_id(player_id_);
-                connected_ = true;
-                std::cout << "Successfully connected to server. My Player ID is " << player_id_ << std::endl;
-
                 std::lock_guard<std::mutex> lock(registry_mutex_);
                 auto entity = registry_.createEntity();
                 registry_.addComponent<rtype::ecs::component::NetworkId>(entity, player_id_);
@@ -132,6 +132,9 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                     rtype::constants::PLAYER_HEIGHT * rtype::constants::PLAYER_SCALE);
                 registry_.addComponent<rtype::ecs::component::Collidable>(
                     entity, rtype::ecs::component::CollisionLayer::Player);
+                registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
+                registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
+                registry_.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
                 drawable.animation_sequences["idle"] = {2};
                 drawable.animation_sequences["up"] = {2, 3, 4};
                 drawable.animation_sequences["down"] = {2, 1, 0};
@@ -142,6 +145,8 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 drawable.current_sprite = 2;
                 drawable.animation_frame = 0;
 
+                connected_ = true;
+                std::cout << "Successfully connected to server. My Player ID is " << player_id_ << std::endl;
             } else {
                 std::cout << "Player " << join_data.player_id << " has joined the game." << std::endl;
 
@@ -162,6 +167,8 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                         rtype::constants::PLAYER_HEIGHT * rtype::constants::PLAYER_SCALE);
                     registry_.addComponent<rtype::ecs::component::Collidable>(
                         entity, rtype::ecs::component::CollisionLayer::Player);
+                    registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
+                    registry_.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
                     drawable.animation_sequences["idle"] = {2};
                     drawable.animation_sequences["up"] = {2, 3, 4};
                     drawable.animation_sequences["down"] = {2, 1, 0};
@@ -203,6 +210,24 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             }
             auto game_state_data = serializer.deserialize_game_state(packet);
             renderer_.update_game_state(game_state_data);
+
+            {
+                std::lock_guard<std::mutex> lock(registry_mutex_);
+                auto view = registry_.view<rtype::ecs::component::NetworkId>();
+                for (auto entity : view) {
+                    auto& net_id = registry_.getComponent<rtype::ecs::component::NetworkId>(
+                        static_cast<GameEngine::entity_t>(entity));
+                    if (net_id.id == player_id_) {
+                        if (registry_.hasComponent<rtype::ecs::component::Lives>(
+                                static_cast<GameEngine::entity_t>(entity))) {
+                            auto& lives = registry_.getComponent<rtype::ecs::component::Lives>(
+                                static_cast<GameEngine::entity_t>(entity));
+                            lives.remaining = game_state_data.lives;
+                        }
+                        break;
+                    }
+                }
+            }
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing GameState packet: " << e.what() << std::endl;
         }
