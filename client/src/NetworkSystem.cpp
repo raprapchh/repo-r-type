@@ -112,12 +112,6 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             registry.addComponent<rtype::ecs::component::Projectile>(entity, 10.0f, 5.0f);
             registry.addComponent<rtype::ecs::component::HitBox>(entity, 87.0f, 99.0f);
 
-            rtype::ecs::component::CollisionLayer layer =
-                static_cast<rtype::ecs::component::CollisionLayer>(data.sub_type);
-            if (layer == rtype::ecs::component::CollisionLayer::None) {
-                layer = rtype::ecs::component::CollisionLayer::PlayerProjectile;
-            }
-            registry.addComponent<rtype::ecs::component::Collidable>(entity, layer);
         } else if (data.entity_type == rtype::net::EntityType::OBSTACLE) {
             registry.addComponent<rtype::ecs::component::Drawable>(
                 entity, "obstacle_1", static_cast<uint32_t>(0), static_cast<uint32_t>(0),
