@@ -77,7 +77,7 @@ void Server::start() {
             rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
         registry_.addComponent<rtype::ecs::component::Collidable>(obstacle,
                                                                   rtype::ecs::component::CollisionLayer::Obstacle);
-        registry_.addComponent<rtype::ecs::component::NetworkId>(obstacle, next_player_id_++);
+        registry_.addComponent<rtype::ecs::component::NetworkId>(obstacle, static_cast<uint32_t>(obstacle));
         registry_.addComponent<rtype::ecs::component::Tag>(obstacle, "Obstacle");
 
         auto floor_obstacle = registry_.createEntity();
@@ -87,7 +87,7 @@ void Server::start() {
             rtype::constants::FLOOR_OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
         registry_.addComponent<rtype::ecs::component::Collidable>(floor_obstacle,
                                                                   rtype::ecs::component::CollisionLayer::Obstacle);
-        registry_.addComponent<rtype::ecs::component::NetworkId>(floor_obstacle, next_player_id_++);
+        registry_.addComponent<rtype::ecs::component::NetworkId>(floor_obstacle, static_cast<uint32_t>(floor_obstacle));
         registry_.addComponent<rtype::ecs::component::Tag>(floor_obstacle, "Obstacle_Floor");
     }
     Logger::instance().info("Enemy spawner initialized (interval: 2.0s)");
@@ -600,6 +600,8 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         float start_y = 100.0f + (player_id - 1) * 100.0f;
 
         entity = registry_.createEntity();
+        Logger::instance().info("Creating player entity: player_id=" + std::to_string(player_id) +
+                                ", entity_id=" + std::to_string(static_cast<uint32_t>(entity)));
         registry_.addComponent<rtype::ecs::component::Position>(entity, start_x, start_y);
         registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
         registry_.addComponent<rtype::ecs::component::HitBox>(
