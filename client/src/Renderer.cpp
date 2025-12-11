@@ -264,7 +264,7 @@ void Renderer::draw_background() {
         bg_sprite.setOrigin(0, texture_height);
         bg_sprite.setScale(scale, scale);
         bg_sprite.setPosition(background_x_, window_height);
-        window_->draw(bg_sprite);
+        // window_->draw(bg_sprite);
 
         background_x_ -= 3.0f;
         background_x_stars_ -= 5.0f;
