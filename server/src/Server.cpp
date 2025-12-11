@@ -281,8 +281,7 @@ void Server::game_loop() {
                                 }
                             }
 
-                            Logger::instance().info("Player death broadcasted: player_id=" +
-                                                  std::to_string(player_id));
+                            Logger::instance().info("Player death broadcasted: player_id=" + std::to_string(player_id));
                         }
                     }
                 }
