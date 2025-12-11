@@ -70,13 +70,30 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 registry.addComponent<rtype::ecs::component::Controllable>(entity, true);
             }
         } else if (data.entity_type == rtype::net::EntityType::ENEMY) {
-            registry.addComponent<rtype::ecs::component::Drawable>(entity, "enemy_basic", static_cast<uint32_t>(0),
+            std::string sprite_name = "enemy_basic";
+            if (data.sub_type == 1)
+                sprite_name = "monster_0-top";
+            else if (data.sub_type == 2)
+                sprite_name = "monster_0-bot";
+            else if (data.sub_type == 3)
+                sprite_name = "monster_0-left";
+            else if (data.sub_type == 4)
+                sprite_name = "monster_0-right";
+
+            registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
                                                                    static_cast<uint32_t>(0), 3.0f, 3.0f);
             registry.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
             registry.addComponent<rtype::ecs::component::HitBox>(entity, 150.0f, 150.0f);
         } else if (data.entity_type == rtype::net::EntityType::PROJECTILE) {
-            registry.addComponent<rtype::ecs::component::Drawable>(entity, "shot", 0, 0, 29, 33, 3.0f, 3.0f, 4, 0.05f,
-                                                                   false);
+            std::string sprite_name = "shot";
+            if (data.sub_type == 1) {
+                sprite_name = "monster_0-ball";
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
+                                                                       static_cast<uint32_t>(0), 3.0f, 3.0f);
+            } else {
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 29, 33, 3.0f, 3.0f, 4,
+                                                                       0.05f, false);
+            }
             registry.addComponent<rtype::ecs::component::Projectile>(entity, 10.0f, 5.0f);
             registry.addComponent<rtype::ecs::component::HitBox>(entity, 87.0f, 99.0f);
         }

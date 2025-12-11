@@ -24,6 +24,7 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
         client.connect();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
+    client.send_game_start_request();
 }
 
 void GameState::on_exit(Renderer& renderer, Client& client) {
