@@ -27,6 +27,7 @@
 #include "../../shared/utils/Logger.hpp"
 #include "../../shared/utils/GameConfig.hpp"
 #include <unordered_set>
+#include <chrono>
 
 namespace rtype::server {
 
@@ -153,56 +154,63 @@ void Server::game_loop() {
 
             // Broadcast newly spawned enemies to clients
             if (protocol_adapter_ && message_serializer_) {
-                std::lock_guard<std::mutex> lock(clients_mutex_);
-                auto enemy_spawn_view = registry_.view<rtype::ecs::component::Position, rtype::ecs::component::Velocity,
-                                                       rtype::ecs::component::Health>();
-                enemy_spawn_view.each([&](const auto entity, rtype::ecs::component::Position& pos,
-                                          rtype::ecs::component::Velocity& vel, rtype::ecs::component::Health&) {
-                    if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {
-                        const auto& tag =
-                            registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
-                        if (tag.name == "Player") {
-                            return;
-                        }
-                    }
-
-                    // Check if enemy already has NetworkId (already broadcasted)
-                    if (!registry_.hasComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity))) {
-                        // Add NetworkId to mark as broadcasted
-                        registry_.addComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity),
-                                                                                 static_cast<uint32_t>(entity));
-
-                        // Send EntitySpawn to all clients
-                        uint16_t sub_type = 0;
+                std::vector<std::pair<rtype::net::EntitySpawnData, std::vector<uint8_t>>> spawns_to_send;
+                {
+                    std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+                    auto enemy_spawn_view =
+                        registry_.view<rtype::ecs::component::Position, rtype::ecs::component::Velocity,
+                                       rtype::ecs::component::Health>();
+                    enemy_spawn_view.each([&](const auto entity, rtype::ecs::component::Position& pos,
+                                              rtype::ecs::component::Velocity& vel, rtype::ecs::component::Health&) {
                         if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {
-                            auto& tag = registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
-                            if (tag.name == "Monster_0_Top")
-                                sub_type = 1;
-                            else if (tag.name == "Monster_0_Bot")
-                                sub_type = 2;
-                            else if (tag.name == "Monster_0_Left")
-                                sub_type = 3;
-                            else if (tag.name == "Monster_0_Right")
-                                sub_type = 4;
+                            const auto& tag =
+                                registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
+                            if (tag.name == "Player") {
+                                return;
+                            }
                         }
 
-                        rtype::net::EntitySpawnData spawn_data(static_cast<uint32_t>(entity),
-                                                               rtype::net::EntityType::ENEMY, sub_type, pos.x, pos.y,
-                                                               vel.vx, vel.vy);
+                        if (!registry_.hasComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity))) {
+                            registry_.addComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity),
+                                                                                     static_cast<uint32_t>(entity));
 
-                        rtype::net::Packet spawn_packet = message_serializer_->serialize_entity_spawn(spawn_data);
-                        auto serialized_spawn = protocol_adapter_->serialize(spawn_packet);
+                            uint16_t sub_type = 0;
+                            if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {
+                                auto& tag =
+                                    registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
+                                if (tag.name == "Monster_0_Top")
+                                    sub_type = 1;
+                                else if (tag.name == "Monster_0_Bot")
+                                    sub_type = 2;
+                                else if (tag.name == "Monster_0_Left")
+                                    sub_type = 3;
+                                else if (tag.name == "Monster_0_Right")
+                                    sub_type = 4;
+                            }
 
+                            rtype::net::EntitySpawnData spawn_data(static_cast<uint32_t>(entity),
+                                                                   rtype::net::EntityType::ENEMY, sub_type, pos.x,
+                                                                   pos.y, vel.vx, vel.vy);
+
+                            rtype::net::Packet spawn_packet = message_serializer_->serialize_entity_spawn(spawn_data);
+                            auto serialized_spawn = protocol_adapter_->serialize(spawn_packet);
+                            spawns_to_send.emplace_back(spawn_data, serialized_spawn);
+                        }
+                    });
+                }
+
+                if (!spawns_to_send.empty()) {
+                    std::lock_guard<std::mutex> clients_lock(clients_mutex_);
+                    for (const auto& [spawn_data, serialized_spawn] : spawns_to_send) {
                         for (const auto& [dest_key, dest_client] : clients_) {
                             if (dest_client.is_connected && udp_server_) {
                                 udp_server_->send(dest_client.ip, dest_client.port, serialized_spawn);
                             }
                         }
-
                         Logger::instance().info("Enemy spawned and broadcasted: entity_id=" +
-                                                std::to_string(static_cast<uint32_t>(entity)));
+                                                std::to_string(spawn_data.entity_id));
                     }
-                });
+                }
             }
 
             {
@@ -363,47 +371,63 @@ void Server::game_loop() {
                     }
                 }
 
+                std::vector<std::vector<uint8_t>> player_moves_to_send;
                 for (const auto& move_data : move_data_list) {
                     rtype::net::Packet move_packet = message_serializer_->serialize_player_move(move_data);
                     auto serialized_move = protocol_adapter_->serialize(move_packet);
+                    player_moves_to_send.push_back(serialized_move);
+                }
 
+                if (!player_moves_to_send.empty()) {
                     std::lock_guard<std::mutex> clients_lock(clients_mutex_);
-                    for (const auto& [dest_key, dest_client] : clients_) {
-                        if (dest_client.is_connected && udp_server_) {
-                            udp_server_->send(dest_client.ip, dest_client.port, serialized_move);
+                    for (const auto& serialized_move : player_moves_to_send) {
+                        for (const auto& [dest_key, dest_client] : clients_) {
+                            if (dest_client.is_connected && udp_server_) {
+                                udp_server_->send(dest_client.ip, dest_client.port, serialized_move);
+                            }
                         }
                     }
                 }
 
                 // Broadcast enemy positions to all clients
-                auto enemy_view = registry_.view<rtype::ecs::component::Position, rtype::ecs::component::Velocity,
-                                                 rtype::ecs::component::Health>();
-                enemy_view.each([&](const auto entity, rtype::ecs::component::Position& pos,
-                                    rtype::ecs::component::Velocity& vel, rtype::ecs::component::Health&) {
-                    if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {
-                        const auto& tag =
-                            registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
-                        if (tag.name == "Player") {
-                            return;
+                std::vector<std::pair<rtype::net::EntityMoveData, std::vector<uint8_t>>> enemy_moves_to_send;
+                {
+                    std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+                    auto enemy_view = registry_.view<rtype::ecs::component::Position, rtype::ecs::component::Velocity,
+                                                     rtype::ecs::component::Health>();
+                    enemy_view.each([&](const auto entity, rtype::ecs::component::Position& pos,
+                                        rtype::ecs::component::Velocity& vel, rtype::ecs::component::Health&) {
+                        if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {
+                            const auto& tag =
+                                registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
+                            if (tag.name == "Player") {
+                                return;
+                            }
+                        }
+
+                        rtype::net::EntityMoveData enemy_move_data;
+                        enemy_move_data.entity_id = static_cast<uint32_t>(entity);
+                        enemy_move_data.position_x = pos.x;
+                        enemy_move_data.position_y = pos.y;
+                        enemy_move_data.velocity_x = vel.vx;
+                        enemy_move_data.velocity_y = vel.vy;
+
+                        rtype::net::Packet enemy_packet = message_serializer_->serialize_entity_move(enemy_move_data);
+                        auto serialized_enemy = protocol_adapter_->serialize(enemy_packet);
+                        enemy_moves_to_send.emplace_back(enemy_move_data, serialized_enemy);
+                    });
+                }
+
+                if (!enemy_moves_to_send.empty()) {
+                    std::lock_guard<std::mutex> clients_lock(clients_mutex_);
+                    for (const auto& [enemy_move_data, serialized_enemy] : enemy_moves_to_send) {
+                        for (const auto& [dest_key, dest_client] : clients_) {
+                            if (dest_client.is_connected && udp_server_) {
+                                udp_server_->send(dest_client.ip, dest_client.port, serialized_enemy);
+                            }
                         }
                     }
-
-                    rtype::net::EntityMoveData enemy_move_data;
-                    enemy_move_data.entity_id = static_cast<uint32_t>(entity);
-                    enemy_move_data.position_x = pos.x;
-                    enemy_move_data.position_y = pos.y;
-                    enemy_move_data.velocity_x = vel.vx;
-                    enemy_move_data.velocity_y = vel.vy;
-
-                    rtype::net::Packet enemy_packet = message_serializer_->serialize_entity_move(enemy_move_data);
-                    auto serialized_enemy = protocol_adapter_->serialize(enemy_packet);
-
-                    for (const auto& [dest_key, dest_client] : clients_) {
-                        if (dest_client.is_connected && udp_server_) {
-                            udp_server_->send(dest_client.ip, dest_client.port, serialized_enemy);
-                        }
-                    }
-                });
+                }
 
                 rtype::net::GameStateData game_state_data;
                 game_state_data.game_time = static_cast<uint32_t>(elapsed.count());
@@ -776,8 +800,39 @@ void Server::handle_game_start(const std::string& client_ip, uint16_t client_por
     (void)client_ip;
     (void)client_port;
     (void)packet;
+
+    if (game_started_.load()) {
+        return;
+    }
+
     game_started_ = true;
     Logger::instance().info("Game started!");
+
+    if (!protocol_adapter_ || !message_serializer_) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> clients_lock(clients_mutex_);
+    uint8_t player_count = static_cast<uint8_t>(clients_.size());
+
+    rtype::net::GameStartData start_data;
+    start_data.session_id = 1;
+    start_data.level_id = 1;
+    start_data.player_count = player_count;
+    start_data.difficulty = 1;
+    start_data.timestamp = static_cast<uint32_t>(
+        std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count());
+
+    rtype::net::Packet start_packet = message_serializer_->serialize_game_start(start_data);
+    auto serialized_start = protocol_adapter_->serialize(start_packet);
+
+    for (const auto& [key, client] : clients_) {
+        if (client.is_connected && udp_server_) {
+            udp_server_->send(client.ip, client.port, serialized_start);
+        }
+    }
+
+    Logger::instance().info("GameStart message sent to all " + std::to_string(player_count) + " clients");
 }
 
 void Server::handle_map_resize(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet) {

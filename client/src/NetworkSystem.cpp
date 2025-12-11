@@ -9,6 +9,8 @@
 #include "../../ecs/include/components/Explosion.hpp"
 #include "../../ecs/include/components/Weapon.hpp"
 #include "../../ecs/include/components/Tag.hpp"
+#include "../../ecs/include/components/NetworkInterpolation.hpp"
+#include <chrono>
 
 namespace rtype::client {
 
@@ -79,6 +81,9 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                                                                      rtype::ecs::component::CollisionLayer::Player);
             if (is_local) {
                 registry.addComponent<rtype::ecs::component::Controllable>(entity, true);
+            } else {
+                registry.addComponent<rtype::ecs::component::NetworkInterpolation>(
+                    entity, data.position_x, data.position_y, data.velocity_x, data.velocity_y);
             }
             registry.addComponent<rtype::ecs::component::Tag>(entity, "Player");
             registry.addComponent<rtype::ecs::component::HitBox>(entity, 165.0f, 110.0f);
@@ -99,6 +104,8 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             registry.addComponent<rtype::ecs::component::HitBox>(entity, 150.0f, 150.0f);
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::Enemy);
+            registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, data.position_x, data.position_y,
+                                                                               data.velocity_x, data.velocity_y);
         } else if (data.entity_type == rtype::net::EntityType::PROJECTILE) {
             std::string sprite_name = "shot";
             float width = 87.0f;
@@ -193,22 +200,30 @@ void NetworkSystem::handle_move(GameEngine::Registry& registry, const rtype::net
             try {
                 auto& net_id = registry.getComponent<rtype::ecs::component::NetworkId>(entity_id_ecs);
                 if (net_id.id == entity_id) {
-                    // Don't update local player's position/velocity - it's controlled locally
                     if (entity_id == player_id_) {
                         found = true;
                         break;
                     }
 
-                    if (registry.hasComponent<rtype::ecs::component::Position>(entity_id_ecs)) {
+                    if (!registry.hasComponent<rtype::ecs::component::Position>(entity_id_ecs) ||
+                        !registry.hasComponent<rtype::ecs::component::Velocity>(entity_id_ecs)) {
+                        found = true;
+                        break;
+                    }
+
+                    if (!registry.hasComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs)) {
                         auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id_ecs);
-                        pos.x = x;
-                        pos.y = y;
+                        registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs, pos.x, pos.y,
+                                                                                           vx, vy);
                     }
-                    if (registry.hasComponent<rtype::ecs::component::Velocity>(entity_id_ecs)) {
-                        auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(entity_id_ecs);
-                        vel.vx = vx;
-                        vel.vy = vy;
-                    }
+
+                    auto& interp = registry.getComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs);
+                    interp.target_x = x;
+                    interp.target_y = y;
+                    interp.target_vx = vx;
+                    interp.target_vy = vy;
+                    interp.last_update_time = std::chrono::steady_clock::now();
+
                     found = true;
                     break;
                 }
