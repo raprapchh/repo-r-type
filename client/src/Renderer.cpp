@@ -317,7 +317,7 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/monster_0-ball.gif", "monster_0-ball");
     load_texture("client/sprites/r-typesheet2-ezgif.com-crop.gif", "shot");
     load_texture("client/sprites/shot_death.png", "death");
-    load_texture("client/sprites/obstacle_1.png", "obstacle_1");
+    load_texture("client/sprites/obstacle1.png", "obstacle_1");
     load_texture("client/sprites/shot_death-charge1.gif", "shot_death-charge1");
     load_texture("client/sprites/shot_death-charge2.gif", "shot_death-charge2");
     load_texture("client/sprites/shot_death-charge3.gif", "shot_death-charge3");
