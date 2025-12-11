@@ -40,9 +40,12 @@ class StateManager {
     }
 
   private:
+    void process_pending_state_change();
+
     Renderer& renderer_;
     Client& client_;
     std::unique_ptr<IState> current_state_;
+    std::unique_ptr<IState> pending_state_;
 };
 
 } // namespace rtype::client
