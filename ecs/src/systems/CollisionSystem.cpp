@@ -1,4 +1,6 @@
 #include "../../include/systems/CollisionSystem.hpp"
+#include <iostream>
+#include <vector>
 #include "../../include/components/Position.hpp"
 #include "../../include/components/HitBox.hpp"
 #include "../../include/components/CollisionLayer.hpp"
@@ -6,6 +8,7 @@
 #include "../../include/components/Projectile.hpp"
 #include "../../include/components/Score.hpp"
 #include "../../include/components/Lives.hpp"
+#include "../../include/components/Tag.hpp"
 
 namespace rtype::ecs {
 
@@ -20,7 +23,20 @@ void CollisionSystem::update(GameEngine::Registry& registry, double dt) {
 
     for (size_t i = 0; i < entities.size(); ++i) {
         auto entity1 = entities[i];
+        if (!registry.isValid(entity1)) {
+            continue;
+        }
+
+        if (!registry.hasComponent<component::Position>(entity1) ||
+            !registry.hasComponent<component::HitBox>(entity1) ||
+            !registry.hasComponent<component::Collidable>(entity1)) {
+            continue;
+        }
+
         auto entt_entity1 = static_cast<entt::entity>(entity1);
+        if (!view.contains(entt_entity1))
+            continue;
+
         auto& pos1 = view.get<component::Position>(entt_entity1);
         auto& hitbox1 = view.get<component::HitBox>(entt_entity1);
         auto& collidable1 = view.get<component::Collidable>(entt_entity1);
@@ -31,7 +47,20 @@ void CollisionSystem::update(GameEngine::Registry& registry, double dt) {
 
         for (size_t j = i + 1; j < entities.size(); ++j) {
             auto entity2 = entities[j];
+            if (!registry.isValid(entity2)) {
+                continue;
+            }
+
+            if (!registry.hasComponent<component::Position>(entity2) ||
+                !registry.hasComponent<component::HitBox>(entity2) ||
+                !registry.hasComponent<component::Collidable>(entity2)) {
+                continue;
+            }
+
             auto entt_entity2 = static_cast<entt::entity>(entity2);
+            if (!view.contains(entt_entity2))
+                continue;
+
             auto& pos2 = view.get<component::Position>(entt_entity2);
             auto& hitbox2 = view.get<component::HitBox>(entt_entity2);
             auto& collidable2 = view.get<component::Collidable>(entt_entity2);
@@ -47,6 +76,8 @@ void CollisionSystem::update(GameEngine::Registry& registry, double dt) {
             if (CheckAABBCollision(pos1.x, pos1.y, hitbox1.width, hitbox1.height, pos2.x, pos2.y, hitbox2.width,
                                    hitbox2.height)) {
                 HandleCollision(registry, entity1, entity2, collidable1.layer, collidable2.layer);
+                if (!registry.isValid(entity1))
+                    break; // Entity 1 destroyed, stop inner loop
             }
         }
     }
@@ -87,6 +118,11 @@ bool CollisionSystem::ShouldCollide(component::CollisionLayer layer1, component:
     if (layer1 == CL::Obstacle || layer2 == CL::Obstacle)
         return true;
 
+    if (layer1 == CL::PlayerProjectile && layer2 == CL::EnemyProjectile)
+        return true;
+    if (layer1 == CL::EnemyProjectile && layer2 == CL::PlayerProjectile)
+        return true;
+
     return false;
 }
 
@@ -100,6 +136,9 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
 
         if (registry.hasComponent<component::Health>(player_entity)) {
             auto& health = registry.getComponent<component::Health>(player_entity);
+            if (health.hp <= 0) {
+                return;
+            }
             health.hp -= 10;
 
             if (health.hp <= 0) {
@@ -120,7 +159,17 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
             scorer_id = registry.getComponent<component::Projectile>(projectile_entity).owner_id;
         }
 
-        registry.destroyEntity(projectile_entity);
+        bool is_charged = false;
+        if (registry.hasComponent<component::Tag>(projectile_entity)) {
+            const auto& tag = registry.getComponent<component::Tag>(projectile_entity);
+            if (tag.name.find("charge") != std::string::npos) {
+                is_charged = true;
+            }
+        }
+
+        if (!is_charged) {
+            registry.destroyEntity(projectile_entity);
+        }
 
         if (registry.hasComponent<component::Health>(enemy_entity)) {
             auto& health = registry.getComponent<component::Health>(enemy_entity);
@@ -147,6 +196,9 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
 
         if (registry.hasComponent<component::Health>(player_entity)) {
             auto& health = registry.getComponent<component::Health>(player_entity);
+            if (health.hp <= 0) {
+                return;
+            }
             health.hp -= 20;
 
             if (health.hp <= 0) {
@@ -170,6 +222,62 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
         }
 
         registry.destroyEntity(powerup_entity);
+    }
+
+    if ((layer1 == CL::Player && layer2 == CL::Obstacle) || (layer1 == CL::Obstacle && layer2 == CL::Player)) {
+        auto player_entity = (layer1 == CL::Player) ? entity1 : entity2;
+        auto obstacle_entity = (layer1 == CL::Obstacle) ? entity1 : entity2;
+
+        if (registry.hasComponent<component::Position>(player_entity) &&
+            registry.hasComponent<component::HitBox>(player_entity) &&
+            registry.hasComponent<component::Position>(obstacle_entity) &&
+            registry.hasComponent<component::HitBox>(obstacle_entity)) {
+
+            auto& posP = registry.getComponent<component::Position>(player_entity);
+            auto& boxP = registry.getComponent<component::HitBox>(player_entity);
+            auto& posO = registry.getComponent<component::Position>(obstacle_entity);
+            auto& boxO = registry.getComponent<component::HitBox>(obstacle_entity);
+
+            float overlapX = std::min(posP.x + boxP.width, posO.x + boxO.width) - std::max(posP.x, posO.x);
+            float overlapY = std::min(posP.y + boxP.height, posO.y + boxO.height) - std::max(posP.y, posO.y);
+
+            if (overlapX < overlapY) {
+                if (posP.x < posO.x)
+                    posP.x -= overlapX;
+                else
+                    posP.x += overlapX;
+            } else {
+                if (posP.y < posO.y)
+                    posP.y -= overlapY;
+                else
+                    posP.y += overlapY;
+            }
+        }
+    }
+
+    if ((layer1 == CL::PlayerProjectile && layer2 == CL::Obstacle) ||
+        (layer1 == CL::Obstacle && layer2 == CL::PlayerProjectile)) {
+        auto proj_entity = (layer1 == CL::PlayerProjectile) ? entity1 : entity2;
+        registry.destroyEntity(proj_entity);
+    }
+
+    if ((layer1 == CL::PlayerProjectile && layer2 == CL::EnemyProjectile) ||
+        (layer1 == CL::EnemyProjectile && layer2 == CL::PlayerProjectile)) {
+        auto player_projectile = (layer1 == CL::PlayerProjectile) ? entity1 : entity2;
+        auto enemy_projectile = (layer1 == CL::EnemyProjectile) ? entity1 : entity2;
+
+        bool is_charged = false;
+        if (registry.hasComponent<component::Tag>(player_projectile)) {
+            const auto& tag = registry.getComponent<component::Tag>(player_projectile);
+            if (tag.name.find("charge") != std::string::npos) {
+                is_charged = true;
+            }
+        }
+
+        if (!is_charged) {
+            registry.destroyEntity(player_projectile);
+        }
+        registry.destroyEntity(enemy_projectile);
     }
 }
 

@@ -1,5 +1,16 @@
 #include "../include/NetworkSystem.hpp"
 #include "../../shared/net/MessageData.hpp"
+#include "../../ecs/include/components/HitBox.hpp"
+#include "../../ecs/include/components/CollisionLayer.hpp"
+#include "../../shared/GameConstants.hpp"
+#include <SFML/Graphics.hpp>
+#include "../../ecs/include/components/Health.hpp"
+#include "../../ecs/include/components/Projectile.hpp"
+#include "../../ecs/include/components/Explosion.hpp"
+#include "../../ecs/include/components/Weapon.hpp"
+#include "../../ecs/include/components/Tag.hpp"
+#include "../../ecs/include/components/NetworkInterpolation.hpp"
+#include <chrono>
 
 namespace rtype::client {
 
@@ -59,17 +70,102 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
 
         if (is_player) {
             uint32_t sprite_index = (data.entity_id - 1) % 4;
-            registry.addComponent<rtype::ecs::component::Drawable>(entity, "player_ships", sprite_index,
-                                                                   static_cast<uint32_t>(0), 2.0f, 2.0f);
+            registry.addComponent<rtype::ecs::component::Drawable>(
+                entity, "player_ships", 0, 0, static_cast<uint32_t>(rtype::constants::PLAYER_WIDTH),
+                static_cast<uint32_t>(rtype::constants::PLAYER_HEIGHT), rtype::constants::PLAYER_SCALE,
+                rtype::constants::PLAYER_SCALE, 0, 0.1f, false, sprite_index, static_cast<uint32_t>(2));
+            registry.addComponent<rtype::ecs::component::HitBox>(
+                entity, rtype::constants::PLAYER_WIDTH * rtype::constants::PLAYER_SCALE,
+                rtype::constants::PLAYER_HEIGHT * rtype::constants::PLAYER_SCALE);
+            registry.addComponent<rtype::ecs::component::Collidable>(entity,
+                                                                     rtype::ecs::component::CollisionLayer::Player);
             if (is_local) {
                 registry.addComponent<rtype::ecs::component::Controllable>(entity, true);
+            } else {
+                registry.addComponent<rtype::ecs::component::NetworkInterpolation>(
+                    entity, data.position_x, data.position_y, data.velocity_x, data.velocity_y);
             }
+            registry.addComponent<rtype::ecs::component::Tag>(entity, "Player");
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, 165.0f, 110.0f);
         } else if (data.entity_type == rtype::net::EntityType::ENEMY) {
-            registry.addComponent<rtype::ecs::component::Drawable>(entity, "enemy_basic", static_cast<uint32_t>(0),
-                                                                   static_cast<uint32_t>(0), 1.0f, 1.0f);
+            std::string sprite_name = "enemy_basic";
+            if (data.sub_type == 1)
+                sprite_name = "monster_0-top";
+            else if (data.sub_type == 2)
+                sprite_name = "monster_0-bot";
+            else if (data.sub_type == 3)
+                sprite_name = "monster_0-left";
+            else if (data.sub_type == 4)
+                sprite_name = "monster_0-right";
+
+            registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
+                                                                   static_cast<uint32_t>(0), 4.0f, 4.0f);
+            registry.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, 150.0f, 150.0f);
+            registry.addComponent<rtype::ecs::component::Collidable>(entity,
+                                                                     rtype::ecs::component::CollisionLayer::Enemy);
+            registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, data.position_x, data.position_y,
+                                                                               data.velocity_x, data.velocity_y);
         } else if (data.entity_type == rtype::net::EntityType::PROJECTILE) {
-            registry.addComponent<rtype::ecs::component::Drawable>(entity, "shot", 0, 0, 29, 33, 2.0f, 2.0f, 4, 0.05f,
-                                                                   false);
+            std::string sprite_name = "shot";
+            float width = 87.0f;
+            float height = 99.0f;
+
+            if (data.sub_type == 1) {
+                sprite_name = "monster_0-ball";
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
+                                                                       static_cast<uint32_t>(0), 4.5f, 4.5f);
+                width = 110.0f;
+                height = 110.0f;
+            } else if (data.sub_type >= 10 && data.sub_type <= 13) {
+                int frameW = 0;
+                int frameH = 0;
+                if (data.sub_type == 10) {
+                    sprite_name = "shot_death-charge1";
+                    width = 90.0f;
+                    height = 90.0f;
+                } else if (data.sub_type == 11) {
+                    sprite_name = "shot_death-charge2";
+                    width = 120.0f;
+                    height = 120.0f;
+                } else if (data.sub_type == 12) {
+                    sprite_name = "shot_death-charge3";
+                    width = 150.0f;
+                    height = 150.0f;
+                } else if (data.sub_type == 13) {
+                    sprite_name = "shot_death-charge4";
+                    width = 180.0f;
+                    height = 180.0f;
+                }
+
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, frameW, frameH, 3.0f,
+                                                                       3.0f, 2, 0.05f, false);
+            } else {
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 29, 33, 3.0f, 3.0f, 4,
+                                                                       0.05f, false);
+            }
+            registry.addComponent<rtype::ecs::component::Projectile>(entity, 10.0f, 5.0f);
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, width, height);
+
+        } else if (data.entity_type == rtype::net::EntityType::OBSTACLE) {
+            std::string sprite_name = "obstacle_1";
+            if (data.sub_type == 1) {
+                sprite_name = "floor_obstacle";
+            }
+            registry.addComponent<rtype::ecs::component::Drawable>(
+                entity, sprite_name, static_cast<uint32_t>(0), static_cast<uint32_t>(0),
+                rtype::constants::OBSTACLE_SCALE, rtype::constants::OBSTACLE_SCALE);
+            float obs_w = rtype::constants::OBSTACLE_WIDTH;
+            float obs_h = rtype::constants::OBSTACLE_HEIGHT;
+            if (data.sub_type == 1) {
+                obs_w = rtype::constants::FLOOR_OBSTACLE_WIDTH;
+                obs_h = rtype::constants::FLOOR_OBSTACLE_HEIGHT;
+            }
+
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, obs_w * rtype::constants::OBSTACLE_SCALE,
+                                                                 obs_h * rtype::constants::OBSTACLE_SCALE);
+            registry.addComponent<rtype::ecs::component::Collidable>(entity,
+                                                                     rtype::ecs::component::CollisionLayer::Obstacle);
         }
 
     } catch (const std::exception& e) {
@@ -106,16 +202,30 @@ void NetworkSystem::handle_move(GameEngine::Registry& registry, const rtype::net
             try {
                 auto& net_id = registry.getComponent<rtype::ecs::component::NetworkId>(entity_id_ecs);
                 if (net_id.id == entity_id) {
-                    if (registry.hasComponent<rtype::ecs::component::Position>(entity_id_ecs)) {
+                    if (entity_id == player_id_) {
+                        found = true;
+                        break;
+                    }
+
+                    if (!registry.hasComponent<rtype::ecs::component::Position>(entity_id_ecs) ||
+                        !registry.hasComponent<rtype::ecs::component::Velocity>(entity_id_ecs)) {
+                        found = true;
+                        break;
+                    }
+
+                    if (!registry.hasComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs)) {
                         auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id_ecs);
-                        pos.x = x;
-                        pos.y = y;
+                        registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs, pos.x, pos.y,
+                                                                                           vx, vy);
                     }
-                    if (registry.hasComponent<rtype::ecs::component::Velocity>(entity_id_ecs)) {
-                        auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(entity_id_ecs);
-                        vel.vx = vx;
-                        vel.vy = vy;
-                    }
+
+                    auto& interp = registry.getComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs);
+                    interp.target_x = x;
+                    interp.target_y = y;
+                    interp.target_vx = vx;
+                    interp.target_vy = vy;
+                    interp.last_update_time = std::chrono::steady_clock::now();
+
                     found = true;
                     break;
                 }
@@ -133,6 +243,7 @@ void NetworkSystem::handle_move(GameEngine::Registry& registry, const rtype::net
 void NetworkSystem::handle_destroy(GameEngine::Registry& registry, const rtype::net::Packet& packet) {
     try {
         auto data = serializer_.deserialize_entity_destroy(packet);
+
         auto view = registry.view<rtype::ecs::component::NetworkId>();
 
         for (auto entity : view) {
@@ -140,6 +251,42 @@ void NetworkSystem::handle_destroy(GameEngine::Registry& registry, const rtype::
             try {
                 auto& net_id = registry.getComponent<rtype::ecs::component::NetworkId>(entity_id_ecs);
                 if (net_id.id == data.entity_id) {
+                    bool is_player = registry.hasComponent<rtype::ecs::component::Weapon>(entity_id_ecs);
+                    bool is_enemy = !is_player && registry.hasComponent<rtype::ecs::component::Health>(entity_id_ecs);
+
+                    if (is_player || is_enemy) {
+                        float explosion_x = 0.0f;
+                        float explosion_y = 0.0f;
+
+                        if (registry.hasComponent<rtype::ecs::component::Position>(entity_id_ecs)) {
+                            auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id_ecs);
+                            explosion_x = pos.x;
+                            explosion_y = pos.y;
+                        }
+
+                        auto explosion_entity = registry.createEntity();
+                        registry.addComponent<rtype::ecs::component::Position>(explosion_entity, explosion_x,
+                                                                               explosion_y);
+                        registry.addComponent<rtype::ecs::component::Explosion>(explosion_entity);
+                        registry.addComponent<rtype::ecs::component::Drawable>(explosion_entity, "explosion", 5, 0, 37,
+                                                                               44, 4.0f, 4.0f, 6, 0.1f, false);
+                        auto& explosion_drawable =
+                            registry.getComponent<rtype::ecs::component::Drawable>(explosion_entity);
+                        constexpr int EXPLOSION_FRAME_WIDTH = 37;
+                        constexpr int EXPLOSION_FRAME_HEIGHT = 44;
+                        constexpr int EXPLOSION_FRAMES_PER_ROW = 6;
+                        explosion_drawable.rect_x = 5;
+                        explosion_drawable.rect_y = 0;
+                        explosion_drawable.rect_width = EXPLOSION_FRAME_WIDTH;
+                        explosion_drawable.rect_height = EXPLOSION_FRAME_HEIGHT;
+                        explosion_drawable.frame_count = EXPLOSION_FRAMES_PER_ROW;
+                        explosion_drawable.animation_speed = 0.1f;
+                        explosion_drawable.loop = false;
+                        explosion_drawable.current_sprite = 0;
+                        explosion_drawable.animation_sequences["explosion"] = {5, 4, 3, 2, 1, 0};
+                        explosion_drawable.current_state = "explosion";
+                        explosion_drawable.animation_frame = 5;
+                    }
                     registry.destroyEntity(entity_id_ecs);
                     return;
                 }

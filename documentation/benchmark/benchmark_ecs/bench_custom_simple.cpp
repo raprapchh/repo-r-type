@@ -3,8 +3,12 @@
 #include <vector>
 #include <unordered_map>
 
-struct Position { float x, y; };
-struct Velocity { float dx, dy; };
+struct Position {
+    float x, y;
+};
+struct Velocity {
+    float dx, dy;
+};
 
 class SimpleECS {
     struct Entity {
@@ -13,7 +17,7 @@ class SimpleECS {
     };
     std::vector<Entity> entities;
 
-public:
+  public:
     void createEntity(float x, float y) {
         Entity e;
         e.pos = new Position{x, y};

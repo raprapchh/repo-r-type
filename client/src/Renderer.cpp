@@ -1,4 +1,5 @@
 #include "../include/Renderer.hpp"
+#include "../../shared/GameConstants.hpp"
 #include <iostream>
 #include <algorithm>
 
@@ -9,11 +10,28 @@ Renderer::Renderer(uint32_t width, uint32_t height)
       background_x_stars_(0.0f), background_x_stars2_(0.0f) {
     window_->setFramerateLimit(60);
     window_->setKeyRepeatEnabled(false);
-    view_.setSize(static_cast<float>(width), static_cast<float>(height));
-    view_.setCenter(static_cast<float>(width) / 2.0f, static_cast<float>(height) / 2.0f);
+    view_.setSize(rtype::constants::SCREEN_WIDTH, rtype::constants::SCREEN_HEIGHT);
+    view_.setCenter(rtype::constants::SCREEN_WIDTH / 2.0f, rtype::constants::SCREEN_HEIGHT / 2.0f);
     window_->setView(view_);
     std::fill(std::begin(keys_), std::end(keys_), false);
     load_sprites();
+    load_fonts();
+}
+
+void Renderer::load_fonts() {
+    if (!font_.loadFromFile("client/fonts/Ethnocentric-Regular.otf")) {
+        std::cerr << "Erreur: Impossible de charger la police client/fonts/Ethnocentric-Regular.otf" << std::endl;
+    }
+
+    score_text_.setFont(font_);
+    score_text_.setCharacterSize(24);
+    score_text_.setFillColor(sf::Color::White);
+    score_text_.setPosition(10.0f, 10.0f);
+
+    lives_text_.setFont(font_);
+    lives_text_.setCharacterSize(24);
+    lives_text_.setFillColor(sf::Color::White);
+    lives_text_.setPosition(10.0f, 40.0f);
 }
 
 Renderer::~Renderer() = default;
@@ -73,6 +91,19 @@ void Renderer::update_animations(float delta_time) {
                 entity.animation_frame = (entity.animation_frame + 1) % 4;
             }
         }
+        if (entity.type == rtype::net::EntityType::PLAYER) {
+            entity.animation_timer += delta_time;
+            if (entity.animation_timer >= 0.1f && entity.player_state == 1) {
+                entity.animation_timer = 0.0f;
+                entity.animation_frame = (entity.animation_frame + 1) % 4;
+            } else if (entity.animation_timer >= 0.1f && entity.player_state == 2) {
+                entity.animation_timer = 0.0f;
+                entity.animation_frame = (entity.animation_frame - 1) % 4;
+            } else {
+                entity.animation_frame = 2;
+                entity.player_state = 0;
+            }
+        }
     }
 }
 
@@ -93,10 +124,11 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
 
     switch (entity.type) {
     case rtype::net::EntityType::PLAYER:
-        texture_name = "player";
+        texture_name = "player_ships";
         break;
     case rtype::net::EntityType::ENEMY:
         texture_name = "enemy_basic";
+        sprite.setScale(6.0f, 6.0f);
         break;
     case rtype::net::EntityType::PROJECTILE:
         texture_name = "shot";
@@ -116,15 +148,96 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
         sprite.setTextureRect(sf::IntRect(entity.animation_frame * 29, 0, 29, 33));
     }
 
-    if (entity.type == rtype::net::EntityType::PLAYER) {
-        sprite.setScale(3.0f, 3.0f);
-    }
-
     sprite.setPosition(entity.x, entity.y);
     return sprite;
 }
 
 void Renderer::draw_ui() {
+    sf::View current_view = window_->getView();
+    window_->setView(window_->getDefaultView());
+
+    score_text_.setString("Score: " + std::to_string(game_state_.score));
+    lives_text_.setString("Lives: " + std::to_string(static_cast<int>(game_state_.lives)));
+
+    window_->draw(score_text_);
+    window_->draw(lives_text_);
+
+    if (charge_percentage_ > 0.0f) {
+        sf::RectangleShape charge_bar_bg(sf::Vector2f(200.0f, 20.0f));
+        charge_bar_bg.setFillColor(sf::Color(50, 50, 50));
+        charge_bar_bg.setPosition(10.0f, 70.0f);
+        window_->draw(charge_bar_bg);
+
+        sf::RectangleShape charge_bar_fg(sf::Vector2f(200.0f * charge_percentage_, 20.0f));
+        charge_bar_fg.setFillColor(sf::Color(0, 255, 255));
+        charge_bar_fg.setPosition(10.0f, 70.0f);
+        window_->draw(charge_bar_fg);
+    }
+
+    window_->setView(current_view);
+}
+
+void Renderer::draw_game_over(bool all_players_dead) {
+    sf::View current_view = window_->getView();
+    window_->setView(window_->getDefaultView());
+
+    sf::Vector2u window_size = window_->getSize();
+    float center_x = static_cast<float>(window_size.x) / 2.0f;
+    float center_y = static_cast<float>(window_size.y) / 2.0f;
+
+    sf::Text game_over_text;
+    game_over_text.setFont(font_);
+    game_over_text.setString("GAME OVER");
+    game_over_text.setCharacterSize(72);
+    game_over_text.setFillColor(sf::Color::Red);
+    game_over_text.setStyle(sf::Text::Bold);
+
+    sf::FloatRect text_bounds = game_over_text.getLocalBounds();
+    game_over_text.setOrigin(text_bounds.left + text_bounds.width / 2.0f, text_bounds.top + text_bounds.height / 2.0f);
+    game_over_text.setPosition(center_x, center_y - 80.0f);
+
+    window_->draw(game_over_text);
+
+    if (!all_players_dead) {
+        sf::Text waiting_text;
+        waiting_text.setFont(font_);
+        waiting_text.setString("Waiting for other players...");
+        waiting_text.setCharacterSize(24);
+        waiting_text.setFillColor(sf::Color::White);
+
+        sf::FloatRect waiting_bounds = waiting_text.getLocalBounds();
+        waiting_text.setOrigin(waiting_bounds.left + waiting_bounds.width / 2.0f,
+                               waiting_bounds.top + waiting_bounds.height / 2.0f);
+        waiting_text.setPosition(center_x, center_y);
+
+        window_->draw(waiting_text);
+    }
+
+    if (all_players_dead) {
+        back_to_menu_button_.setSize(sf::Vector2f(280.0f, 65.0f));
+        back_to_menu_button_.setFillColor(sf::Color(70, 130, 180));
+        back_to_menu_button_.setOutlineThickness(2);
+        back_to_menu_button_.setOutlineColor(sf::Color::White);
+
+        sf::FloatRect button_bounds = back_to_menu_button_.getLocalBounds();
+        back_to_menu_button_.setOrigin(button_bounds.width / 2.0f, button_bounds.height / 2.0f);
+        back_to_menu_button_.setPosition(center_x, center_y + 60.0f);
+
+        back_to_menu_text_.setFont(font_);
+        back_to_menu_text_.setString("BACK TO MENU");
+        back_to_menu_text_.setCharacterSize(23);
+        back_to_menu_text_.setFillColor(sf::Color::White);
+
+        sf::FloatRect text_bounds_btn = back_to_menu_text_.getLocalBounds();
+        back_to_menu_text_.setOrigin(text_bounds_btn.left + text_bounds_btn.width / 2.0f,
+                                     text_bounds_btn.top + text_bounds_btn.height / 2.0f);
+        back_to_menu_text_.setPosition(center_x, center_y + 60.0f);
+
+        window_->draw(back_to_menu_button_);
+        window_->draw(back_to_menu_text_);
+    }
+
+    window_->setView(current_view);
 }
 void Renderer::draw_background() {
     if (textures_.count("background")) {
@@ -152,7 +265,7 @@ void Renderer::draw_background() {
         bg_sprite.setOrigin(0, texture_height);
         bg_sprite.setScale(scale, scale);
         bg_sprite.setPosition(background_x_, window_height);
-        window_->draw(bg_sprite);
+        // window_->draw(bg_sprite);
 
         background_x_ -= 3.0f;
         background_x_stars_ -= 5.0f;
@@ -198,9 +311,47 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/star_bg.png", "background_stars");
     load_texture("client/sprites/star_2_bg.png", "background_stars2");
     load_texture("client/sprites/monster_0.png", "enemy_basic");
+    load_texture("client/sprites/monster_0-top.gif", "monster_0-top");
+    load_texture("client/sprites/monster_0-bot.gif", "monster_0-bot");
+    load_texture("client/sprites/monster_0-left.gif", "monster_0-left");
+    load_texture("client/sprites/monster_0-right.gif", "monster_0-right");
+    load_texture("client/sprites/monster_0-ball.gif", "monster_0-ball");
     load_texture("client/sprites/r-typesheet2-ezgif.com-crop.gif", "shot");
     load_texture("client/sprites/shot_death.png", "death");
+    load_texture("client/sprites/obstacle1.png", "obstacle_1");
+    load_texture("client/sprites/floor_obstacle.png", "floor_obstacle");
+    load_texture("client/sprites/shot_death-charge1.gif", "shot_death-charge1");
+    load_texture("client/sprites/shot_death-charge2.gif", "shot_death-charge2");
+    load_texture("client/sprites/shot_death-charge3.gif", "shot_death-charge3");
+    load_texture("client/sprites/shot_death-charge4.gif", "shot_death-charge4");
+    load_texture("client/sprites/shot_death-charge-paricule.gif", "charge_particle");
+    load_texture("client/sprites/explosion.gif", "explosion");
     load_texture("client/sprites/players_ship.png", "default");
+}
+
+void Renderer::draw_charge_effect(const sf::Vector2f& position, float delta_time) {
+    if (textures_.find("charge_particle") == textures_.end())
+        return;
+
+    charge_particle_timer_ += delta_time;
+    if (charge_particle_timer_ >= 0.1f) {
+        charge_particle_timer_ = 0.0f;
+        charge_particle_frame_ = (charge_particle_frame_ + 1) % 5;
+    }
+
+    charge_particle_sprite_.setTexture(textures_["charge_particle"]);
+
+    sf::Vector2u texture_size = textures_["charge_particle"].getSize();
+    int frame_width = texture_size.x / 5;
+    int frame_height = texture_size.y;
+
+    charge_particle_sprite_.setTextureRect(
+        sf::IntRect(charge_particle_frame_ * frame_width, 0, frame_width, frame_height));
+
+    charge_particle_sprite_.setScale(3.0f, 3.0f);
+    charge_particle_sprite_.setPosition(position.x + 130.0f, position.y + 10.0f);
+
+    window_->draw(charge_particle_sprite_);
 }
 
 sf::Vector2f Renderer::get_shoot_direction() const {
@@ -236,9 +387,15 @@ sf::Vector2f Renderer::get_mouse_position() const {
 }
 
 void Renderer::handle_resize(uint32_t width, uint32_t height) {
-    view_.setSize(static_cast<float>(width), static_cast<float>(height));
-    view_.setCenter(static_cast<float>(width) / 2.0f, static_cast<float>(height) / 2.0f);
+    (void)width;
+    (void)height;
+    view_.setSize(rtype::constants::SCREEN_WIDTH, rtype::constants::SCREEN_HEIGHT);
+    view_.setCenter(rtype::constants::SCREEN_WIDTH / 2.0f, rtype::constants::SCREEN_HEIGHT / 2.0f);
     window_->setView(view_);
+}
+
+bool Renderer::is_game_over_back_to_menu_clicked(const sf::Vector2f& mouse_pos) const {
+    return back_to_menu_button_.getGlobalBounds().contains(mouse_pos);
 }
 
 } // namespace rtype::client

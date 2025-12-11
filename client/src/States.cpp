@@ -7,12 +7,18 @@ StateManager::StateManager(Renderer& renderer, Client& client)
 }
 
 void StateManager::change_state(std::unique_ptr<IState> new_state) {
-    if (current_state_) {
-        current_state_->on_exit(renderer_, client_);
-    }
-    current_state_ = std::move(new_state);
-    if (current_state_) {
-        current_state_->on_enter(renderer_, client_);
+    pending_state_ = std::move(new_state);
+}
+
+void StateManager::process_pending_state_change() {
+    if (pending_state_) {
+        if (current_state_) {
+            current_state_->on_exit(renderer_, client_);
+        }
+        current_state_ = std::move(pending_state_);
+        if (current_state_) {
+            current_state_->on_enter(renderer_, client_);
+        }
     }
 }
 
@@ -23,6 +29,7 @@ void StateManager::handle_input() {
 }
 
 void StateManager::update(float delta_time) {
+    process_pending_state_change();
     if (current_state_) {
         current_state_->update(renderer_, client_, *this, delta_time);
     }

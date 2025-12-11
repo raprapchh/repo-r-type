@@ -16,8 +16,10 @@ struct Entity {
     float y;
     float velocity_x;
     float velocity_y;
-    int animation_frame = 0;
+    int animation_frame = 2;
     float animation_timer = 0.0f;
+    int player_state = 0;
+    uint16_t sub_type = 0;
 };
 
 class Renderer {
@@ -41,6 +43,8 @@ class Renderer {
     void draw_entities();
     void draw_ui();
     void draw_background();
+    void draw_game_over(bool all_players_dead);
+    bool is_game_over_back_to_menu_clicked(const sf::Vector2f& mouse_pos) const;
     void render_frame();
 
     sf::Vector2f get_player_position(uint32_t player_id) const;
@@ -68,6 +72,9 @@ class Renderer {
     sf::Vector2u get_window_size() const;
     sf::Vector2f get_mouse_position() const;
     void handle_resize(uint32_t width, uint32_t height);
+    void set_charge_percentage(float percentage) {
+        charge_percentage_ = percentage;
+    }
 
     std::unordered_map<std::string, sf::Texture>& get_textures() {
         return textures_;
@@ -79,6 +86,7 @@ class Renderer {
 
   private:
     void load_sprites();
+    void load_fonts();
     void load_texture(const std::string& path, const std::string& name);
     sf::Sprite create_sprite(const Entity& entity);
 
@@ -86,6 +94,9 @@ class Renderer {
     sf::View view_;
     std::unordered_map<std::string, sf::Texture> textures_;
     std::unordered_map<uint32_t, Entity> entities_;
+    sf::Font font_;
+    sf::Text score_text_;
+    sf::Text lives_text_;
 
     bool keys_[sf::Keyboard::KeyCount];
     float background_x_;
@@ -93,10 +104,15 @@ class Renderer {
     float background_x_stars2_;
 
     rtype::net::GameStateData game_state_;
+    mutable sf::RectangleShape back_to_menu_button_;
+    mutable sf::Text back_to_menu_text_;
+    float charge_percentage_ = 0.0f;
+    sf::Sprite charge_particle_sprite_;
+    int charge_particle_frame_ = 0;
+    float charge_particle_timer_ = 0.0f;
 
-    const float PLAYER_SPEED = 5.0f;
-    const float PLAYER_WIDTH = 32.0f;
-    const float PLAYER_HEIGHT = 32.0f;
+  public:
+    void draw_charge_effect(const sf::Vector2f& position, float delta_time);
 };
 
 } // namespace rtype::client

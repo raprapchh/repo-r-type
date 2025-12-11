@@ -1,18 +1,26 @@
 #include "../../include/systems/BoundarySystem.hpp"
 #include "../../include/components/Position.hpp"
 #include "../../include/components/HitBox.hpp"
+#include "../../include/components/Health.hpp"
+#include "../../include/components/Weapon.hpp"
+#include "../../include/components/Projectile.hpp"
 #include "../../include/components/MapBounds.hpp"
+#include "../../../shared/GameConstants.hpp"
+#include "../../include/components/Tag.hpp"
 #include "../../include/Registry.hpp"
+#include <vector>
+
+#include "../../shared/utils/GameConfig.hpp"
 
 namespace rtype::ecs {
 
 void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
     (void)dt;
 
-    float minX = 0.0f;
-    float minY = 0.0f;
-    float maxX = 1920.0f;
-    float maxY = 1080.0f;
+    float minX = rtype::config::MAP_MIN_X;
+    float minY = rtype::config::MAP_MIN_Y;
+    float maxX = rtype::config::MAP_MAX_X;
+    float maxY = rtype::config::MAP_MAX_Y;
 
     try {
         auto mapBoundsView = registry.view<component::MapBounds>();
@@ -29,7 +37,9 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
 
     auto view = registry.view<component::Position>();
 
-    view.each([&registry, minX, minY, maxX, maxY](const auto entity, component::Position& pos) {
+    std::vector<GameEngine::entity_t> entities_to_destroy;
+
+    view.each([&](const auto entity, component::Position& pos) {
         float width = 0.0f;
         float height = 0.0f;
 
@@ -39,16 +49,39 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
             height = hitbox.height;
         }
 
-        if (pos.x < minX)
-            pos.x = minX;
-        if (pos.x + width > maxX)
-            pos.x = maxX - width;
+        bool is_player = false;
+        if (registry.hasComponent<component::Tag>(static_cast<std::size_t>(entity))) {
+            const auto& tag = registry.getComponent<component::Tag>(static_cast<std::size_t>(entity));
+            if (tag.name == "Player") {
+                is_player = true;
+            }
+        }
 
-        if (pos.y < minY)
-            pos.y = minY;
-        if (pos.y + height > maxY)
-            pos.y = maxY - height;
+        if (is_player) {
+            if (pos.x < minX)
+                pos.x = minX;
+            if (pos.x + width > maxX)
+                pos.x = maxX - width;
+            if (pos.y < minY)
+                pos.y = minY;
+            if (pos.y + height > maxY)
+                pos.y = maxY - height;
+            return;
+        }
+
+        float buffer = 120.0f;
+        if (registry.hasComponent<component::Projectile>(static_cast<std::size_t>(entity))) {
+            buffer = 20.0f;
+        }
+
+        if (pos.x < minX - buffer || pos.x > maxX + buffer || pos.y < minY - buffer || pos.y > maxY + buffer) {
+            entities_to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
+        }
     });
+
+    for (auto entity : entities_to_destroy) {
+        registry.destroyEntity(entity);
+    }
 }
 
 } // namespace rtype::ecs
