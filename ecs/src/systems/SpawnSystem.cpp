@@ -6,7 +6,9 @@
 #include "../../include/components/Velocity.hpp"
 #include "../../include/components/MapBounds.hpp"
 #include "../../include/components/Tag.hpp"
+#include "../../include/components/Tag.hpp"
 #include "../../include/components/Weapon.hpp"
+#include "../../include/components/CollisionLayer.hpp"
 #include "../../shared/utils/GameConfig.hpp"
 #include <random>
 
@@ -62,7 +64,7 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                 dirY = 1.0f;
 
                 offX = 24.0f;
-                offY = -80.0f;
+                offY = 0.0f;
             } else if (direction == 1) {
                 std::uniform_real_distribution<float> xDist(0.0f, maxX - 50.0f);
                 spawnX = xDist(gen);
@@ -71,10 +73,10 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                 vy = -150.0f;
                 tag = "Monster_0_Bot";
                 dirX = 0.0f;
-                dirY = -1.0f;
+                dirY = 10.0f;
 
                 offX = 25.0f;
-                offY = 80.0f;
+                offY = 20.0f;
             } else if (direction == 2) {
                 std::uniform_real_distribution<float> yDist(0.0f, maxY - 50.0f);
                 spawnX = -60.0f;
@@ -85,7 +87,7 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                 dirX = 1.0f;
                 dirY = 0.0f;
 
-                offX = -20.0f;
+                offX = 0.0f;
                 offY = 20.0f;
             } else {
                 std::uniform_real_distribution<float> yDist(0.0f, maxY - 50.0f);
@@ -97,15 +99,16 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                 dirX = -1.0f;
                 dirY = 0.0f;
 
-                offX = 140.0f;
+                offX = 50.0f;
                 offY = 20.0f;
             }
 
             registry.addComponent<component::Position>(enemy, spawnX, spawnY);
             registry.addComponent<component::Velocity>(enemy, vx, vy);
             registry.addComponent<component::HitBox>(enemy, 50.0f, 50.0f);
-            registry.addComponent<component::Health>(enemy, 100, 100);
+            registry.addComponent<component::Health>(enemy, 5, 5);
             registry.addComponent<component::Tag>(enemy, tag);
+            registry.addComponent<component::Collidable>(enemy, component::CollisionLayer::Enemy);
 
             auto& weapon = registry.addComponent<component::Weapon>(enemy);
             weapon.autoFire = true;
