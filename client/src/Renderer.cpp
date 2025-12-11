@@ -128,6 +128,7 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
         break;
     case rtype::net::EntityType::ENEMY:
         texture_name = "enemy_basic";
+        sprite.setScale(6.0f, 6.0f);
         break;
     case rtype::net::EntityType::PROJECTILE:
         texture_name = "shot";

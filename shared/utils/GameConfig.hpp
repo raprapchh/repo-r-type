@@ -6,4 +6,5 @@ constexpr float MAP_MIN_Y = 0.0f;
 constexpr float MAP_MAX_X = 1920.0f;
 constexpr float MAP_MAX_Y = 1080.0f;
 constexpr float ENEMY_DESPAWN_OFFSET = -100.0f;
+constexpr float SCROLL_SPEED = 100.0f;
 } // namespace rtype::config

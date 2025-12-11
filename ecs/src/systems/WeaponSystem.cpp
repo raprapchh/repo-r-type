@@ -6,13 +6,14 @@
 #include "../../include/components/HitBox.hpp"
 #include "../../include/components/Tag.hpp"
 #include "../../include/components/CollisionLayer.hpp"
+#include "../../include/components/ScreenMode.hpp"
+#include "../../shared/utils/GameConfig.hpp"
 #include <iostream>
 #include "../../../shared/utils/Logger.hpp"
 
 namespace rtype::ecs {
 
 void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
-    // rtype::Logger::instance().info("WeaponSystem update");
     auto view = registry.view<component::Weapon, component::Position>();
 
     view.each([&registry, dt](auto entity, component::Weapon& weapon, component::Position& pos) {
@@ -28,13 +29,34 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
             float spawnY = pos.y + weapon.spawnOffsetY;
 
             registry.addComponent<component::Position>(projectile, spawnX, spawnY);
-            registry.addComponent<component::Velocity>(projectile, weapon.projectileSpeed * weapon.directionX,
-                                                       weapon.projectileSpeed * weapon.directionY);
+            float vx = weapon.projectileSpeed * weapon.directionX;
+            float vy = weapon.projectileSpeed * weapon.directionY;
 
+            bool is_player = false;
+            if (registry.hasComponent<component::Tag>(static_cast<std::size_t>(entity))) {
+                const auto& tag = registry.getComponent<component::Tag>(static_cast<std::size_t>(entity));
+                if (tag.name == "Player") {
+                    is_player = true;
+                }
+            }
+
+            if (!is_player) {
+                vx -= rtype::config::SCROLL_SPEED;
+            }
             float damage = weapon.damage;
             std::string projectileTag = weapon.projectileTag;
-            float hitBoxW = 58.0f;
-            float hitBoxH = 66.0f;
+            float hitBoxW = 0.0f;
+            float hitBoxH = 0.0f;
+
+            if (!is_player) {
+                hitBoxW = 110.0f;
+                hitBoxH = 110.0f;
+            } else {
+                hitBoxW = 87.0f;
+                hitBoxH = 99.0f;
+            }
+
+            registry.addComponent<component::Velocity>(projectile, vx, vy);
 
             if (registry.hasComponent<component::Tag>(static_cast<std::size_t>(entity))) {
                 const auto& tag = registry.getComponent<component::Tag>(static_cast<std::size_t>(entity));

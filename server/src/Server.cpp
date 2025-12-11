@@ -8,6 +8,7 @@
 #include "../../ecs/include/systems/CollisionSystem.hpp"
 #include "../../ecs/include/systems/WeaponSystem.hpp"
 #include "../../ecs/include/systems/SpawnSystem.hpp"
+#include "../../ecs/include/systems/MobSystem.hpp"
 #include "../../ecs/include/components/Position.hpp"
 #include "../../ecs/include/components/Velocity.hpp"
 #include "../../ecs/include/components/Weapon.hpp"
@@ -20,6 +21,7 @@
 #include "../../ecs/include/components/Lives.hpp"
 #include "../../ecs/include/systems/ScoreSystem.hpp"
 #include "../../ecs/include/systems/LivesSystem.hpp"
+#include "../../ecs/include/systems/ProjectileSystem.hpp"
 #include "../../ecs/include/components/Projectile.hpp"
 #include "../../ecs/include/components/NetworkId.hpp"
 #include "../../ecs/include/components/MapBounds.hpp"
@@ -238,6 +240,9 @@ void Server::game_loop() {
                     });
                 }
 
+                rtype::ecs::MobSystem mob_system;
+                mob_system.update(registry_, dt);
+
                 rtype::ecs::BoundarySystem boundary_system;
                 boundary_system.update(registry_, dt);
 
@@ -249,6 +254,9 @@ void Server::game_loop() {
 
                 rtype::ecs::WeaponSystem weapon_system;
                 weapon_system.update(registry_, dt);
+
+                rtype::ecs::ProjectileSystem projectile_system;
+                projectile_system.update(registry_, dt);
 
                 // Track enemy entities after systems and find destroyed ones
                 if (protocol_adapter_ && message_serializer_) {

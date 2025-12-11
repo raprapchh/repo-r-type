@@ -99,7 +99,7 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 sprite_name = "monster_0-right";
 
             registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
-                                                                   static_cast<uint32_t>(0), 3.0f, 3.0f);
+                                                                   static_cast<uint32_t>(0), 4.0f, 4.0f);
             registry.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
             registry.addComponent<rtype::ecs::component::HitBox>(entity, 150.0f, 150.0f);
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
@@ -114,7 +114,9 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             if (data.sub_type == 1) {
                 sprite_name = "monster_0-ball";
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
-                                                                       static_cast<uint32_t>(0), 3.0f, 3.0f);
+                                                                       static_cast<uint32_t>(0), 4.5f, 4.5f);
+                width = 110.0f;
+                height = 110.0f;
             } else if (data.sub_type >= 10 && data.sub_type <= 13) {
                 int frameW = 0;
                 int frameH = 0;

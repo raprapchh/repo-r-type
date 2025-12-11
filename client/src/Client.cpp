@@ -512,6 +512,21 @@ void Client::update(double dt) {
             }
         }
     }
+
+    {
+        std::vector<GameEngine::entity_t> to_destroy;
+        auto pos_view = registry_.view<rtype::ecs::component::Position>();
+        for (auto entity : pos_view) {
+            auto& pos =
+                registry_.getComponent<rtype::ecs::component::Position>(static_cast<GameEngine::entity_t>(entity));
+            if (pos.x < -1000.0f || pos.x > 3000.0f || pos.y < -1000.0f || pos.y > 2000.0f) {
+                to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
+            }
+        }
+        for (auto entity : to_destroy) {
+            registry_.destroyEntity(entity);
+        }
+    }
 }
 
 } // namespace rtype::client
