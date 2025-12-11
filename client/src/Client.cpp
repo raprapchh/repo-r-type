@@ -9,6 +9,7 @@
 #include "../../ecs/include/components/HitBox.hpp"
 #include "../../ecs/include/components/Lives.hpp"
 #include "../../ecs/include/components/Health.hpp"
+#include "../../ecs/include/components/Tag.hpp"
 #include <iostream>
 #include <chrono>
 
@@ -123,7 +124,8 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                                                                         static_cast<uint32_t>(2));
                 registry_.addComponent<rtype::ecs::component::Controllable>(entity, true);
                 auto& drawable = registry_.getComponent<rtype::ecs::component::Drawable>(entity);
-                registry_.addComponent<rtype::ecs::component::HitBox>(entity, 96.0f, 96.0f);
+                registry_.addComponent<rtype::ecs::component::HitBox>(entity, 165.0f, 110.0f);
+                registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
                 registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
                 registry_.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
                 drawable.animation_sequences["idle"] = {2};
