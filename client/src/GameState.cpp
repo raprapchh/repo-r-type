@@ -95,6 +95,11 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
 
     {
         std::lock_guard<std::mutex> lock(registry_mutex);
+
+        if (!client.is_connected()) {
+            return;
+        }
+
         uint32_t player_id = client.get_player_id();
         bool player_exists = false;
         bool player_dead = false;
