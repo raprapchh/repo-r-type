@@ -160,6 +160,18 @@ void Renderer::draw_ui() {
     window_->draw(score_text_);
     window_->draw(lives_text_);
 
+    if (charge_percentage_ > 0.0f) {
+        sf::RectangleShape charge_bar_bg(sf::Vector2f(200.0f, 20.0f));
+        charge_bar_bg.setFillColor(sf::Color(50, 50, 50));
+        charge_bar_bg.setPosition(10.0f, 70.0f);
+        window_->draw(charge_bar_bg);
+
+        sf::RectangleShape charge_bar_fg(sf::Vector2f(200.0f * charge_percentage_, 20.0f));
+        charge_bar_fg.setFillColor(sf::Color(0, 255, 255));
+        charge_bar_fg.setPosition(10.0f, 70.0f);
+        window_->draw(charge_bar_fg);
+    }
+
     window_->setView(current_view);
 }
 
@@ -303,8 +315,38 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/monster_0-right.gif", "monster_0-right");
     load_texture("client/sprites/monster_0-ball.gif", "monster_0-ball");
     load_texture("client/sprites/r-typesheet2-ezgif.com-crop.gif", "shot");
+    load_texture("client/sprites/shot_death-charge1.gif", "shot_death-charge1");
+    load_texture("client/sprites/shot_death-charge2.gif", "shot_death-charge2");
+    load_texture("client/sprites/shot_death-charge3.gif", "shot_death-charge3");
+    load_texture("client/sprites/shot_death-charge4.gif", "shot_death-charge4");
+    load_texture("client/sprites/shot_death-charge-paricule.gif", "charge_particle");
     load_texture("client/sprites/explosion.gif", "explosion");
     load_texture("client/sprites/players_ship.png", "default");
+}
+
+void Renderer::draw_charge_effect(const sf::Vector2f& position, float delta_time) {
+    if (textures_.find("charge_particle") == textures_.end())
+        return;
+
+    charge_particle_timer_ += delta_time;
+    if (charge_particle_timer_ >= 0.1f) {
+        charge_particle_timer_ = 0.0f;
+        charge_particle_frame_ = (charge_particle_frame_ + 1) % 5;
+    }
+
+    charge_particle_sprite_.setTexture(textures_["charge_particle"]);
+
+    sf::Vector2u texture_size = textures_["charge_particle"].getSize();
+    int frame_width = texture_size.x / 5;
+    int frame_height = texture_size.y;
+
+    charge_particle_sprite_.setTextureRect(
+        sf::IntRect(charge_particle_frame_ * frame_width, 0, frame_width, frame_height));
+
+    charge_particle_sprite_.setScale(3.0f, 3.0f);
+    charge_particle_sprite_.setPosition(position.x + 130.0f, position.y + 10.0f);
+
+    window_->draw(charge_particle_sprite_);
 }
 
 sf::Vector2f Renderer::get_shoot_direction() const {

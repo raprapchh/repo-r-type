@@ -71,6 +71,9 @@ class Renderer {
     sf::Vector2u get_window_size() const;
     sf::Vector2f get_mouse_position() const;
     void handle_resize(uint32_t width, uint32_t height);
+    void set_charge_percentage(float percentage) {
+        charge_percentage_ = percentage;
+    }
 
     std::unordered_map<std::string, sf::Texture>& get_textures() {
         return textures_;
@@ -102,6 +105,13 @@ class Renderer {
     rtype::net::GameStateData game_state_;
     mutable sf::RectangleShape back_to_menu_button_;
     mutable sf::Text back_to_menu_text_;
+    float charge_percentage_ = 0.0f;
+    sf::Sprite charge_particle_sprite_;
+    int charge_particle_frame_ = 0;
+    float charge_particle_timer_ = 0.0f;
+
+  public:
+    void draw_charge_effect(const sf::Vector2f& position, float delta_time);
 };
 
 } // namespace rtype::client
