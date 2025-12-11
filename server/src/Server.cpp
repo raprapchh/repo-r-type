@@ -1,4 +1,5 @@
 #include "Server.hpp"
+#include "../../shared/GameConstants.hpp"
 #include "../shared/net/Protocol.hpp"
 #include "../shared/net/ProtocolAdapter.hpp"
 #include "../shared/net/MessageSerializer.hpp"
@@ -64,8 +65,18 @@ void Server::start() {
         registry_.addComponent<rtype::ecs::component::MapBounds>(boundsEntity, rtype::config::MAP_MIN_X,
                                                                  rtype::config::MAP_MIN_Y, rtype::config::MAP_MAX_X,
                                                                  rtype::config::MAP_MAX_Y);
+        Logger::instance().info("Map dimensions: 1920x1080");
+
+        auto obstacle = registry_.createEntity();
+        registry_.addComponent<rtype::ecs::component::Position>(obstacle, 600.0f, 850.0f);
+        registry_.addComponent<rtype::ecs::component::HitBox>(
+            obstacle, rtype::constants::OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE,
+            rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
+        registry_.addComponent<rtype::ecs::component::Collidable>(obstacle,
+                                                                  rtype::ecs::component::CollisionLayer::Obstacle);
+        registry_.addComponent<rtype::ecs::component::NetworkId>(obstacle, next_player_id_++);
+        registry_.addComponent<rtype::ecs::component::Tag>(obstacle, "Obstacle");
     }
-    Logger::instance().info("Map dimensions: 1920x1080");
     Logger::instance().info("Enemy spawner initialized (interval: 2.0s)");
 }
 
@@ -514,16 +525,18 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         entity = registry_.createEntity();
         registry_.addComponent<rtype::ecs::component::Position>(entity, start_x, start_y);
         registry_.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
-        registry_.addComponent<rtype::ecs::component::HitBox>(entity, 165.0f, 110.0f);
+        registry_.addComponent<rtype::ecs::component::HitBox>(
+            entity, rtype::constants::PLAYER_WIDTH * rtype::constants::PLAYER_SCALE,
+            rtype::constants::PLAYER_HEIGHT * rtype::constants::PLAYER_SCALE);
         auto& weapon = registry_.addComponent<rtype::ecs::component::Weapon>(entity);
         weapon.spawnOffsetX = 35.0f;
         weapon.spawnOffsetY = 10.0f;
         weapon.fireRate = 0.1f;
         weapon.projectileSpeed = 1500.0f;
-        registry_.addComponent<rtype::ecs::component::Score>(entity, 0);
-        registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
-        registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
         registry_.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
+        registry_.addComponent<rtype::ecs::component::Score>(entity, 0);
+        registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
+        registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
         registry_.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                   rtype::ecs::component::CollisionLayer::Player);
 
@@ -564,7 +577,31 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
     }
 
     {
-        std::lock_guard<std::mutex> lock(registry_mutex_);
+        std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+
+        auto obstacle_view =
+            registry_
+                .view<rtype::ecs::component::NetworkId, rtype::ecs::component::Position, rtype::ecs::component::Tag>();
+        for (auto entity : obstacle_view) {
+            auto& tag = registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
+            if (tag.name == "Obstacle") {
+                auto& net_id = registry_.getComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity));
+                auto& pos = registry_.getComponent<rtype::ecs::component::Position>(static_cast<size_t>(entity));
+
+                rtype::net::EntitySpawnData spawn_data;
+                spawn_data.entity_id = net_id.id;
+                spawn_data.entity_type = rtype::net::EntityType::OBSTACLE;
+                spawn_data.sub_type = 0;
+                spawn_data.position_x = pos.x;
+                spawn_data.position_y = pos.y;
+                spawn_data.velocity_x = 0;
+                spawn_data.velocity_y = 0;
+
+                rtype::net::Packet spawn_packet = message_serializer_->serialize_entity_spawn(spawn_data);
+                auto serialized_spawn = protocol_adapter_->serialize(spawn_packet);
+                udp_server_->send(client_ip, client_port, serialized_spawn);
+            }
+        }
 
         auto enemy_view = registry_.view<rtype::ecs::component::NetworkId, rtype::ecs::component::Position,
                                          rtype::ecs::component::Velocity, rtype::ecs::component::Health>();
@@ -707,6 +744,11 @@ void Server::handle_player_shoot(const std::string& client_ip, uint16_t client_p
             std::lock_guard<std::mutex> registry_lock(registry_mutex_);
             if (!registry_.isValid(entity_id)) {
                 return;
+            }
+            if (registry_.hasComponent<rtype::ecs::component::Position>(entity_id)) {
+                auto& pos = registry_.getComponent<rtype::ecs::component::Position>(entity_id);
+                pos.x = shoot_data.position_x;
+                pos.y = shoot_data.position_y;
             }
             if (registry_.hasComponent<rtype::ecs::component::Weapon>(entity_id)) {
                 auto& weapon = registry_.getComponent<rtype::ecs::component::Weapon>(entity_id);

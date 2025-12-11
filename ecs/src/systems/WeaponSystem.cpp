@@ -75,16 +75,14 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
             registry.addComponent<component::HitBox>(projectile, hitBoxW, hitBoxH);
             registry.addComponent<component::Tag>(projectile, projectileTag);
 
-            component::CollisionLayer layer = component::CollisionLayer::None;
-            if (registry.hasComponent<component::Tag>(static_cast<std::size_t>(entity))) {
-                const auto& tag = registry.getComponent<component::Tag>(static_cast<std::size_t>(entity));
-                if (tag.name == "Player") {
-                    layer = component::CollisionLayer::PlayerProjectile;
-                } else if (tag.name.find("Monster") != std::string::npos) {
-                    layer = component::CollisionLayer::EnemyProjectile;
+            component::CollisionLayer projLayer = component::CollisionLayer::PlayerProjectile;
+            if (registry.hasComponent<component::Collidable>(static_cast<std::size_t>(entity))) {
+                auto& ownerCollidable = registry.getComponent<component::Collidable>(static_cast<std::size_t>(entity));
+                if (ownerCollidable.layer == component::CollisionLayer::Enemy) {
+                    projLayer = component::CollisionLayer::EnemyProjectile;
                 }
             }
-            registry.addComponent<component::Collidable>(projectile, layer);
+            registry.addComponent<component::Collidable>(projectile, projLayer);
 
             weapon.timeSinceLastFire = 0.0f;
             if (!weapon.autoFire) {

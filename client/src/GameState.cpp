@@ -3,6 +3,7 @@
 #include "../../ecs/include/systems/InputSystem.hpp"
 #include "../../ecs/include/systems/RenderSystem.hpp"
 #include "../../ecs/include/systems/MovementSystem.hpp"
+#include "../../ecs/include/systems/CollisionSystem.hpp"
 #include "../../ecs/include/systems/BoundarySystem.hpp"
 #include "../../ecs/include/components/MapBounds.hpp"
 #include "../../ecs/include/components/NetworkId.hpp"
@@ -238,6 +239,8 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
             std::lock_guard<std::mutex> lock(registry_mutex);
             rtype::ecs::BoundarySystem boundary_system;
             boundary_system.update(registry, delta_time);
+            rtype::ecs::CollisionSystem collision_system;
+            collision_system.update(registry, delta_time);
         }
 
         {

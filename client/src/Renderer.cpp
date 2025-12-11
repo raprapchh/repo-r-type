@@ -1,4 +1,5 @@
 #include "../include/Renderer.hpp"
+#include "../../shared/GameConstants.hpp"
 #include <iostream>
 #include <algorithm>
 
@@ -9,8 +10,8 @@ Renderer::Renderer(uint32_t width, uint32_t height)
       background_x_stars_(0.0f), background_x_stars2_(0.0f) {
     window_->setFramerateLimit(60);
     window_->setKeyRepeatEnabled(false);
-    view_.setSize(static_cast<float>(width), static_cast<float>(height));
-    view_.setCenter(static_cast<float>(width) / 2.0f, static_cast<float>(height) / 2.0f);
+    view_.setSize(rtype::constants::SCREEN_WIDTH, rtype::constants::SCREEN_HEIGHT);
+    view_.setCenter(rtype::constants::SCREEN_WIDTH / 2.0f, rtype::constants::SCREEN_HEIGHT / 2.0f);
     window_->setView(view_);
     std::fill(std::begin(keys_), std::end(keys_), false);
     load_sprites();
@@ -315,6 +316,8 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/monster_0-right.gif", "monster_0-right");
     load_texture("client/sprites/monster_0-ball.gif", "monster_0-ball");
     load_texture("client/sprites/r-typesheet2-ezgif.com-crop.gif", "shot");
+    load_texture("client/sprites/shot_death.png", "death");
+    load_texture("client/sprites/obstacle1.png", "obstacle_1");
     load_texture("client/sprites/shot_death-charge1.gif", "shot_death-charge1");
     load_texture("client/sprites/shot_death-charge2.gif", "shot_death-charge2");
     load_texture("client/sprites/shot_death-charge3.gif", "shot_death-charge3");
@@ -382,8 +385,10 @@ sf::Vector2f Renderer::get_mouse_position() const {
 }
 
 void Renderer::handle_resize(uint32_t width, uint32_t height) {
-    view_.setSize(static_cast<float>(width), static_cast<float>(height));
-    view_.setCenter(static_cast<float>(width) / 2.0f, static_cast<float>(height) / 2.0f);
+    (void)width;
+    (void)height;
+    view_.setSize(rtype::constants::SCREEN_WIDTH, rtype::constants::SCREEN_HEIGHT);
+    view_.setCenter(rtype::constants::SCREEN_WIDTH / 2.0f, rtype::constants::SCREEN_HEIGHT / 2.0f);
     window_->setView(view_);
 }
 

@@ -85,6 +85,7 @@ void LobbyState::on_exit(Renderer& renderer, Client& client) {
 }
 
 void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
+    (void)state_manager;
     sf::Event event;
     while (renderer.poll_event(event)) {
         if (event.type == sf::Event::Closed) {

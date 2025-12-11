@@ -5,6 +5,7 @@
 #include "../../include/components/Weapon.hpp"
 #include "../../include/components/Projectile.hpp"
 #include "../../include/components/MapBounds.hpp"
+#include "../../../shared/GameConstants.hpp"
 #include "../../include/components/Tag.hpp"
 #include "../../include/Registry.hpp"
 #include <vector>
