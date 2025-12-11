@@ -69,7 +69,11 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
             return;
         }
 
-        float buffer = 200.0f;
+        float buffer = 120.0f;
+        if (registry.hasComponent<component::Projectile>(static_cast<std::size_t>(entity))) {
+            buffer = 20.0f;
+        }
+
         if (pos.x < minX - buffer || pos.x > maxX + buffer || pos.y < minY - buffer || pos.y > maxY + buffer) {
             entities_to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
         }
