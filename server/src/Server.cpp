@@ -240,6 +240,16 @@ void Server::game_loop() {
                     });
                 }
 
+                std::map<size_t, uint32_t> player_entities_before;
+                {
+                    std::lock_guard<std::mutex> clients_lock(clients_mutex_);
+                    for (const auto& [key, client] : clients_) {
+                        if (client.is_connected && registry_.isValid(client.entity_id)) {
+                            player_entities_before[client.entity_id] = client.player_id;
+                        }
+                    }
+                }
+
                 rtype::ecs::MobSystem mob_system;
                 mob_system.update(registry_, dt);
 
@@ -251,6 +261,31 @@ void Server::game_loop() {
 
                 rtype::ecs::LivesSystem lives_system;
                 lives_system.update(registry_, dt);
+
+                if (protocol_adapter_ && message_serializer_) {
+                    std::lock_guard<std::mutex> clients_lock(clients_mutex_);
+
+                    for (const auto& [entity_id, player_id] : player_entities_before) {
+                        if (!registry_.isValid(entity_id)) {
+                            rtype::net::EntityDestroyData destroy_data;
+                            destroy_data.entity_id = player_id;
+                            destroy_data.reason = rtype::net::DestroyReason::KILLED;
+
+                            rtype::net::Packet destroy_packet =
+                                message_serializer_->serialize_entity_destroy(destroy_data);
+                            auto serialized_destroy = protocol_adapter_->serialize(destroy_packet);
+
+                            for (const auto& [dest_key, dest_client] : clients_) {
+                                if (dest_client.is_connected && udp_server_) {
+                                    udp_server_->send(dest_client.ip, dest_client.port, serialized_destroy);
+                                }
+                            }
+
+                            Logger::instance().info("Player death broadcasted: player_id=" +
+                                                  std::to_string(player_id));
+                        }
+                    }
+                }
 
                 rtype::ecs::WeaponSystem weapon_system;
                 weapon_system.update(registry_, dt);
