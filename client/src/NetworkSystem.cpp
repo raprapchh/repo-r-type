@@ -173,14 +173,14 @@ void NetworkSystem::handle_destroy(GameEngine::Registry& registry, const rtype::
                         registry.addComponent<rtype::ecs::component::Position>(explosion_entity, explosion_x,
                                                                                explosion_y);
                         registry.addComponent<rtype::ecs::component::Explosion>(explosion_entity);
-                        registry.addComponent<rtype::ecs::component::Drawable>(explosion_entity, "explosion", 0, 0, 34,
-                                                                               44, 4.0f, 4.0f, 12, 0.1f, false);
+                        registry.addComponent<rtype::ecs::component::Drawable>(explosion_entity, "explosion", 5, 0, 37,
+                                                                               44, 4.0f, 4.0f, 6, 0.1f, false);
                         auto& explosion_drawable =
                             registry.getComponent<rtype::ecs::component::Drawable>(explosion_entity);
-                        constexpr int EXPLOSION_FRAME_WIDTH = 33;
+                        constexpr int EXPLOSION_FRAME_WIDTH = 37;
                         constexpr int EXPLOSION_FRAME_HEIGHT = 44;
-                        constexpr int EXPLOSION_FRAMES_PER_ROW = 12;
-                        explosion_drawable.rect_x = 0;
+                        constexpr int EXPLOSION_FRAMES_PER_ROW = 6;
+                        explosion_drawable.rect_x = 5;
                         explosion_drawable.rect_y = 0;
                         explosion_drawable.rect_width = EXPLOSION_FRAME_WIDTH;
                         explosion_drawable.rect_height = EXPLOSION_FRAME_HEIGHT;
@@ -188,8 +188,11 @@ void NetworkSystem::handle_destroy(GameEngine::Registry& registry, const rtype::
                         explosion_drawable.animation_speed = 0.1f;
                         explosion_drawable.loop = false;
                         explosion_drawable.current_sprite = 0;
-                    }
+                        explosion_drawable.animation_sequences["explosion"] = {5, 4, 3, 2, 1, 0};
+                        explosion_drawable.current_state = "explosion";
+                        explosion_drawable.animation_frame = 5;
 
+                    }
                     registry.destroyEntity(entity_id_ecs);
                     return;
                 }
