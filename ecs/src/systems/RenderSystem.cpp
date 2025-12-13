@@ -3,14 +3,18 @@
 #include "../../include/components/Drawable.hpp"
 #include "../../include/components/Explosion.hpp"
 #include "../../include/components/HitBox.hpp"
+#include "../../include/components/NetworkId.hpp"
+#include "../../../client/include/AccessibilityManager.hpp"
+#include "../../../shared/net/MessageData.hpp"
 #include <SFML/Graphics.hpp>
 #include <algorithm>
 #include <vector>
 
 namespace rtype::ecs {
 
-RenderSystem::RenderSystem(sf::RenderWindow& window, std::unordered_map<std::string, sf::Texture>& textures)
-    : window_(window), textures_(textures) {
+RenderSystem::RenderSystem(sf::RenderWindow& window, std::unordered_map<std::string, sf::Texture>& textures,
+                           rtype::client::AccessibilityManager* accessibility_mgr)
+    : window_(window), textures_(textures), accessibility_manager_(accessibility_mgr) {
 }
 
 void RenderSystem::update(GameEngine::Registry& registry, double dt) {
@@ -123,6 +127,23 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
         sf::Sprite sprite(texture, texture_rect);
         sprite.setPosition(pos.x, pos.y);
         sprite.setScale(drawable.scale_x, drawable.scale_y);
+
+        if (accessibility_manager_) {
+            uint16_t entity_type = rtype::net::EntityType::ENEMY;
+
+            if (registry.hasComponent<component::NetworkId>(entity_id)) {
+                entity_type = rtype::net::EntityType::PLAYER;
+            } else if (drawable.texture_name.find("player") != std::string::npos ||
+                       drawable.texture_name == "player_ships") {
+                entity_type = rtype::net::EntityType::PLAYER;
+            } else if (drawable.texture_name.find("enemy") != std::string::npos ||
+                       drawable.texture_name.find("monster") != std::string::npos) {
+                entity_type = rtype::net::EntityType::ENEMY;
+            }
+
+            sf::Color color = accessibility_manager_->get_entity_color(entity_type);
+            sprite.setColor(color);
+        }
 
         window_.draw(sprite);
     }
