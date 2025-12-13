@@ -366,72 +366,31 @@ void GameState::setup_pause_ui() {
     settings_button_text_.setCharacterSize(30);
     settings_button_text_.setFillColor(sf::Color::White);
 
-    accessibility_label_text_.setFont(font_);
-    accessibility_label_text_.setString("Colorblind Mode:");
-    accessibility_label_text_.setCharacterSize(30);
-    accessibility_label_text_.setFillColor(sf::Color::White);
+    accessibility_cycle_button_.setSize(sf::Vector2f(400, 60));
+    accessibility_cycle_button_.setFillColor(sf::Color(50, 50, 150));
+    accessibility_cycle_button_.setOutlineColor(sf::Color::White);
+    accessibility_cycle_button_.setOutlineThickness(2);
 
-    accessibility_toggle_button_.setSize(sf::Vector2f(350, 60));
-    accessibility_toggle_button_.setFillColor(sf::Color(50, 50, 50));
-    accessibility_toggle_button_.setOutlineColor(sf::Color::White);
-    accessibility_toggle_button_.setOutlineThickness(2);
-
-    accessibility_toggle_text_.setFont(font_);
-    accessibility_toggle_text_.setString("OFF (Normal)");
-    accessibility_toggle_text_.setCharacterSize(24);
-    accessibility_toggle_text_.setFillColor(sf::Color::White);
-
-    settings_confirm_button_.setSize(sf::Vector2f(150, 50));
-    settings_confirm_button_.setFillColor(sf::Color(0, 200, 0));
-    settings_confirm_button_.setOutlineColor(sf::Color::White);
-    settings_confirm_button_.setOutlineThickness(2);
-
-    settings_confirm_button_text_.setFont(font_);
-    settings_confirm_button_text_.setString("CONFIRM");
-    settings_confirm_button_text_.setCharacterSize(20);
-    settings_confirm_button_text_.setFillColor(sf::Color::White);
-
-    settings_cancel_button_.setSize(sf::Vector2f(150, 50));
-    settings_cancel_button_.setFillColor(sf::Color(200, 0, 0));
-    settings_cancel_button_.setOutlineColor(sf::Color::White);
-    settings_cancel_button_.setOutlineThickness(2);
-
-    settings_cancel_button_text_.setFont(font_);
-    settings_cancel_button_text_.setString("CANCEL");
-    settings_cancel_button_text_.setCharacterSize(20);
-    settings_cancel_button_text_.setFillColor(sf::Color::White);
+    accessibility_cycle_text_.setFont(font_);
+    accessibility_cycle_text_.setString("Mode: None");
+    accessibility_cycle_text_.setCharacterSize(28);
+    accessibility_cycle_text_.setFillColor(sf::Color::White);
 }
 
 void GameState::handle_pause_button_click(const sf::Vector2f& mouse_pos, StateManager& state_manager) {
     if (show_settings_panel_) {
-        if (accessibility_toggle_button_.getGlobalBounds().contains(mouse_pos)) {
-            pending_colorblind_state_ = !pending_colorblind_state_;
-            accessibility_toggle_text_.setString(pending_colorblind_state_ ? "ON (Deuteranopia)" : "OFF (Normal)");
-            update_pause_ui_positions(state_manager.get_renderer().get_window_size());
-            return;
-        }
-        if (settings_confirm_button_.getGlobalBounds().contains(mouse_pos)) {
-            bool current = state_manager.get_renderer().get_accessibility_manager().is_color_blind_mode_active();
-            if (current != pending_colorblind_state_) {
-                state_manager.get_renderer().get_accessibility_manager().toggle_color_blind_mode();
-            }
-            show_settings_panel_ = false;
-            return;
-        }
-        if (settings_cancel_button_.getGlobalBounds().contains(mouse_pos)) {
-            pending_colorblind_state_ =
-                state_manager.get_renderer().get_accessibility_manager().is_color_blind_mode_active();
-            accessibility_toggle_text_.setString(pending_colorblind_state_ ? "ON (Deuteranopia)" : "OFF (Normal)");
-            show_settings_panel_ = false;
+        if (accessibility_cycle_button_.getGlobalBounds().contains(mouse_pos)) {
+            state_manager.get_renderer().get_accessibility_manager().cycle_mode();
+            std::string mode_name = state_manager.get_renderer().get_accessibility_manager().get_mode_name();
+            accessibility_cycle_text_.setString("Mode: " + mode_name);
             update_pause_ui_positions(state_manager.get_renderer().get_window_size());
             return;
         }
     } else {
         if (settings_button_.getGlobalBounds().contains(mouse_pos)) {
             show_settings_panel_ = true;
-            pending_colorblind_state_ =
-                state_manager.get_renderer().get_accessibility_manager().is_color_blind_mode_active();
-            accessibility_toggle_text_.setString(pending_colorblind_state_ ? "ON (Deuteranopia)" : "OFF (Normal)");
+            std::string mode_name = state_manager.get_renderer().get_accessibility_manager().get_mode_name();
+            accessibility_cycle_text_.setString("Mode: " + mode_name);
             update_pause_ui_positions(state_manager.get_renderer().get_window_size());
             return;
         }
@@ -446,36 +405,14 @@ void GameState::update_pause_ui_positions(const sf::Vector2u& window_size) {
     pause_title_text_.setPosition(center_x - title_bounds.width / 2.0f, center_y - 200.0f);
 
     if (show_settings_panel_) {
-        accessibility_label_text_.setPosition(center_x - accessibility_label_text_.getLocalBounds().width / 2.0f,
-                                              center_y - 80.0f);
+        accessibility_cycle_button_.setPosition(center_x - accessibility_cycle_button_.getSize().x / 2.0f, center_y);
 
-        accessibility_toggle_button_.setPosition(center_x - accessibility_toggle_button_.getSize().x / 2.0f,
-                                                 center_y - 20.0f);
-
-        sf::FloatRect toggle_text_bounds = accessibility_toggle_text_.getLocalBounds();
-        accessibility_toggle_text_.setOrigin(toggle_text_bounds.left + toggle_text_bounds.width / 2.0f,
-                                             toggle_text_bounds.top + toggle_text_bounds.height / 2.0f);
-        accessibility_toggle_text_.setPosition(
-            accessibility_toggle_button_.getPosition().x + accessibility_toggle_button_.getSize().x / 2.0f,
-            accessibility_toggle_button_.getPosition().y + accessibility_toggle_button_.getSize().y / 2.0f);
-
-        float buttons_y = center_y + 60.0f;
-        settings_confirm_button_.setPosition(center_x - 160.0f, buttons_y);
-        settings_cancel_button_.setPosition(center_x + 10.0f, buttons_y);
-
-        sf::FloatRect confirm_text_bounds = settings_confirm_button_text_.getLocalBounds();
-        settings_confirm_button_text_.setOrigin(confirm_text_bounds.left + confirm_text_bounds.width / 2.0f,
-                                                confirm_text_bounds.top + confirm_text_bounds.height / 2.0f);
-        settings_confirm_button_text_.setPosition(
-            settings_confirm_button_.getPosition().x + settings_confirm_button_.getSize().x / 2.0f,
-            settings_confirm_button_.getPosition().y + settings_confirm_button_.getSize().y / 2.0f);
-
-        sf::FloatRect cancel_text_bounds = settings_cancel_button_text_.getLocalBounds();
-        settings_cancel_button_text_.setOrigin(cancel_text_bounds.left + cancel_text_bounds.width / 2.0f,
-                                               cancel_text_bounds.top + cancel_text_bounds.height / 2.0f);
-        settings_cancel_button_text_.setPosition(
-            settings_cancel_button_.getPosition().x + settings_cancel_button_.getSize().x / 2.0f,
-            settings_cancel_button_.getPosition().y + settings_cancel_button_.getSize().y / 2.0f);
+        sf::FloatRect cycle_text_bounds = accessibility_cycle_text_.getLocalBounds();
+        accessibility_cycle_text_.setOrigin(cycle_text_bounds.left + cycle_text_bounds.width / 2.0f,
+                                            cycle_text_bounds.top + cycle_text_bounds.height / 2.0f);
+        accessibility_cycle_text_.setPosition(
+            accessibility_cycle_button_.getPosition().x + accessibility_cycle_button_.getSize().x / 2.0f,
+            accessibility_cycle_button_.getPosition().y + accessibility_cycle_button_.getSize().y / 2.0f);
     } else {
         settings_button_.setPosition(center_x - 150.0f, center_y - 30.0f);
 
@@ -499,13 +436,8 @@ void GameState::render_pause_overlay(Renderer& renderer) {
     renderer.draw_text(pause_title_text_);
 
     if (show_settings_panel_) {
-        renderer.draw_text(accessibility_label_text_);
-        renderer.draw_rectangle(accessibility_toggle_button_);
-        renderer.draw_text(accessibility_toggle_text_);
-        renderer.draw_rectangle(settings_confirm_button_);
-        renderer.draw_text(settings_confirm_button_text_);
-        renderer.draw_rectangle(settings_cancel_button_);
-        renderer.draw_text(settings_cancel_button_text_);
+        renderer.draw_rectangle(accessibility_cycle_button_);
+        renderer.draw_text(accessibility_cycle_text_);
     } else {
         renderer.draw_rectangle(settings_button_);
         renderer.draw_text(settings_button_text_);

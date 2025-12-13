@@ -34,7 +34,6 @@ class GameState : public IState {
 
     bool is_paused_ = false;
     bool show_settings_panel_ = false;
-    bool pending_colorblind_state_ = false;
     bool font_loaded_ = false;
 
     sf::Font font_;
@@ -42,13 +41,8 @@ class GameState : public IState {
     sf::RectangleShape settings_button_;
     sf::Text settings_button_text_;
 
-    sf::Text accessibility_label_text_;
-    sf::RectangleShape accessibility_toggle_button_;
-    sf::Text accessibility_toggle_text_;
-    sf::RectangleShape settings_confirm_button_;
-    sf::Text settings_confirm_button_text_;
-    sf::RectangleShape settings_cancel_button_;
-    sf::Text settings_cancel_button_text_;
+    sf::RectangleShape accessibility_cycle_button_;
+    sf::Text accessibility_cycle_text_;
 };
 
 } // namespace rtype::client
