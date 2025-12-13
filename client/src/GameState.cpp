@@ -373,7 +373,7 @@ void GameState::setup_pause_ui() {
 
     accessibility_cycle_text_.setFont(font_);
     accessibility_cycle_text_.setString("Mode: None");
-    accessibility_cycle_text_.setCharacterSize(28);
+    accessibility_cycle_text_.setCharacterSize(22);
     accessibility_cycle_text_.setFillColor(sf::Color::White);
 }
 
