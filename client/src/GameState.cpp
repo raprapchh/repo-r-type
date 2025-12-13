@@ -16,6 +16,7 @@
 namespace rtype::client {
 
 GameState::GameState() {
+    setup_pause_ui();
 }
 
 void GameState::on_enter(Renderer& renderer, Client& client) {
@@ -70,6 +71,27 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
             }
         } else if (event.type == sf::Event::KeyPressed) {
             if (event.key.code == sf::Keyboard::Escape) {
+                if (client_) {
+                    GameEngine::Registry& registry = client_->get_registry();
+                    std::mutex& registry_mutex = client_->get_registry_mutex();
+                    std::lock_guard<std::mutex> lock(registry_mutex);
+
+                    int player_count = 0;
+                    auto player_view = registry.view<rtype::ecs::component::NetworkId, rtype::ecs::component::Weapon>();
+                    for (auto entity : player_view) {
+                        (void)entity;
+                        player_count++;
+                    }
+
+                    if (player_count <= 1) {
+                        is_paused_ = !is_paused_;
+                        if (is_paused_) {
+                            update_pause_ui_positions(renderer.get_window_size());
+                        } else {
+                            show_settings_panel_ = false;
+                        }
+                    }
+                }
             } else if (event.key.code == sf::Keyboard::Space) {
                 if (!is_charging_) {
                     is_charging_ = true;
@@ -102,7 +124,10 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                 }
             }
         } else if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-            if (game_over_ && all_players_dead_) {
+            if (is_paused_) {
+                sf::Vector2f mouse_pos = renderer.get_mouse_position();
+                handle_pause_button_click(mouse_pos, state_manager);
+            } else if (game_over_ && all_players_dead_) {
                 sf::Vector2f mouse_pos = renderer.get_window()->mapPixelToCoords(
                     sf::Vector2i(event.mouseButton.x, event.mouseButton.y), renderer.get_window()->getDefaultView());
 
@@ -126,6 +151,11 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
 
 void GameState::update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) {
     (void)state_manager;
+
+    if (is_paused_) {
+        return;
+    }
+
     client.update(delta_time);
 
     GameEngine::Registry& registry = client.get_registry();
@@ -279,7 +309,8 @@ void GameState::render(Renderer& renderer, Client& client) {
         GameEngine::Registry& registry = client.get_registry();
         std::mutex& registry_mutex = client.get_registry_mutex();
         std::lock_guard<std::mutex> lock(registry_mutex);
-        rtype::ecs::RenderSystem render_system(*renderer.get_window(), renderer.get_textures());
+        rtype::ecs::RenderSystem render_system(*renderer.get_window(), renderer.get_textures(),
+                                               &renderer.get_accessibility_manager());
         render_system.update(registry, 0.016f);
 
         if (is_charging_) {
@@ -303,7 +334,114 @@ void GameState::render(Renderer& renderer, Client& client) {
         renderer.draw_game_over(all_players_dead_);
     }
 
+    if (is_paused_) {
+        render_pause_overlay(renderer);
+    }
+
     renderer.display();
+}
+
+void GameState::setup_pause_ui() {
+    if (!font_.loadFromFile("client/fonts/Ethnocentric-Regular.otf")) {
+        std::cerr << "Warning: Could not load font from client/fonts/Ethnocentric-Regular.otf. Pause UI will not "
+                     "display text."
+                  << std::endl;
+        font_loaded_ = false;
+        return;
+    }
+    font_loaded_ = true;
+
+    pause_title_text_.setFont(font_);
+    pause_title_text_.setString("PAUSE");
+    pause_title_text_.setCharacterSize(80);
+    pause_title_text_.setFillColor(sf::Color::White);
+
+    settings_button_.setSize(sf::Vector2f(300, 60));
+    settings_button_.setFillColor(sf::Color(100, 100, 100));
+    settings_button_.setOutlineColor(sf::Color::White);
+    settings_button_.setOutlineThickness(2);
+
+    settings_button_text_.setFont(font_);
+    settings_button_text_.setString("SETTINGS");
+    settings_button_text_.setCharacterSize(30);
+    settings_button_text_.setFillColor(sf::Color::White);
+
+    accessibility_cycle_button_.setSize(sf::Vector2f(400, 60));
+    accessibility_cycle_button_.setFillColor(sf::Color(50, 50, 150));
+    accessibility_cycle_button_.setOutlineColor(sf::Color::White);
+    accessibility_cycle_button_.setOutlineThickness(2);
+
+    accessibility_cycle_text_.setFont(font_);
+    accessibility_cycle_text_.setString("Mode: None");
+    accessibility_cycle_text_.setCharacterSize(28);
+    accessibility_cycle_text_.setFillColor(sf::Color::White);
+}
+
+void GameState::handle_pause_button_click(const sf::Vector2f& mouse_pos, StateManager& state_manager) {
+    if (show_settings_panel_) {
+        if (accessibility_cycle_button_.getGlobalBounds().contains(mouse_pos)) {
+            state_manager.get_renderer().get_accessibility_manager().cycle_mode();
+            std::string mode_name = state_manager.get_renderer().get_accessibility_manager().get_mode_name();
+            accessibility_cycle_text_.setString("Mode: " + mode_name);
+            update_pause_ui_positions(state_manager.get_renderer().get_window_size());
+            return;
+        }
+    } else {
+        if (settings_button_.getGlobalBounds().contains(mouse_pos)) {
+            show_settings_panel_ = true;
+            std::string mode_name = state_manager.get_renderer().get_accessibility_manager().get_mode_name();
+            accessibility_cycle_text_.setString("Mode: " + mode_name);
+            update_pause_ui_positions(state_manager.get_renderer().get_window_size());
+            return;
+        }
+    }
+}
+
+void GameState::update_pause_ui_positions(const sf::Vector2u& window_size) {
+    float center_x = window_size.x / 2.0f;
+    float center_y = window_size.y / 2.0f;
+
+    sf::FloatRect title_bounds = pause_title_text_.getLocalBounds();
+    pause_title_text_.setPosition(center_x - title_bounds.width / 2.0f, center_y - 200.0f);
+
+    if (show_settings_panel_) {
+        accessibility_cycle_button_.setPosition(center_x - accessibility_cycle_button_.getSize().x / 2.0f, center_y);
+
+        sf::FloatRect cycle_text_bounds = accessibility_cycle_text_.getLocalBounds();
+        accessibility_cycle_text_.setOrigin(cycle_text_bounds.left + cycle_text_bounds.width / 2.0f,
+                                            cycle_text_bounds.top + cycle_text_bounds.height / 2.0f);
+        accessibility_cycle_text_.setPosition(
+            accessibility_cycle_button_.getPosition().x + accessibility_cycle_button_.getSize().x / 2.0f,
+            accessibility_cycle_button_.getPosition().y + accessibility_cycle_button_.getSize().y / 2.0f);
+    } else {
+        settings_button_.setPosition(center_x - 150.0f, center_y - 30.0f);
+
+        sf::FloatRect settings_text_bounds = settings_button_text_.getLocalBounds();
+        settings_button_text_.setPosition(
+            settings_button_.getPosition().x + (settings_button_.getSize().x - settings_text_bounds.width) / 2.0f,
+            settings_button_.getPosition().y + (settings_button_.getSize().y - settings_text_bounds.height) / 2.0f -
+                5.0f);
+    }
+}
+
+void GameState::render_pause_overlay(Renderer& renderer) {
+    if (!font_loaded_) {
+        return;
+    }
+
+    sf::RectangleShape modal_bg(sf::Vector2f(renderer.get_window_size()));
+    modal_bg.setFillColor(sf::Color(0, 0, 0, 180));
+    renderer.draw_rectangle(modal_bg);
+
+    renderer.draw_text(pause_title_text_);
+
+    if (show_settings_panel_) {
+        renderer.draw_rectangle(accessibility_cycle_button_);
+        renderer.draw_text(accessibility_cycle_text_);
+    } else {
+        renderer.draw_rectangle(settings_button_);
+        renderer.draw_text(settings_button_text_);
+    }
 }
 
 } // namespace rtype::client

@@ -30,7 +30,20 @@ class MenuState : public IState {
     sf::Text start_button_text_;
     sf::Text quit_button_text_;
     sf::RectangleShape start_button_;
+    sf::RectangleShape settings_button_;
     sf::RectangleShape quit_button_;
+
+    bool show_settings_ = false;
+    ColorBlindMode pending_mode_ = ColorBlindMode::None;
+    sf::RectangleShape accessibility_cycle_button_;
+    sf::Text accessibility_cycle_text_;
+    sf::Text settings_button_text_;
+
+    sf::RectangleShape confirm_button_;
+    sf::RectangleShape cancel_button_;
+    sf::Text confirm_button_text_;
+    sf::Text cancel_button_text_;
+
     bool font_loaded_;
 };
 
