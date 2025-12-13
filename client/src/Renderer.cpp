@@ -299,7 +299,6 @@ void Renderer::draw_background() {
         bg_sprite.setOrigin(0, texture_height);
         bg_sprite.setScale(scale, scale);
         bg_sprite.setPosition(background_x_, window_height);
-        // window_->draw(bg_sprite);
 
         background_x_ -= 3.0f;
         background_x_stars_ -= 5.0f;
@@ -340,7 +339,6 @@ void Renderer::load_texture(const std::string& path, const std::string& name) {
 
 void Renderer::load_sprites() {
     load_texture("client/sprites/players_ship.png", "player_ships");
-    load_texture("client/sprites/players_ship.png", "player");
     load_texture("client/sprites/map_1.png", "background");
     load_texture("client/sprites/star_bg.png", "background_stars");
     load_texture("client/sprites/star_2_bg.png", "background_stars2");
