@@ -112,8 +112,19 @@ void Renderer::update_game_state(const rtype::net::GameStateData& state) {
 }
 
 void Renderer::draw_entities() {
+    static bool logged = false;
+    if (!logged && accessibility_manager_.is_color_blind_mode_active()) {
+        std::cout << "[DEBUG] Colorblind mode is ACTIVE - applying entity colors" << std::endl;
+        logged = true;
+    } else if (logged && !accessibility_manager_.is_color_blind_mode_active()) {
+        std::cout << "[DEBUG] Colorblind mode is INACTIVE - applying normal colors" << std::endl;
+        logged = false;
+    }
+
     for (const auto& pair : entities_) {
         sf::Sprite sprite = create_sprite(pair.second);
+        sf::Color color = accessibility_manager_.get_entity_color(pair.second.type);
+        sprite.setColor(color);
         window_->draw(sprite);
     }
 }
@@ -200,11 +211,19 @@ void Renderer::draw_game_over(bool all_players_dead) {
     float center_x = static_cast<float>(window_size.x) / 2.0f;
     float center_y = static_cast<float>(window_size.y) / 2.0f;
 
+    sf::Color game_over_color = sf::Color::Red;
+    sf::Color button_color = sf::Color(70, 130, 180);
+
+    if (accessibility_manager_.is_color_blind_mode_active()) {
+        game_over_color = sf::Color(255, 165, 0); // Orange
+        button_color = sf::Color(0, 0, 255);      // Blue
+    }
+
     sf::Text game_over_text;
     game_over_text.setFont(font_);
     game_over_text.setString("GAME OVER");
     game_over_text.setCharacterSize(72);
-    game_over_text.setFillColor(sf::Color::Red);
+    game_over_text.setFillColor(game_over_color);
     game_over_text.setStyle(sf::Text::Bold);
 
     sf::FloatRect text_bounds = game_over_text.getLocalBounds();
@@ -230,7 +249,7 @@ void Renderer::draw_game_over(bool all_players_dead) {
 
     if (all_players_dead) {
         back_to_menu_button_.setSize(sf::Vector2f(280.0f, 65.0f));
-        back_to_menu_button_.setFillColor(sf::Color(70, 130, 180));
+        back_to_menu_button_.setFillColor(button_color);
         back_to_menu_button_.setOutlineThickness(2);
         back_to_menu_button_.setOutlineColor(sf::Color::White);
 
