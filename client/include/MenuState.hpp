@@ -34,11 +34,11 @@ class MenuState : public IState {
     sf::RectangleShape quit_button_;
 
     bool show_settings_ = false;
-    bool pending_colorblind_state_ = false;
-    sf::RectangleShape accessibility_toggle_button_;
-    sf::Text accessibility_toggle_text_;
+    ColorBlindMode pending_mode_ = ColorBlindMode::None;
+    sf::RectangleShape accessibility_cycle_button_;
+    sf::Text accessibility_cycle_text_;
     sf::Text settings_button_text_;
-    sf::Text accessibility_label_text_;
+
     sf::RectangleShape confirm_button_;
     sf::RectangleShape cancel_button_;
     sf::Text confirm_button_text_;

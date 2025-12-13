@@ -55,20 +55,15 @@ void MenuState::setup_ui() {
     settings_button_text_.setCharacterSize(40);
     settings_button_text_.setFillColor(sf::Color::White);
 
-    accessibility_label_text_.setFont(font_);
-    accessibility_label_text_.setString("Colorblind Mode:");
-    accessibility_label_text_.setCharacterSize(30);
-    accessibility_label_text_.setFillColor(sf::Color::White);
+    accessibility_cycle_button_.setSize(sf::Vector2f(400, 60));
+    accessibility_cycle_button_.setFillColor(sf::Color(50, 50, 150));
+    accessibility_cycle_button_.setOutlineColor(sf::Color::White);
+    accessibility_cycle_button_.setOutlineThickness(2);
 
-    accessibility_toggle_button_.setSize(sf::Vector2f(350, 60));
-    accessibility_toggle_button_.setFillColor(sf::Color(50, 50, 50));
-    accessibility_toggle_button_.setOutlineColor(sf::Color::White);
-    accessibility_toggle_button_.setOutlineThickness(2);
-
-    accessibility_toggle_text_.setFont(font_);
-    accessibility_toggle_text_.setString("OFF (Normal)");
-    accessibility_toggle_text_.setCharacterSize(24);
-    accessibility_toggle_text_.setFillColor(sf::Color::White);
+    accessibility_cycle_text_.setFont(font_);
+    accessibility_cycle_text_.setString("Mode: None");
+    accessibility_cycle_text_.setCharacterSize(22);
+    accessibility_cycle_text_.setFillColor(sf::Color::White);
 
     confirm_button_.setSize(sf::Vector2f(150, 50));
     confirm_button_.setFillColor(sf::Color(0, 200, 0));
@@ -128,31 +123,64 @@ void MenuState::handle_input(Renderer& renderer, StateManager& state_manager) {
 
 void MenuState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager& state_manager) {
     if (show_settings_) {
-        if (accessibility_toggle_button_.getGlobalBounds().contains(mouse_pos)) {
-            pending_colorblind_state_ = !pending_colorblind_state_;
-            accessibility_toggle_text_.setString(pending_colorblind_state_ ? "ON (Deuteranopia)" : "OFF (Normal)");
+        if (accessibility_cycle_button_.getGlobalBounds().contains(mouse_pos)) {
+            // Cycle through preview modes
+            switch (pending_mode_) {
+            case ColorBlindMode::None:
+                pending_mode_ = ColorBlindMode::Deuteranopia;
+                break;
+            case ColorBlindMode::Deuteranopia:
+                pending_mode_ = ColorBlindMode::Protanopia;
+                break;
+            case ColorBlindMode::Protanopia:
+                pending_mode_ = ColorBlindMode::Tritanopia;
+                break;
+            case ColorBlindMode::Tritanopia:
+                pending_mode_ = ColorBlindMode::None;
+                break;
+            }
+
+            // Update display
+            std::string mode_name;
+            switch (pending_mode_) {
+            case ColorBlindMode::None:
+                mode_name = "None";
+                break;
+            case ColorBlindMode::Deuteranopia:
+                mode_name = "Deuteranopia";
+                break;
+            case ColorBlindMode::Protanopia:
+                mode_name = "Protanopia";
+                break;
+            case ColorBlindMode::Tritanopia:
+                mode_name = "Tritanopia";
+                break;
+            }
+            accessibility_cycle_text_.setString("Mode: " + mode_name);
             update_positions(state_manager.get_renderer().get_window_size());
             return;
         }
 
         if (confirm_button_.getGlobalBounds().contains(mouse_pos)) {
-            bool current = state_manager.get_renderer().get_accessibility_manager().is_color_blind_mode_active();
-            if (current != pending_colorblind_state_) {
-                state_manager.get_renderer().get_accessibility_manager().toggle_color_blind_mode();
+            // Apply the pending mode
+            ColorBlindMode current = state_manager.get_renderer().get_accessibility_manager().get_current_mode();
+            while (current != pending_mode_) {
+                state_manager.get_renderer().get_accessibility_manager().cycle_mode();
+                current = state_manager.get_renderer().get_accessibility_manager().get_current_mode();
             }
             show_settings_ = false;
             return;
         }
 
         if (cancel_button_.getGlobalBounds().contains(mouse_pos)) {
-            pending_colorblind_state_ =
-                state_manager.get_renderer().get_accessibility_manager().is_color_blind_mode_active();
-            accessibility_toggle_text_.setString(pending_colorblind_state_ ? "ON (Deuteranopia)" : "OFF (Normal)");
+            // Revert to current mode
+            pending_mode_ = state_manager.get_renderer().get_accessibility_manager().get_current_mode();
+            std::string mode_name = state_manager.get_renderer().get_accessibility_manager().get_mode_name();
+            accessibility_cycle_text_.setString("Mode: " + mode_name);
             show_settings_ = false;
             update_positions(state_manager.get_renderer().get_window_size());
             return;
         }
-
     } else {
         if (start_button_.getGlobalBounds().contains(mouse_pos)) {
             state_manager.change_state(std::make_unique<ModeSelectionState>());
@@ -160,9 +188,9 @@ void MenuState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager&
             state_manager.get_renderer().close_window();
         } else if (settings_button_.getGlobalBounds().contains(mouse_pos)) {
             show_settings_ = true;
-            pending_colorblind_state_ =
-                state_manager.get_renderer().get_accessibility_manager().is_color_blind_mode_active();
-            accessibility_toggle_text_.setString(pending_colorblind_state_ ? "ON (Deuteranopia)" : "OFF (Normal)");
+            pending_mode_ = state_manager.get_renderer().get_accessibility_manager().get_current_mode();
+            std::string mode_name = state_manager.get_renderer().get_accessibility_manager().get_mode_name();
+            accessibility_cycle_text_.setString("Mode: " + mode_name);
             update_positions(state_manager.get_renderer().get_window_size());
         }
     }
@@ -174,7 +202,7 @@ void MenuState::update(Renderer& renderer, Client& client, StateManager& state_m
     (void)delta_time;
     sf::Vector2f mouse_pos = renderer.get_mouse_position();
 
-    bool is_colorblind = renderer.get_accessibility_manager().is_color_blind_mode_active();
+    ColorBlindMode mode = renderer.get_accessibility_manager().get_current_mode();
 
     sf::Color start_normal(100, 150, 200);
     sf::Color start_hover(120, 170, 220);
@@ -183,13 +211,34 @@ void MenuState::update(Renderer& renderer, Client& client, StateManager& state_m
     sf::Color settings_normal(100, 100, 100);
     sf::Color settings_hover(120, 120, 120);
 
-    if (is_colorblind) {
+    switch (mode) {
+    case ColorBlindMode::Deuteranopia:
         start_normal = sf::Color(0, 0, 255);
         start_hover = sf::Color(50, 50, 255);
         quit_normal = sf::Color(255, 165, 0);
         quit_hover = sf::Color(255, 185, 20);
         settings_normal = sf::Color(50, 50, 50);
         settings_hover = sf::Color(70, 70, 70);
+        break;
+    case ColorBlindMode::Protanopia:
+        start_normal = sf::Color(0, 100, 255);
+        start_hover = sf::Color(50, 120, 255);
+        quit_normal = sf::Color(255, 255, 0);
+        quit_hover = sf::Color(255, 255, 50);
+        settings_normal = sf::Color(80, 80, 80);
+        settings_hover = sf::Color(100, 100, 100);
+        break;
+    case ColorBlindMode::Tritanopia:
+        start_normal = sf::Color(255, 0, 0);
+        start_hover = sf::Color(255, 50, 50);
+        quit_normal = sf::Color(0, 200, 200);
+        quit_hover = sf::Color(0, 220, 220);
+        settings_normal = sf::Color(100, 100, 100);
+        settings_hover = sf::Color(120, 120, 120);
+        break;
+    case ColorBlindMode::None:
+    default:
+        break;
     }
 
     if (start_button_.getGlobalBounds().contains(mouse_pos)) {
@@ -230,9 +279,8 @@ void MenuState::render(Renderer& renderer, Client& /* client */) {
             modal_bg.setFillColor(sf::Color(0, 0, 0, 200));
             renderer.draw_rectangle(modal_bg);
 
-            renderer.draw_text(accessibility_label_text_);
-            renderer.draw_rectangle(accessibility_toggle_button_);
-            renderer.draw_text(accessibility_toggle_text_);
+            renderer.draw_rectangle(accessibility_cycle_button_);
+            renderer.draw_text(accessibility_cycle_text_);
 
             renderer.draw_rectangle(confirm_button_);
             renderer.draw_text(confirm_button_text_);
@@ -276,20 +324,16 @@ void MenuState::update_positions(const sf::Vector2u& window_size) {
         float center_x = window_size.x / 2.0f;
         float center_y = window_size.y * 0.4f;
 
-        accessibility_label_text_.setPosition(center_x - accessibility_label_text_.getLocalBounds().width / 2.0f,
-                                              center_y);
+        accessibility_cycle_button_.setPosition(center_x - accessibility_cycle_button_.getSize().x / 2.0f, center_y);
 
-        accessibility_toggle_button_.setPosition(center_x - accessibility_toggle_button_.getSize().x / 2.0f,
-                                                 center_y + 60.0f);
+        sf::FloatRect cycle_text_bounds = accessibility_cycle_text_.getLocalBounds();
+        accessibility_cycle_text_.setOrigin(cycle_text_bounds.left + cycle_text_bounds.width / 2.0f,
+                                            cycle_text_bounds.top + cycle_text_bounds.height / 2.0f);
+        accessibility_cycle_text_.setPosition(
+            accessibility_cycle_button_.getPosition().x + accessibility_cycle_button_.getSize().x / 2.0f,
+            accessibility_cycle_button_.getPosition().y + accessibility_cycle_button_.getSize().y / 2.0f);
 
-        sf::FloatRect toggle_text_bounds = accessibility_toggle_text_.getLocalBounds();
-        accessibility_toggle_text_.setOrigin(toggle_text_bounds.left + toggle_text_bounds.width / 2.0f,
-                                             toggle_text_bounds.top + toggle_text_bounds.height / 2.0f);
-        accessibility_toggle_text_.setPosition(
-            accessibility_toggle_button_.getPosition().x + accessibility_toggle_button_.getSize().x / 2.0f,
-            accessibility_toggle_button_.getPosition().y + accessibility_toggle_button_.getSize().y / 2.0f);
-
-        float buttons_y = center_y + 140.0f;
+        float buttons_y = center_y + 100.0f;
         confirm_button_.setPosition(center_x - 160.0f, buttons_y);
         cancel_button_.setPosition(center_x + 10.0f, buttons_y);
 
