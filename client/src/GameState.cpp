@@ -279,7 +279,8 @@ void GameState::render(Renderer& renderer, Client& client) {
         GameEngine::Registry& registry = client.get_registry();
         std::mutex& registry_mutex = client.get_registry_mutex();
         std::lock_guard<std::mutex> lock(registry_mutex);
-        rtype::ecs::RenderSystem render_system(*renderer.get_window(), renderer.get_textures());
+        rtype::ecs::RenderSystem render_system(*renderer.get_window(), renderer.get_textures(),
+                                               &renderer.get_accessibility_manager());
         render_system.update(registry, 0.016f);
 
         if (is_charging_) {
