@@ -118,12 +118,28 @@ void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_
         state_manager.change_state(std::make_unique<GameState>());
     }
 
+    bool is_colorblind = renderer.get_accessibility_manager().is_color_blind_mode_active();
+    sf::Color start_normal(100, 150, 200);
+    sf::Color start_hover(120, 170, 220);
+    sf::Color players_text_color = sf::Color::White;
+    sf::Color waiting_text_color = sf::Color::Yellow;
+
+    if (is_colorblind) {
+        start_normal = sf::Color(0, 0, 255);
+        start_hover = sf::Color(50, 50, 255);
+        players_text_color = sf::Color(100, 100, 255);
+        waiting_text_color = sf::Color(255, 165, 0);
+    }
+
+    players_text_.setFillColor(players_text_color);
+    waiting_text_.setFillColor(waiting_text_color);
+
     if (player_count_ >= 2) {
         sf::Vector2f mouse_pos = renderer.get_mouse_position();
         if (start_button_.getGlobalBounds().contains(mouse_pos)) {
-            start_button_.setFillColor(sf::Color(120, 170, 220));
+            start_button_.setFillColor(start_hover);
         } else {
-            start_button_.setFillColor(sf::Color(100, 150, 200));
+            start_button_.setFillColor(start_normal);
         }
     }
 }

@@ -105,22 +105,37 @@ void ModeSelectionState::update(Renderer& renderer, Client& client, StateManager
     (void)delta_time;
     sf::Vector2f mouse_pos = renderer.get_mouse_position();
 
+    bool is_colorblind = renderer.get_accessibility_manager().is_color_blind_mode_active();
+
+    // Define colors based on mode
+    sf::Color button_normal(100, 150, 200);
+    sf::Color button_hover(120, 170, 220);
+    sf::Color back_normal(150, 150, 150);
+    sf::Color back_hover(170, 170, 170);
+
+    if (is_colorblind) {
+        button_normal = sf::Color(0, 0, 255); // Blue
+        button_hover = sf::Color(50, 50, 255);
+        back_normal = sf::Color(255, 165, 0); // Orange
+        back_hover = sf::Color(255, 185, 20);
+    }
+
     if (solo_button_.getGlobalBounds().contains(mouse_pos)) {
-        solo_button_.setFillColor(sf::Color(120, 170, 220));
+        solo_button_.setFillColor(button_hover);
     } else {
-        solo_button_.setFillColor(sf::Color(100, 150, 200));
+        solo_button_.setFillColor(button_normal);
     }
 
     if (multiplayer_button_.getGlobalBounds().contains(mouse_pos)) {
-        multiplayer_button_.setFillColor(sf::Color(120, 170, 220));
+        multiplayer_button_.setFillColor(button_hover);
     } else {
-        multiplayer_button_.setFillColor(sf::Color(100, 150, 200));
+        multiplayer_button_.setFillColor(button_normal);
     }
 
     if (back_button_.getGlobalBounds().contains(mouse_pos)) {
-        back_button_.setFillColor(sf::Color(170, 170, 170));
+        back_button_.setFillColor(back_hover);
     } else {
-        back_button_.setFillColor(sf::Color(150, 150, 150));
+        back_button_.setFillColor(back_normal);
     }
 }
 
