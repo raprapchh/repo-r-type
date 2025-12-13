@@ -45,12 +45,7 @@ std::string AccessibilityManager::get_mode_name() const {
 sf::Color AccessibilityManager::get_entity_color(uint16_t type) const {
     switch (current_mode_) {
     case ColorBlindMode::None:
-        if (type == rtype::net::EntityType::PLAYER) {
-            return sf::Color(255, 0, 0);
-        } else if (type == rtype::net::EntityType::ENEMY) {
-            return sf::Color(0, 255, 0);
-        }
-        break;
+        return sf::Color::White;
 
     case ColorBlindMode::Deuteranopia:
         if (type == rtype::net::EntityType::PLAYER) {
