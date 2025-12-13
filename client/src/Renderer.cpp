@@ -113,10 +113,12 @@ void Renderer::update_game_state(const rtype::net::GameStateData& state) {
 
 void Renderer::draw_entities() {
     static bool logged = false;
-    if (!logged && accessibility_manager_.is_color_blind_mode_active()) {
-        std::cout << "[DEBUG] Colorblind mode is ACTIVE - applying entity colors" << std::endl;
+    ColorBlindMode current_mode = accessibility_manager_.get_current_mode();
+    if (!logged && current_mode != ColorBlindMode::None) {
+        std::cout << "[DEBUG] Colorblind mode is ACTIVE (" << accessibility_manager_.get_mode_name()
+                  << ") - applying entity colors" << std::endl;
         logged = true;
-    } else if (logged && !accessibility_manager_.is_color_blind_mode_active()) {
+    } else if (logged && current_mode == ColorBlindMode::None) {
         std::cout << "[DEBUG] Colorblind mode is INACTIVE - applying normal colors" << std::endl;
         logged = false;
     }
@@ -214,9 +216,23 @@ void Renderer::draw_game_over(bool all_players_dead) {
     sf::Color game_over_color = sf::Color::Red;
     sf::Color button_color = sf::Color(70, 130, 180);
 
-    if (accessibility_manager_.is_color_blind_mode_active()) {
-        game_over_color = sf::Color(255, 165, 0); // Orange
-        button_color = sf::Color(0, 0, 255);      // Blue
+    ColorBlindMode mode = accessibility_manager_.get_current_mode();
+    switch (mode) {
+    case ColorBlindMode::Deuteranopia:
+        game_over_color = sf::Color(255, 165, 0);
+        button_color = sf::Color(0, 0, 255);
+        break;
+    case ColorBlindMode::Protanopia:
+        game_over_color = sf::Color(255, 255, 0);
+        button_color = sf::Color(0, 100, 255);
+        break;
+    case ColorBlindMode::Tritanopia:
+        game_over_color = sf::Color(0, 200, 200);
+        button_color = sf::Color(255, 0, 0);
+        break;
+    case ColorBlindMode::None:
+    default:
+        break;
     }
 
     sf::Text game_over_text;

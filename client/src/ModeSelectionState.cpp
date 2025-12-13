@@ -105,19 +105,35 @@ void ModeSelectionState::update(Renderer& renderer, Client& client, StateManager
     (void)delta_time;
     sf::Vector2f mouse_pos = renderer.get_mouse_position();
 
-    bool is_colorblind = renderer.get_accessibility_manager().is_color_blind_mode_active();
+    ColorBlindMode mode = renderer.get_accessibility_manager().get_current_mode();
 
-    // Define colors based on mode
     sf::Color button_normal(100, 150, 200);
     sf::Color button_hover(120, 170, 220);
     sf::Color back_normal(150, 150, 150);
     sf::Color back_hover(170, 170, 170);
 
-    if (is_colorblind) {
-        button_normal = sf::Color(0, 0, 255); // Blue
+    switch (mode) {
+    case ColorBlindMode::Deuteranopia:
+        button_normal = sf::Color(0, 0, 255);
         button_hover = sf::Color(50, 50, 255);
-        back_normal = sf::Color(255, 165, 0); // Orange
+        back_normal = sf::Color(255, 165, 0);
         back_hover = sf::Color(255, 185, 20);
+        break;
+    case ColorBlindMode::Protanopia:
+        button_normal = sf::Color(0, 100, 255);
+        button_hover = sf::Color(50, 120, 255);
+        back_normal = sf::Color(255, 255, 0);
+        back_hover = sf::Color(255, 255, 50);
+        break;
+    case ColorBlindMode::Tritanopia:
+        button_normal = sf::Color(255, 0, 0);
+        button_hover = sf::Color(255, 50, 50);
+        back_normal = sf::Color(0, 200, 200);
+        back_hover = sf::Color(0, 220, 220);
+        break;
+    case ColorBlindMode::None:
+    default:
+        break;
     }
 
     if (solo_button_.getGlobalBounds().contains(mouse_pos)) {
