@@ -19,4 +19,8 @@ bool Registry::isValid(entity_t entity) const {
     return _registry.valid(enttEntity);
 }
 
+void Registry::clear() {
+    _registry.clear();
+}
+
 } // namespace GameEngine

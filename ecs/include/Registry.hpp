@@ -15,6 +15,7 @@ class Registry : public IEntityRegistry {
     entity_t createEntity() override;
     void destroyEntity(entity_t entity) override;
     bool isValid(entity_t entity) const override;
+    void clear() override;
 
     // Constructs component T in-place using forwarded args
     template <typename T, typename... Args> T& addComponent(entity_t entity, Args&&... args) {
