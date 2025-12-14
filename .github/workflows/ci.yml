@@ -86,6 +86,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install SFML dependencies
         run: |
@@ -93,7 +95,13 @@ jobs:
           sudo apt-get install -y libsfml-dev libxrandr-dev libxcursor-dev libudev-dev libopenal-dev libflac-dev libvorbis-dev libgl1-mesa-dev libegl1-mesa-dev
 
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake
 
       - name: Compile
         run: cmake --build build --parallel
+
+      - name: Post Checkout repository
+        run: echo "Build completed successfully"
+
+      - name: Complete job
+        run: echo "CI completed"
