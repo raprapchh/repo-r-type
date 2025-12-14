@@ -17,6 +17,7 @@
 
 namespace rtype::client {
 
+/// @brief Main game client handling network and game state
 class Client {
   public:
     using GameStartCallback = std::function<void()>;
@@ -37,15 +38,19 @@ class Client {
 
     void set_game_start_callback(GameStartCallback callback);
     void set_player_join_callback(PlayerJoinCallback callback);
+
     bool is_connected() const {
         return connected_.load();
     }
+
     uint32_t get_player_id() const {
         return player_id_;
     }
+
     GameEngine::Registry& get_registry() {
         return registry_;
     }
+
     std::mutex& get_registry_mutex() {
         return registry_mutex_;
     }
@@ -53,6 +58,7 @@ class Client {
   private:
     void handle_udp_receive(const asio::error_code& error, std::size_t bytes_transferred,
                             const std::vector<uint8_t>& data);
+
     void handle_server_message(const std::vector<uint8_t>& data);
 
     std::string host_;

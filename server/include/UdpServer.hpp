@@ -8,16 +8,25 @@
 
 namespace rtype::server {
 
+/// @brief Asynchronous UDP server handling multiple clients
 class UdpServer {
   public:
     using message_callback = std::function<void(const std::string&, uint16_t, const std::vector<uint8_t>&)>;
 
+    /// @brief Constructs and binds server to specified port
     UdpServer(asio::io_context& io_ctx, uint16_t port);
     ~UdpServer();
 
+    /// @brief Starts listening for incoming messages
     void start();
+
+    /// @brief Stops the server
     void stop();
+
+    /// @brief Sends data to a specific client
     void send(const std::string& client_ip, uint16_t client_port, const std::vector<uint8_t>& data);
+
+    /// @brief Sets callback for received messages
     void set_message_handler(message_callback handler);
 
   private:
