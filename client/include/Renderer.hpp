@@ -6,6 +6,7 @@
 #include <string>
 #include <cstdint>
 #include "../../shared/net/MessageData.hpp"
+#include "AccessibilityManager.hpp"
 
 namespace rtype::client {
 
@@ -84,6 +85,10 @@ class Renderer {
         return window_.get();
     }
 
+    AccessibilityManager& get_accessibility_manager() {
+        return accessibility_manager_;
+    }
+
   private:
     void load_sprites();
     void load_fonts();
@@ -110,6 +115,7 @@ class Renderer {
     sf::Sprite charge_particle_sprite_;
     int charge_particle_frame_ = 0;
     float charge_particle_timer_ = 0.0f;
+    AccessibilityManager accessibility_manager_;
 
   public:
     void draw_charge_effect(const sf::Vector2f& position, float delta_time);
