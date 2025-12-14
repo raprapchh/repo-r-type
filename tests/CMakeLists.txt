@@ -1,12 +1,4 @@
-include(FetchContent)
-
-FetchContent_Declare(
-  Catch2
-  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG        v3.4.0
-)
-
-FetchContent_MakeAvailable(Catch2)
+# Catch2 is provided by vcpkg, no need to FetchContent
 
 add_executable(unit_tests
     TestMovement.cpp
