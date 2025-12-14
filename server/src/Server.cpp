@@ -34,7 +34,7 @@
 namespace rtype::server {
 
 Server::Server(GameEngine::Registry& registry, uint16_t port)
-    : port_(port), next_player_id_(1), running_(false), game_started_(false), registry_(registry) {
+    : port_(port), next_player_id_(1), running_(false), game_started_(false), game_over_(false), registry_(registry) {
     io_context_ = std::make_unique<asio::io_context>();
     udp_server_ = std::make_unique<UdpServer>(*io_context_, port_);
     protocol_adapter_ = std::make_unique<rtype::net::ProtocolAdapter>();
@@ -149,9 +149,103 @@ void Server::game_loop() {
                 Logger::instance().warn("Server lag spike detected: " + std::to_string(dt * 1000) + "ms");
             }
 
-            if (game_started_) {
-                rtype::ecs::SpawnSystem spawn_system;
-                spawn_system.update(registry_, dt);
+            if (game_started_ && !game_over_.load()) {
+                bool all_players_dead = true;
+                bool has_players = false;
+                {
+                    std::lock_guard<std::mutex> clients_lock(clients_mutex_);
+                    std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+                    for (const auto& [key, client] : clients_) {
+                        if (client.is_connected) {
+                            has_players = true;
+                            if (registry_.isValid(client.entity_id)) {
+                                if (registry_.hasComponent<rtype::ecs::component::Lives>(client.entity_id)) {
+                                    auto& lives =
+                                        registry_.getComponent<rtype::ecs::component::Lives>(client.entity_id);
+                                    if (lives.remaining > 0) {
+                                        all_players_dead = false;
+                                        break;
+                                    }
+                                } else {
+                                    all_players_dead = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (has_players && all_players_dead) {
+                    game_over_ = true;
+                    Logger::instance().info("Game Over - All players are dead. Destroying game entities.");
+
+                    std::vector<std::pair<GameEngine::entity_t, uint32_t>> entities_to_destroy;
+
+                    {
+                        std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+                        auto network_view = registry_.view<rtype::ecs::component::NetworkId>();
+                        for (auto entity : network_view) {
+                            bool should_destroy = true;
+
+                            if (registry_.hasComponent<rtype::ecs::component::MapBounds>(static_cast<size_t>(entity))) {
+                                should_destroy = false;
+                            }
+
+                            if (registry_.hasComponent<rtype::ecs::component::EnemySpawner>(
+                                    static_cast<size_t>(entity))) {
+                                should_destroy = false;
+                            }
+
+                            if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {
+                                auto& tag =
+                                    registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
+                                if (tag.name == "Player") {
+                                    should_destroy = false;
+                                }
+                            }
+
+                            if (should_destroy) {
+                                auto& net_id = registry_.getComponent<rtype::ecs::component::NetworkId>(
+                                    static_cast<size_t>(entity));
+                                entities_to_destroy.push_back({static_cast<GameEngine::entity_t>(entity), net_id.id});
+                            }
+                        }
+                    }
+
+                    if (protocol_adapter_ && message_serializer_) {
+                        std::lock_guard<std::mutex> clients_lock(clients_mutex_);
+                        for (const auto& [entity, net_id] : entities_to_destroy) {
+                            rtype::net::EntityDestroyData destroy_data;
+                            destroy_data.entity_id = net_id;
+                            destroy_data.reason = rtype::net::DestroyReason::TIMEOUT;
+
+                            rtype::net::Packet destroy_packet =
+                                message_serializer_->serialize_entity_destroy(destroy_data);
+                            auto serialized_destroy = protocol_adapter_->serialize(destroy_packet);
+
+                            for (const auto& [dest_key, dest_client] : clients_) {
+                                if (dest_client.is_connected && udp_server_) {
+                                    udp_server_->send(dest_client.ip, dest_client.port, serialized_destroy);
+                                }
+                            }
+                        }
+                    }
+
+                    {
+                        std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+                        for (const auto& [entity, net_id] : entities_to_destroy) {
+                            registry_.destroyEntity(entity);
+                        }
+                    }
+
+                    Logger::instance().info("Destroyed " + std::to_string(entities_to_destroy.size()) +
+                                            " game entities and notified clients.");
+                }
+
+                if (!game_over_.load()) {
+                    rtype::ecs::SpawnSystem spawn_system;
+                    spawn_system.update(registry_, dt);
+                }
             }
 
             // Broadcast newly spawned enemies to clients

@@ -132,6 +132,14 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                     sf::Vector2i(event.mouseButton.x, event.mouseButton.y), renderer.get_window()->getDefaultView());
 
                 if (renderer.is_game_over_back_to_menu_clicked(mouse_pos)) {
+                    if (client_) {
+                        GameEngine::Registry& registry = client_->get_registry();
+                        std::mutex& registry_mutex = client_->get_registry_mutex();
+                        std::lock_guard<std::mutex> lock(registry_mutex);
+                        registry.clear();
+                    }
+                    game_over_ = false;
+                    all_players_dead_ = false;
                     state_manager.change_state(std::make_unique<MenuState>());
                 }
             }

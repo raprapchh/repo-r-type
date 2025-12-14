@@ -56,6 +56,7 @@ class Server {
     uint32_t next_player_id_;
     std::atomic<bool> running_;
     std::atomic<bool> game_started_;
+    std::atomic<bool> game_over_;
     std::thread game_thread_;
     std::thread network_thread_;
     std::optional<asio::executor_work_guard<asio::io_context::executor_type>> work_guard_;
