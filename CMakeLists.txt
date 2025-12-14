@@ -5,74 +5,120 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_compile_options(-Wall -Wextra -Wpedantic)
 add_definitions(-DASIO_STANDALONE)
+add_compile_options(-Wall -Wextra -Wpedantic)
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
-#---------------------------------------------------------------------------
-# Dependencies (via vcpkg)
-#---------------------------------------------------------------------------
-# ASIO is header-only
-find_path(ASIO_INCLUDE_DIR asio.hpp)
-if(NOT ASIO_INCLUDE_DIR)
-    message(FATAL_ERROR "ASIO not found. Install via: vcpkg install asio")
+set(ASIO_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/external/asio/asio/include")
+
+if(NOT EXISTS "${ASIO_INCLUDE_DIR}/asio.hpp")
+    message(STATUS "ASIO not found. Downloading...")
+    find_package(Git REQUIRED)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} clone https://github.com/chriskohlhoff/asio.git ${CMAKE_SOURCE_DIR}/external/asio
+        RESULT_VARIABLE GIT_RESULT
+    )
+    if(NOT GIT_RESULT EQUAL "0")
+        message(FATAL_ERROR "Failed to clone ASIO repository")
+    endif()
+    message(STATUS "ASIO downloaded successfully")
+else()
+    message(STATUS "ASIO found at ${ASIO_INCLUDE_DIR}")
 endif()
+
 include_directories(${ASIO_INCLUDE_DIR})
 
-# EnTT
-find_package(EnTT CONFIG REQUIRED)
+set(ENTT_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/external/entt/single_include")
 
-# SFML - from system (install with: sudo dnf install SFML-devel)
-find_package(SFML 2.5 COMPONENTS graphics window system audio REQUIRED)
-set(SFML_LIBS sfml-graphics sfml-window sfml-system sfml-audio)
+if(NOT EXISTS "${ENTT_INCLUDE_DIR}/entt/entt.hpp")
+    message(STATUS "EnTT not found. Downloading...")
+    find_package(Git REQUIRED)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} clone --depth 1 https://github.com/skypjack/entt.git ${CMAKE_SOURCE_DIR}/external/entt
+        RESULT_VARIABLE GIT_RESULT
+    )
+    if(NOT GIT_RESULT EQUAL "0")
+        message(FATAL_ERROR "Failed to clone EnTT repository")
+    endif()
+    message(STATUS "EnTT downloaded successfully")
+else()
+    message(STATUS "EnTT found at ${ENTT_INCLUDE_DIR}")
+endif()
 
-# Catch2 is optional (for tests only)
-find_package(Catch2 3 CONFIG QUIET)
+include_directories(${ENTT_INCLUDE_DIR})
 
-#---------------------------------------------------------------------------
-# ECS Library
-#---------------------------------------------------------------------------
-file(GLOB_RECURSE ECS_SRC ${CMAKE_SOURCE_DIR}/ecs/src/*.cpp)
+#
+#ECS
+#
+file(GLOB_RECURSE ECS_SRC
+    ${CMAKE_SOURCE_DIR}/ecs/src/*.cpp
+)
 
 add_library(rtype_ecs ${ECS_SRC})
 target_include_directories(rtype_ecs
     PUBLIC
         ${CMAKE_SOURCE_DIR}/ecs/include
-        ${CMAKE_SOURCE_DIR}/shared
+        ${ENTT_INCLUDE_DIR}
+        ${CMAKE_SOURCE_DIR}/ecs/include
 )
-target_link_libraries(rtype_ecs PUBLIC EnTT::EnTT ${SFML_LIBS})
 
-#---------------------------------------------------------------------------
-# Shared Library (headers only)
-#---------------------------------------------------------------------------
+find_package(SFML 2.5 COMPONENTS graphics window system audio QUIET)
+if(SFML_FOUND)
+    target_link_libraries(rtype_ecs PRIVATE sfml-graphics sfml-window sfml-system sfml-audio)
+    target_compile_definitions(rtype_ecs PRIVATE SFML_FOUND)
+endif()
+
+#
+# SHARED
+#
 add_library(rtype_shared INTERFACE)
-target_include_directories(rtype_shared INTERFACE ${CMAKE_SOURCE_DIR}/shared)
+target_include_directories(rtype_shared INTERFACE
+    ${CMAKE_SOURCE_DIR}/shared
+)
 
-#---------------------------------------------------------------------------
-# Client Executable
-#---------------------------------------------------------------------------
-file(GLOB_RECURSE CLIENT_SRC ${CMAKE_SOURCE_DIR}/client/src/*.cpp)
+#
+# CLIENT
+#
+file(GLOB_RECURSE CLIENT_SRC
+    ${CMAKE_SOURCE_DIR}/client/src/*.cpp
+)
 
 add_executable(r-type_client ${CLIENT_SRC})
-target_include_directories(r-type_client PRIVATE ${CMAKE_SOURCE_DIR}/client/include)
-target_link_libraries(r-type_client PRIVATE rtype_ecs rtype_shared ${SFML_LIBS})
+target_include_directories(r-type_client PRIVATE
+    ${CMAKE_SOURCE_DIR}/client/include
+)
 
-#---------------------------------------------------------------------------
-# Server Executable
-#---------------------------------------------------------------------------
-file(GLOB_RECURSE SERVER_SRC ${CMAKE_SOURCE_DIR}/server/src/*.cpp)
+find_package(SFML 2.5 COMPONENTS graphics window system audio QUIET)
+if(SFML_FOUND)
+    target_link_libraries(r-type_client
+        PRIVATE rtype_ecs rtype_shared sfml-graphics sfml-window sfml-system sfml-audio
+    )
+else()
+    message(WARNING "SFML not found. Client will compile without graphics support.")
+    target_link_libraries(r-type_client
+        PRIVATE rtype_ecs rtype_shared
+    )
+endif()
+
+#
+# SERVER
+#
+file(GLOB_RECURSE SERVER_SRC
+    ${CMAKE_SOURCE_DIR}/server/src/*.cpp
+)
 
 add_executable(r-type_server ${SERVER_SRC})
-target_include_directories(r-type_server PRIVATE ${CMAKE_SOURCE_DIR}/server/include)
-target_link_libraries(r-type_server PRIVATE rtype_ecs rtype_shared)
+target_include_directories(r-type_server PRIVATE
+    ${CMAKE_SOURCE_DIR}/server/include
+)
+target_link_libraries(r-type_server
+    PRIVATE rtype_ecs rtype_shared
+)
 
 if(UNIX AND NOT APPLE)
     target_link_libraries(r-type_server PRIVATE pthread)
 endif()
 
-#---------------------------------------------------------------------------
-# Tests
-#---------------------------------------------------------------------------
-find_package(Catch2 3 CONFIG REQUIRED)
 enable_testing()
 add_subdirectory(tests)

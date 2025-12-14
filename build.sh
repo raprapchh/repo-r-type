@@ -2,9 +2,10 @@
 
 set -e
 
-# Configure with vcpkg
-cmake -B build -DCMAKE_BUILD_TYPE=Debug \
-    -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake
+# Configure
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
 
 # Build
 cmake --build build --parallel
+
+

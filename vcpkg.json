@@ -1,5 +1,5 @@
 {
   "name": "rtype",
-  "version-string": "1.0.0",
-  "dependencies": ["entt", "asio", "catch2"]
+  "version-string": "0.1.0",
+  "dependencies": ["entt", "asio"]
 }

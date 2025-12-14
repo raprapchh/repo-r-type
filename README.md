@@ -32,39 +32,13 @@ We believe games are for everyone. This project includes specific features to en
 
 Before building the project, ensure you have the following installed:
 
+Before building the project, ensure you have the following installed:
+
 - **C++ Compiler** (supporting C++20)
 - **CMake** (v3.20 or newer)
 - **Git**
-- **SFML 2.5+** (system library)
 
-### Installing Dependencies
-
-**Fedora/RHEL:**
-
-```bash
-sudo dnf install SFML-devel cmake gcc-c++ git
-```
-
-**Ubuntu/Debian:**
-
-```bash
-sudo apt install libsfml-dev cmake g++ git
-```
-
-**Arch Linux:**
-
-```bash
-sudo pacman -S sfml cmake gcc git
-```
-
-**Windows (vcpkg handles everything):**
-
-```powershell
-# SFML is installed automatically via vcpkg during build
-# Just ensure you have: Visual Studio 2022, CMake, Git
-```
-
-> **Note:** This project uses **vcpkg** for dependency management. On Linux, SFML is installed via system packages for better compatibility. On Windows, vcpkg handles all dependencies including SFML.
+> **Note:** This project uses **vcpkg** for dependency management. CMake will automatically handle the installation of all necessary libraries (such as ASIO and EnTT) when you run the build command for the first time.
 
 <br>
 
@@ -88,8 +62,9 @@ sudo pacman -S sfml cmake gcc git
    _Alternatively, you can build manually:_
 
    ```bash
-   cmake -B build -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake
-   cmake --build build --parallel
+   mkdir build && cd build
+   cmake .. -DCMAKE_BUILD_TYPE=Release
+   make -j$(nproc)
    ```
 
 3. **Clean the project:**
