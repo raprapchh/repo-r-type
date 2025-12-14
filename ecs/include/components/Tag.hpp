@@ -4,6 +4,7 @@
 
 namespace rtype::ecs::component {
 
+/// @brief Named tag for entity categorization
 struct Tag {
     std::string name;
 

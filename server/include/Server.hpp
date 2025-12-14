@@ -16,6 +16,7 @@
 
 namespace rtype::server {
 
+/// @brief Connected client information
 struct ClientInfo {
     std::string ip;
     uint16_t port;
@@ -24,6 +25,7 @@ struct ClientInfo {
     GameEngine::entity_t entity_id;
 };
 
+/// @brief Authoritative game server for R-Type multiplayer
 class Server {
   public:
     Server(GameEngine::Registry& registry, uint16_t port = 4242);

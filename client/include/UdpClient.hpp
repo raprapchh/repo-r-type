@@ -9,17 +9,25 @@
 
 namespace rtype::client {
 
+/// @brief Asynchronous UDP client for server communication
 class UdpClient {
   public:
     using message_callback = std::function<void(const asio::error_code&, std::size_t, const std::vector<uint8_t>&)>;
 
+    /// @brief Constructs client and resolves server endpoint
     UdpClient(asio::io_context& io_context, const std::string& host, uint16_t port);
     ~UdpClient();
 
+    /// @brief Starts listening for incoming messages
     void start_receive();
+
+    /// @brief Sends binary data to the server
     void send(const std::vector<uint8_t>& data);
+
+    /// @brief Stops the client and closes socket
     void stop();
 
+    /// @brief Sets callback for received messages
     void set_message_handler(message_callback handler);
 
   private:

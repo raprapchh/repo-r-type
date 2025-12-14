@@ -2,10 +2,13 @@
 
 #include <string>
 #include <cstdint>
+#include <unordered_map>
+#include <vector>
 #include "../../../shared/utils/Logger.hpp"
 
 namespace rtype::ecs::component {
 
+/// @brief Sprite and animation rendering component
 struct Drawable {
     std::string texture_name;
     uint32_t sprite_index;
