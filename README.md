@@ -20,6 +20,14 @@ It features a custom game engine built on an **Entity Component System (ECS)** a
 
 <br>
 
+## ♿ Accessibility
+
+We believe games are for everyone. This project includes specific features to ensure inclusivity:
+
+- **Colorblind Modes**: Support for Deuteranopia, Protanopia, and Tritanopia (toggle available in Settings).
+
+<br>
+
 ## 🛠️ Prerequisites
 
 Before building the project, ensure you have the following installed:
