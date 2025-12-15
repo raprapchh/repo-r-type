@@ -6,11 +6,13 @@
 #include "../../include/components/CollisionLayer.hpp"
 #include "../../include/components/InvincibilityTimer.hpp"
 #include "../../shared/utils/Logger.hpp"
+#include <vector>
 
 namespace rtype::ecs {
 
 void LivesSystem::update(GameEngine::Registry& registry, double dt) {
     auto view = registry.view<component::Health, component::Lives, component::Position>();
+    std::vector<GameEngine::entity_t> to_destroy;
 
     for (auto entity : view) {
         auto& health = view.get<component::Health>(entity);
@@ -48,12 +50,18 @@ void LivesSystem::update(GameEngine::Registry& registry, double dt) {
                                         std::to_string(position.y) + ")");
             } else {
                 Logger::instance().info("Game Over for player " + std::to_string(static_cast<std::size_t>(entity)));
-                registry.destroyEntity(static_cast<std::size_t>(entity));
+                to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
             }
         }
     }
 
+    for (auto entity : to_destroy) {
+        registry.destroyEntity(entity);
+    }
+
     auto invincibility_view = registry.view<component::InvincibilityTimer>();
+    std::vector<GameEngine::entity_t> to_remove_invincibility;
+
     for (auto entity : invincibility_view) {
         auto& invincibility = invincibility_view.get<component::InvincibilityTimer>(entity);
         invincibility.timeRemaining -= static_cast<float>(dt);
@@ -63,8 +71,12 @@ void LivesSystem::update(GameEngine::Registry& registry, double dt) {
                 auto& collidable = registry.getComponent<component::Collidable>(static_cast<std::size_t>(entity));
                 collidable.is_active = true;
             }
-            registry.removeComponent<component::InvincibilityTimer>(static_cast<std::size_t>(entity));
+            to_remove_invincibility.push_back(static_cast<GameEngine::entity_t>(entity));
         }
+    }
+
+    for (auto entity : to_remove_invincibility) {
+        registry.removeComponent<component::InvincibilityTimer>(entity);
     }
 }
 
