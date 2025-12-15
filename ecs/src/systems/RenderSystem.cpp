@@ -151,6 +151,20 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
     for (auto explosion_entity : explosions_to_destroy) {
         registry.destroyEntity(explosion_entity);
     }
+
+    auto hitbox_view = registry.view<component::Position, component::HitBox>();
+    for (auto entity : hitbox_view) {
+        auto& pos = registry.getComponent<component::Position>(static_cast<size_t>(entity));
+        auto& hitbox = registry.getComponent<component::HitBox>(static_cast<size_t>(entity));
+
+        sf::RectangleShape hitbox_rect(sf::Vector2f(hitbox.width, hitbox.height));
+        hitbox_rect.setPosition(pos.x, pos.y);
+        hitbox_rect.setFillColor(sf::Color::Transparent);
+        hitbox_rect.setOutlineColor(sf::Color::Red);
+        hitbox_rect.setOutlineThickness(2.0f);
+
+        window_.draw(hitbox_rect);
+    }
 }
 
 } // namespace rtype::ecs

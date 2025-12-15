@@ -96,7 +96,7 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
 
                 registry.addComponent<component::Position>(enemy, spawnX, spawnY);
                 registry.addComponent<component::Velocity>(enemy, vx, vy);
-                registry.addComponent<component::HitBox>(enemy, 150.0f, 150.0f);
+                registry.addComponent<component::HitBox>(enemy, 100.0f, 100.0f);
                 registry.addComponent<component::Health>(enemy, 5, 5);
                 registry.addComponent<component::Tag>(enemy, tag);
                 registry.addComponent<component::Collidable>(enemy, component::CollisionLayer::Enemy);
