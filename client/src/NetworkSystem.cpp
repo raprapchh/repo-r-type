@@ -69,7 +69,7 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
         bool is_local = (data.entity_id == player_id_);
 
         if (is_player) {
-            uint32_t sprite_index = (data.entity_id) % 5;
+            uint32_t sprite_index = (data.entity_id - 1) % 4;
             registry.addComponent<rtype::ecs::component::Drawable>(
                 entity, "player_ships", 0, 0, static_cast<uint32_t>(rtype::constants::PLAYER_WIDTH),
                 static_cast<uint32_t>(rtype::constants::PLAYER_HEIGHT), rtype::constants::PLAYER_SCALE,
