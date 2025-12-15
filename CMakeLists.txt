@@ -5,119 +5,56 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_definitions(-DASIO_STANDALONE)
+add_compile_definitions(ASIO_STANDALONE)
 add_compile_options(-Wall -Wextra -Wpedantic)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
-set(ASIO_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/external/asio/asio/include")
+find_package(EnTT CONFIG REQUIRED)
+find_package(asio CONFIG REQUIRED)
+find_package(SFML 2.5 COMPONENTS graphics window system audio REQUIRED)
+find_package(Catch2 CONFIG REQUIRED)
 
-if(NOT EXISTS "${ASIO_INCLUDE_DIR}/asio.hpp")
-    message(STATUS "ASIO not found. Downloading...")
-    find_package(Git REQUIRED)
-    execute_process(
-        COMMAND ${GIT_EXECUTABLE} clone https://github.com/chriskohlhoff/asio.git ${CMAKE_SOURCE_DIR}/external/asio
-        RESULT_VARIABLE GIT_RESULT
-    )
-    if(NOT GIT_RESULT EQUAL "0")
-        message(FATAL_ERROR "Failed to clone ASIO repository")
-    endif()
-    message(STATUS "ASIO downloaded successfully")
-else()
-    message(STATUS "ASIO found at ${ASIO_INCLUDE_DIR}")
-endif()
 
-include_directories(${ASIO_INCLUDE_DIR})
+# --- LIBRARIES ---
 
-set(ENTT_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/external/entt/single_include")
-
-if(NOT EXISTS "${ENTT_INCLUDE_DIR}/entt/entt.hpp")
-    message(STATUS "EnTT not found. Downloading...")
-    find_package(Git REQUIRED)
-    execute_process(
-        COMMAND ${GIT_EXECUTABLE} clone --depth 1 https://github.com/skypjack/entt.git ${CMAKE_SOURCE_DIR}/external/entt
-        RESULT_VARIABLE GIT_RESULT
-    )
-    if(NOT GIT_RESULT EQUAL "0")
-        message(FATAL_ERROR "Failed to clone EnTT repository")
-    endif()
-    message(STATUS "EnTT downloaded successfully")
-else()
-    message(STATUS "EnTT found at ${ENTT_INCLUDE_DIR}")
-endif()
-
-include_directories(${ENTT_INCLUDE_DIR})
-
-#
-#ECS
-#
-file(GLOB_RECURSE ECS_SRC
-    ${CMAKE_SOURCE_DIR}/ecs/src/*.cpp
-)
-
+# 1. ECS Library
+file(GLOB_RECURSE ECS_SRC ${CMAKE_SOURCE_DIR}/ecs/src/*.cpp)
 add_library(rtype_ecs ${ECS_SRC})
-target_include_directories(rtype_ecs
-    PUBLIC
-        ${CMAKE_SOURCE_DIR}/ecs/include
-        ${ENTT_INCLUDE_DIR}
-        ${CMAKE_SOURCE_DIR}/ecs/include
-)
+target_include_directories(rtype_ecs PUBLIC ${CMAKE_SOURCE_DIR}/ecs/include)
+target_link_libraries(rtype_ecs PUBLIC EnTT::EnTT sfml-graphics sfml-window sfml-system sfml-audio)
 
-find_package(SFML 2.5 COMPONENTS graphics window system audio QUIET)
-if(SFML_FOUND)
-    target_link_libraries(rtype_ecs PRIVATE sfml-graphics sfml-window sfml-system sfml-audio)
-    target_compile_definitions(rtype_ecs PRIVATE SFML_FOUND)
-endif()
-
-#
-# SHARED
-#
+# 2. Shared Library
 add_library(rtype_shared INTERFACE)
-target_include_directories(rtype_shared INTERFACE
-    ${CMAKE_SOURCE_DIR}/shared
-)
+target_include_directories(rtype_shared INTERFACE ${CMAKE_SOURCE_DIR}/shared)
 
-#
-# CLIENT
-#
-file(GLOB_RECURSE CLIENT_SRC
-    ${CMAKE_SOURCE_DIR}/client/src/*.cpp
-)
+# --- EXECUTABLES ---
 
+# 3. Client
+file(GLOB_RECURSE CLIENT_SRC ${CMAKE_SOURCE_DIR}/client/src/*.cpp)
 add_executable(r-type_client ${CLIENT_SRC})
-target_include_directories(r-type_client PRIVATE
-    ${CMAKE_SOURCE_DIR}/client/include
+target_include_directories(r-type_client PRIVATE ${CMAKE_SOURCE_DIR}/client/include)
+target_link_libraries(r-type_client PRIVATE 
+    rtype_ecs 
+    rtype_shared 
+    asio::asio 
+    sfml-graphics sfml-window sfml-system sfml-audio
 )
 
-find_package(SFML 2.5 COMPONENTS graphics window system audio QUIET)
-if(SFML_FOUND)
-    target_link_libraries(r-type_client
-        PRIVATE rtype_ecs rtype_shared sfml-graphics sfml-window sfml-system sfml-audio
-    )
-else()
-    message(WARNING "SFML not found. Client will compile without graphics support.")
-    target_link_libraries(r-type_client
-        PRIVATE rtype_ecs rtype_shared
-    )
-endif()
-
-#
-# SERVER
-#
-file(GLOB_RECURSE SERVER_SRC
-    ${CMAKE_SOURCE_DIR}/server/src/*.cpp
-)
-
+# 4. Server
+file(GLOB_RECURSE SERVER_SRC ${CMAKE_SOURCE_DIR}/server/src/*.cpp)
 add_executable(r-type_server ${SERVER_SRC})
-target_include_directories(r-type_server PRIVATE
-    ${CMAKE_SOURCE_DIR}/server/include
-)
-target_link_libraries(r-type_server
-    PRIVATE rtype_ecs rtype_shared
+target_include_directories(r-type_server PRIVATE ${CMAKE_SOURCE_DIR}/server/include)
+target_link_libraries(r-type_server PRIVATE 
+    rtype_ecs 
+    rtype_shared 
+    asio::asio 
+    EnTT::EnTT
 )
 
-if(UNIX AND NOT APPLE)
+if(UNIX)
     target_link_libraries(r-type_server PRIVATE pthread)
+    target_link_libraries(r-type_client PRIVATE pthread)
 endif()
 
 enable_testing()
