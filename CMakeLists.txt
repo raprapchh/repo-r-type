@@ -11,26 +11,13 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 
-# EnTT
-option(ENTT_BUILD_TESTING "Build EnTT tests" OFF)
-option(ENTT_BUILD_DOCS "Build EnTT docs" OFF)
-option(ENTT_BUILD_EXAMPLES "Build EnTT examples" OFF)
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/entt/CMakeLists.txt")
-    add_subdirectory(external/entt)
-else()
-    find_package(EnTT CONFIG REQUIRED)
-endif()
+# EnTT (via vcpkg)
+find_package(EnTT CONFIG REQUIRED)
 
+# Asio (via vcpkg)
+find_package(asio CONFIG REQUIRED)
 
-# Asio
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/asio/asio/include/asio.hpp")
-    add_library(asio_lib INTERFACE)
-    target_include_directories(asio_lib INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/external/asio/asio/include)
-    add_compile_definitions(ASIO_STANDALONE) # Ensure standalone mode
-    add_library(asio::asio ALIAS asio_lib)
-else()
-    find_package(asio CONFIG REQUIRED)
-endif()
+# SFML (via vcpkg) - using SFML 2.6.x
 find_package(SFML 2.5 COMPONENTS graphics window system audio REQUIRED)
 
 find_package(Catch2 CONFIG QUIET)
