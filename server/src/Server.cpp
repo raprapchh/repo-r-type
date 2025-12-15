@@ -775,16 +775,40 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
 void Server::handle_player_join(const std::string& client_ip, uint16_t client_port) {
     std::string client_key = client_ip + ":" + std::to_string(client_port);
 
-    uint32_t player_id;
-    GameEngine::entity_t entity;
     {
-        std::lock_guard<std::mutex> registry_lock(registry_mutex_);
         std::lock_guard<std::mutex> clients_lock(clients_mutex_);
         if (clients_.find(client_key) != clients_.end()) {
             Logger::instance().warn("Player already connected from " + client_ip + ":" + std::to_string(client_port));
             return;
         }
 
+        size_t connected_count = 0;
+        for (const auto& [key, client] : clients_) {
+            if (client.is_connected) {
+                connected_count++;
+            }
+        }
+
+        if (connected_count >= rtype::constants::MAX_PLAYERS) {
+            Logger::instance().warn("Server full: " + std::to_string(connected_count) +
+                                    " players already connected. "
+                                    "Rejecting connection from " +
+                                    client_ip + ":" + std::to_string(client_port));
+            if (protocol_adapter_ && message_serializer_ && udp_server_) {
+                rtype::net::PlayerJoinData reject_data(0);
+                rtype::net::Packet reject_packet = message_serializer_->serialize_player_join(reject_data);
+                auto reject_data_serialized = protocol_adapter_->serialize(reject_packet);
+                udp_server_->send(client_ip, client_port, reject_data_serialized);
+            }
+            return;
+        }
+    }
+
+    uint32_t player_id;
+    GameEngine::entity_t entity;
+    {
+        std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+        std::lock_guard<std::mutex> clients_lock(clients_mutex_);
         player_id = next_player_id_++;
 
         float start_x = 100.0f + (player_id - 1) * 150.0f;
@@ -807,6 +831,7 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         registry_.addComponent<rtype::ecs::component::Score>(entity, 0);
         registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
         registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
+        registry_.addComponent<rtype::ecs::component::NetworkId>(entity, player_id);
         registry_.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                   rtype::ecs::component::CollisionLayer::Player);
 
