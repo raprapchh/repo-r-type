@@ -328,9 +328,8 @@ void Server::game_loop() {
                                     sub_type = 4;
                             }
 
-                            rtype::net::EntitySpawnData spawn_data(net_id,
-                                                                   rtype::net::EntityType::ENEMY, sub_type, pos.x,
-                                                                   pos.y, vel.vx, vel.vy);
+                            rtype::net::EntitySpawnData spawn_data(net_id, rtype::net::EntityType::ENEMY, sub_type,
+                                                                   pos.x, pos.y, vel.vx, vel.vy);
 
                             rtype::net::Packet spawn_packet = message_serializer_->serialize_entity_spawn(spawn_data);
                             auto serialized_spawn = protocol_adapter_->serialize(spawn_packet);
