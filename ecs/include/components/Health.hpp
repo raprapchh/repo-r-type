@@ -2,6 +2,7 @@
 
 namespace rtype::ecs::component {
 
+/// @brief Health points component
 struct Health {
     int hp;
     int max_hp;

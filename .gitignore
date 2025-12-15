@@ -43,3 +43,4 @@ vcpkg_installed/
 subject/
 external/
 .cache/
+documentation/doxygen/

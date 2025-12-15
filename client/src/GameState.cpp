@@ -10,8 +10,11 @@
 #include "../../ecs/include/components/Lives.hpp"
 #include "../../ecs/include/components/Health.hpp"
 #include "../../ecs/include/components/Weapon.hpp"
-#include <thread>
 #include <chrono>
+#include <thread>
+#include "../../ecs/include/systems/AnimationSystem.hpp"
+#include "../../ecs/include/systems/InterpolationSystem.hpp"
+#include "../../ecs/include/systems/GameRuleSystem.hpp"
 
 namespace rtype::client {
 
@@ -132,6 +135,14 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                     sf::Vector2i(event.mouseButton.x, event.mouseButton.y), renderer.get_window()->getDefaultView());
 
                 if (renderer.is_game_over_back_to_menu_clicked(mouse_pos)) {
+                    if (client_) {
+                        GameEngine::Registry& registry = client_->get_registry();
+                        std::mutex& registry_mutex = client_->get_registry_mutex();
+                        std::lock_guard<std::mutex> lock(registry_mutex);
+                        registry.clear();
+                    }
+                    game_over_ = false;
+                    all_players_dead_ = false;
                     state_manager.change_state(std::make_unique<MenuState>());
                 }
             }
@@ -163,86 +174,25 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
 
     {
         std::lock_guard<std::mutex> lock(registry_mutex);
+        rtype::ecs::InterpolationSystem interpolation_system;
+        interpolation_system.update(registry, delta_time);
+
+        rtype::ecs::AnimationSystem animation_system;
+        animation_system.update(registry, delta_time);
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(registry_mutex);
 
         if (!client.is_connected()) {
             return;
         }
 
         uint32_t player_id = client.get_player_id();
-        bool player_exists = false;
-        bool player_dead = false;
 
-        auto view = registry.view<rtype::ecs::component::NetworkId>();
-        for (auto entity : view) {
-            auto& net_id =
-                registry.getComponent<rtype::ecs::component::NetworkId>(static_cast<GameEngine::entity_t>(entity));
-            if (net_id.id == player_id) {
-                player_exists = true;
-                if (registry.hasComponent<rtype::ecs::component::Lives>(static_cast<GameEngine::entity_t>(entity))) {
-                    auto& lives =
-                        registry.getComponent<rtype::ecs::component::Lives>(static_cast<GameEngine::entity_t>(entity));
-                    if (lives.remaining <= 0) {
-                        player_dead = true;
-                    }
-                } else if (registry.hasComponent<rtype::ecs::component::Health>(
-                               static_cast<GameEngine::entity_t>(entity))) {
-                    auto& health =
-                        registry.getComponent<rtype::ecs::component::Health>(static_cast<GameEngine::entity_t>(entity));
-                    if (health.hp <= 0) {
-                        player_dead = true;
-                    }
-                }
-                break;
-            }
-        }
-
-        if (!player_exists || player_dead) {
-            if (!game_over_) {
-                game_over_ = true;
-
-                auto player_view = registry.view<rtype::ecs::component::NetworkId>();
-                for (auto entity : player_view) {
-                    auto& net_id = registry.getComponent<rtype::ecs::component::NetworkId>(
-                        static_cast<GameEngine::entity_t>(entity));
-                    if (net_id.id == player_id && registry.hasComponent<rtype::ecs::component::Drawable>(
-                                                      static_cast<GameEngine::entity_t>(entity))) {
-                        registry.removeComponent<rtype::ecs::component::Drawable>(
-                            static_cast<GameEngine::entity_t>(entity));
-                    }
-                }
-            }
-        }
-
-        if (game_over_) {
-            int alive_players = 0;
-            auto all_players_view = registry.view<rtype::ecs::component::NetworkId, rtype::ecs::component::Weapon>();
-            for (auto entity : all_players_view) {
-                auto& net_id =
-                    registry.getComponent<rtype::ecs::component::NetworkId>(static_cast<GameEngine::entity_t>(entity));
-                if (net_id.id != player_id) {
-                    bool other_player_alive = true;
-                    if (registry.hasComponent<rtype::ecs::component::Lives>(
-                            static_cast<GameEngine::entity_t>(entity))) {
-                        auto& lives = registry.getComponent<rtype::ecs::component::Lives>(
-                            static_cast<GameEngine::entity_t>(entity));
-                        if (lives.remaining <= 0) {
-                            other_player_alive = false;
-                        }
-                    } else if (registry.hasComponent<rtype::ecs::component::Health>(
-                                   static_cast<GameEngine::entity_t>(entity))) {
-                        auto& health = registry.getComponent<rtype::ecs::component::Health>(
-                            static_cast<GameEngine::entity_t>(entity));
-                        if (health.hp <= 0) {
-                            other_player_alive = false;
-                        }
-                    }
-                    if (other_player_alive) {
-                        alive_players++;
-                    }
-                }
-            }
-            all_players_dead_ = (alive_players == 0);
-        }
+        // Update Game Rules (Game Over logic)
+        rtype::ecs::GameRuleSystem game_rule_system(player_id, game_over_, all_players_dead_);
+        game_rule_system.update(registry, delta_time);
     }
 
     if (game_over_ && all_players_dead_) {

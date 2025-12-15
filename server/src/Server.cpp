@@ -30,11 +30,15 @@
 #include "../../shared/utils/GameConfig.hpp"
 #include <unordered_set>
 #include <chrono>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <iostream>
 
 namespace rtype::server {
 
 Server::Server(GameEngine::Registry& registry, uint16_t port)
-    : port_(port), next_player_id_(1), running_(false), game_started_(false), registry_(registry) {
+    : port_(port), next_player_id_(1), running_(false), game_started_(false), game_over_(false), registry_(registry) {
     io_context_ = std::make_unique<asio::io_context>();
     udp_server_ = std::make_unique<UdpServer>(*io_context_, port_);
     protocol_adapter_ = std::make_unique<rtype::net::ProtocolAdapter>();
@@ -42,7 +46,59 @@ Server::Server(GameEngine::Registry& registry, uint16_t port)
 }
 
 Server::~Server() {
-    stop();
+    game_started_ = false;
+}
+
+void load_level(GameEngine::Registry& registry, const std::string& path) {
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        Logger::instance().error("Failed to open map file: " + path);
+        return;
+    }
+
+    std::string line;
+    float cell_width = 288.0f;
+    float cell_height = 100.0f;
+
+    static uint32_t next_obstacle_network_id = 10000;
+
+    int row = 0;
+    while (std::getline(file, line)) {
+        for (size_t col = 0; col < line.length(); ++col) {
+            char c = line[col];
+            if (c == ' ')
+                continue;
+
+            float x = col * cell_width;
+            float y = row * cell_height;
+
+            if (c == '1' || c == '3' || c == '4') {
+                auto obstacle = registry.createEntity();
+                registry.addComponent<rtype::ecs::component::Position>(obstacle, x, y);
+                registry.addComponent<rtype::ecs::component::HitBox>(
+                    obstacle, rtype::constants::OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE,
+                    rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
+                registry.addComponent<rtype::ecs::component::Collidable>(
+                    obstacle, rtype::ecs::component::CollisionLayer::Obstacle);
+                registry.addComponent<rtype::ecs::component::NetworkId>(obstacle, next_obstacle_network_id++);
+                registry.addComponent<rtype::ecs::component::Tag>(obstacle, "Obstacle");
+                registry.addComponent<rtype::ecs::component::Velocity>(obstacle, -100.0f, 0.0f);
+            } else if (c == '2') {
+                auto floor_obstacle = registry.createEntity();
+                registry.addComponent<rtype::ecs::component::Position>(floor_obstacle, x, y);
+                registry.addComponent<rtype::ecs::component::HitBox>(
+                    floor_obstacle, rtype::constants::FLOOR_OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE,
+                    rtype::constants::FLOOR_OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
+                registry.addComponent<rtype::ecs::component::Collidable>(
+                    floor_obstacle, rtype::ecs::component::CollisionLayer::Obstacle);
+                registry.addComponent<rtype::ecs::component::NetworkId>(floor_obstacle, next_obstacle_network_id++);
+                registry.addComponent<rtype::ecs::component::Tag>(floor_obstacle, "Obstacle_Floor");
+                registry.addComponent<rtype::ecs::component::Velocity>(floor_obstacle, -100.0f, 0.0f);
+            }
+        }
+        row++;
+    }
+    Logger::instance().info("Level loaded from " + path);
 }
 
 void Server::start() {
@@ -55,7 +111,6 @@ void Server::start() {
         handle_client_message(ip, port, data);
     });
 
-    // Create enemy spawner entity
     auto spawner = registry_.createEntity();
     registry_.addComponent<rtype::ecs::component::EnemySpawner>(spawner, 2.0f, 0.0f);
 
@@ -70,25 +125,7 @@ void Server::start() {
                                                                  rtype::config::MAP_MAX_Y);
         Logger::instance().info("Map dimensions: 1920x1080");
 
-        auto obstacle = registry_.createEntity();
-        registry_.addComponent<rtype::ecs::component::Position>(obstacle, 600.0f, 936.0f);
-        registry_.addComponent<rtype::ecs::component::HitBox>(
-            obstacle, rtype::constants::OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE,
-            rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
-        registry_.addComponent<rtype::ecs::component::Collidable>(obstacle,
-                                                                  rtype::ecs::component::CollisionLayer::Obstacle);
-        registry_.addComponent<rtype::ecs::component::NetworkId>(obstacle, static_cast<uint32_t>(obstacle));
-        registry_.addComponent<rtype::ecs::component::Tag>(obstacle, "Obstacle");
-
-        auto floor_obstacle = registry_.createEntity();
-        registry_.addComponent<rtype::ecs::component::Position>(floor_obstacle, 1000.0f, 1030.0f);
-        registry_.addComponent<rtype::ecs::component::HitBox>(
-            floor_obstacle, rtype::constants::FLOOR_OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE,
-            rtype::constants::FLOOR_OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
-        registry_.addComponent<rtype::ecs::component::Collidable>(floor_obstacle,
-                                                                  rtype::ecs::component::CollisionLayer::Obstacle);
-        registry_.addComponent<rtype::ecs::component::NetworkId>(floor_obstacle, static_cast<uint32_t>(floor_obstacle));
-        registry_.addComponent<rtype::ecs::component::Tag>(floor_obstacle, "Obstacle_Floor");
+        load_level(registry_, "server/assets/map.txt");
     }
     Logger::instance().info("Enemy spawner initialized (interval: 2.0s)");
 }
@@ -137,26 +174,127 @@ void Server::run() {
 
 void Server::game_loop() {
     auto last_tick = std::chrono::steady_clock::now();
+    auto last_timeout_check = std::chrono::steady_clock::now();
 
     while (running_.load()) {
         auto current_time = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_tick);
 
-        // Call of different systems
+        auto timeout_check_elapsed =
+            std::chrono::duration_cast<std::chrono::seconds>(current_time - last_timeout_check);
+        if (timeout_check_elapsed >= std::chrono::seconds(1)) {
+            check_client_timeouts();
+            last_timeout_check = current_time;
+        }
+
         if (elapsed >= TICK_DURATION) {
             double dt = elapsed.count() / 1000.0;
             if (dt > 0.1) {
                 Logger::instance().warn("Server lag spike detected: " + std::to_string(dt * 1000) + "ms");
             }
 
-            if (game_started_) {
-                rtype::ecs::SpawnSystem spawn_system;
-                spawn_system.update(registry_, dt);
+            if (game_started_ && !game_over_.load()) {
+                bool all_players_dead = true;
+                bool has_players = false;
+                {
+                    std::lock_guard<std::mutex> clients_lock(clients_mutex_);
+                    std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+                    for (const auto& [key, client] : clients_) {
+                        if (client.is_connected) {
+                            has_players = true;
+                            if (registry_.isValid(client.entity_id)) {
+                                if (registry_.hasComponent<rtype::ecs::component::Lives>(client.entity_id)) {
+                                    auto& lives =
+                                        registry_.getComponent<rtype::ecs::component::Lives>(client.entity_id);
+                                    if (lives.remaining > 0) {
+                                        all_players_dead = false;
+                                        break;
+                                    }
+                                } else {
+                                    all_players_dead = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (has_players && all_players_dead) {
+                    game_over_ = true;
+                    Logger::instance().info("Game Over - All players are dead. Destroying game entities.");
+
+                    std::vector<std::pair<GameEngine::entity_t, uint32_t>> entities_to_destroy;
+
+                    {
+                        std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+                        auto network_view = registry_.view<rtype::ecs::component::NetworkId>();
+                        for (auto entity : network_view) {
+                            bool should_destroy = true;
+
+                            if (registry_.hasComponent<rtype::ecs::component::MapBounds>(static_cast<size_t>(entity))) {
+                                should_destroy = false;
+                            }
+
+                            if (registry_.hasComponent<rtype::ecs::component::EnemySpawner>(
+                                    static_cast<size_t>(entity))) {
+                                should_destroy = false;
+                            }
+
+                            if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {
+                                auto& tag =
+                                    registry_.getComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity));
+                                if (tag.name == "Player") {
+                                    should_destroy = false;
+                                }
+                            }
+
+                            if (should_destroy) {
+                                auto& net_id = registry_.getComponent<rtype::ecs::component::NetworkId>(
+                                    static_cast<size_t>(entity));
+                                entities_to_destroy.push_back({static_cast<GameEngine::entity_t>(entity), net_id.id});
+                            }
+                        }
+                    }
+
+                    if (protocol_adapter_ && message_serializer_) {
+                        std::lock_guard<std::mutex> clients_lock(clients_mutex_);
+                        for (const auto& [entity, net_id] : entities_to_destroy) {
+                            rtype::net::EntityDestroyData destroy_data;
+                            destroy_data.entity_id = net_id;
+                            destroy_data.reason = rtype::net::DestroyReason::TIMEOUT;
+
+                            rtype::net::Packet destroy_packet =
+                                message_serializer_->serialize_entity_destroy(destroy_data);
+                            auto serialized_destroy = protocol_adapter_->serialize(destroy_packet);
+
+                            for (const auto& [dest_key, dest_client] : clients_) {
+                                if (dest_client.is_connected && udp_server_) {
+                                    udp_server_->send(dest_client.ip, dest_client.port, serialized_destroy);
+                                }
+                            }
+                        }
+                    }
+
+                    {
+                        std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+                        for (const auto& [entity, net_id] : entities_to_destroy) {
+                            registry_.destroyEntity(entity);
+                        }
+                    }
+
+                    Logger::instance().info("Destroyed " + std::to_string(entities_to_destroy.size()) +
+                                            " game entities and notified clients.");
+                }
+
+                if (!game_over_.load()) {
+                    rtype::ecs::SpawnSystem spawn_system;
+                    spawn_system.update(registry_, dt);
+                }
             }
 
-            // Broadcast newly spawned enemies to clients
             if (protocol_adapter_ && message_serializer_) {
                 std::vector<std::pair<rtype::net::EntitySpawnData, std::vector<uint8_t>>> spawns_to_send;
+                std::vector<std::pair<size_t, uint32_t>> entities_to_add_network_id;
                 {
                     std::lock_guard<std::mutex> registry_lock(registry_mutex_);
                     auto enemy_spawn_view =
@@ -173,8 +311,8 @@ void Server::game_loop() {
                         }
 
                         if (!registry_.hasComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity))) {
-                            registry_.addComponent<rtype::ecs::component::NetworkId>(static_cast<size_t>(entity),
-                                                                                     static_cast<uint32_t>(entity));
+                            uint32_t net_id = static_cast<uint32_t>(entity);
+                            entities_to_add_network_id.emplace_back(static_cast<size_t>(entity), net_id);
 
                             uint16_t sub_type = 0;
                             if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {
@@ -190,15 +328,20 @@ void Server::game_loop() {
                                     sub_type = 4;
                             }
 
-                            rtype::net::EntitySpawnData spawn_data(static_cast<uint32_t>(entity),
-                                                                   rtype::net::EntityType::ENEMY, sub_type, pos.x,
-                                                                   pos.y, vel.vx, vel.vy);
+                            rtype::net::EntitySpawnData spawn_data(net_id, rtype::net::EntityType::ENEMY, sub_type,
+                                                                   pos.x, pos.y, vel.vx, vel.vy);
 
                             rtype::net::Packet spawn_packet = message_serializer_->serialize_entity_spawn(spawn_data);
                             auto serialized_spawn = protocol_adapter_->serialize(spawn_packet);
                             spawns_to_send.emplace_back(spawn_data, serialized_spawn);
                         }
                     });
+
+                    for (const auto& [entity_id, net_id] : entities_to_add_network_id) {
+                        if (registry_.isValid(entity_id)) {
+                            registry_.addComponent<rtype::ecs::component::NetworkId>(entity_id, net_id);
+                        }
+                    }
                 }
 
                 if (!spawns_to_send.empty()) {
@@ -220,7 +363,6 @@ void Server::game_loop() {
                 rtype::ecs::MovementSystem movement_system;
                 movement_system.update(registry_, dt);
 
-                // Track networked entities before systems (to detect destroyed ones)
                 std::unordered_set<uint32_t> entities_before;
                 {
                     auto network_view = registry_.view<rtype::ecs::component::NetworkId>();
@@ -292,7 +434,6 @@ void Server::game_loop() {
                 rtype::ecs::ProjectileSystem projectile_system;
                 projectile_system.update(registry_, dt);
 
-                // Track enemy entities after systems and find destroyed ones
                 if (protocol_adapter_ && message_serializer_) {
                     std::lock_guard<std::mutex> lock(clients_mutex_);
 
@@ -340,6 +481,10 @@ void Server::game_loop() {
                 rtype::ecs::ScoreSystem score_system;
                 score_system.update(registry_, dt);
 
+                std::vector<std::pair<size_t, uint32_t>> projectiles_to_add_network_id;
+                std::vector<std::vector<uint8_t>> projectile_spawns_to_send;
+                std::vector<uint32_t> projectile_net_ids_to_log;
+
                 auto projectile_view =
                     registry_.view<rtype::ecs::component::Projectile, rtype::ecs::component::Position,
                                    rtype::ecs::component::Velocity>();
@@ -350,7 +495,7 @@ void Server::game_loop() {
                         auto& vel = registry_.getComponent<rtype::ecs::component::Velocity>(id);
 
                         uint32_t net_id = static_cast<uint32_t>(id);
-                        registry_.addComponent<rtype::ecs::component::NetworkId>(id, net_id);
+                        projectiles_to_add_network_id.emplace_back(id, net_id);
 
                         uint16_t sub_type = 0;
                         if (registry_.hasComponent<rtype::ecs::component::Tag>(id)) {
@@ -378,14 +523,26 @@ void Server::game_loop() {
 
                         rtype::net::Packet spawn_packet = message_serializer_->serialize_entity_spawn(spawn_data);
                         auto serialized_spawn = protocol_adapter_->serialize(spawn_packet);
+                        projectile_spawns_to_send.push_back(serialized_spawn);
+                        projectile_net_ids_to_log.push_back(net_id);
+                    }
+                }
 
-                        std::lock_guard<std::mutex> clients_lock(clients_mutex_);
+                for (const auto& [entity_id, net_id] : projectiles_to_add_network_id) {
+                    if (registry_.isValid(entity_id)) {
+                        registry_.addComponent<rtype::ecs::component::NetworkId>(entity_id, net_id);
+                    }
+                }
+
+                if (!projectile_spawns_to_send.empty()) {
+                    std::lock_guard<std::mutex> clients_lock(clients_mutex_);
+                    for (size_t i = 0; i < projectile_spawns_to_send.size(); ++i) {
                         for (const auto& [key, client] : clients_) {
                             if (client.is_connected && udp_server_) {
-                                udp_server_->send(client.ip, client.port, serialized_spawn);
+                                udp_server_->send(client.ip, client.port, projectile_spawns_to_send[i]);
                             }
                         }
-                        Logger::instance().info("Spawned projectile " + std::to_string(net_id));
+                        Logger::instance().info("Spawned projectile " + std::to_string(projectile_net_ids_to_log[i]));
                     }
                 }
             }
@@ -431,7 +588,6 @@ void Server::game_loop() {
                     }
                 }
 
-                // Broadcast enemy positions to all clients
                 std::vector<std::pair<rtype::net::EntityMoveData, std::vector<uint8_t>>> enemy_moves_to_send;
                 {
                     std::lock_guard<std::mutex> registry_lock(registry_mutex_);
@@ -473,7 +629,19 @@ void Server::game_loop() {
 
                 rtype::net::GameStateData game_state_data;
                 game_state_data.game_time = static_cast<uint32_t>(elapsed.count());
-                game_state_data.wave_number = 1;
+
+                int current_wave_display = 1;
+                {
+                    std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+                    auto spawner_view = registry_.view<rtype::ecs::component::EnemySpawner>();
+                    for (auto entity : spawner_view) {
+                        auto& spawner =
+                            registry_.getComponent<rtype::ecs::component::EnemySpawner>(static_cast<size_t>(entity));
+                        current_wave_display = (spawner.currentLevel * 100) + (spawner.currentWave + 1);
+                        break;
+                    }
+                }
+                game_state_data.wave_number = static_cast<uint16_t>(current_wave_display);
                 game_state_data.enemies_remaining = 0;
                 game_state_data.score = 0;
                 game_state_data.game_state = 0;
@@ -545,6 +713,14 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
 
     std::string client_key = client_ip + ":" + std::to_string(client_port);
 
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        auto it = clients_.find(client_key);
+        if (it != clients_.end()) {
+            it->second.last_seen = std::chrono::steady_clock::now();
+        }
+    }
+
     switch (static_cast<rtype::net::MessageType>(packet.header.message_type)) {
     case rtype::net::MessageType::PlayerJoin:
         handle_player_join(client_ip, client_port);
@@ -575,6 +751,22 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
         handle_map_resize(client_ip, client_port, packet);
     } break;
 
+    case rtype::net::MessageType::PlayerLeave: {
+        ClientInfo client_info;
+        bool found = false;
+        {
+            std::lock_guard<std::mutex> lock(clients_mutex_);
+            auto it = clients_.find(client_key);
+            if (it != clients_.end()) {
+                client_info = it->second;
+                found = true;
+            }
+        }
+        if (found) {
+            disconnect_client(client_key, client_info);
+        }
+    } break;
+
     default:
         Logger::instance().warn("Unknown message type: " + std::to_string(packet.header.message_type));
     }
@@ -583,16 +775,40 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
 void Server::handle_player_join(const std::string& client_ip, uint16_t client_port) {
     std::string client_key = client_ip + ":" + std::to_string(client_port);
 
-    uint32_t player_id;
-    GameEngine::entity_t entity;
     {
-        std::lock_guard<std::mutex> registry_lock(registry_mutex_);
         std::lock_guard<std::mutex> clients_lock(clients_mutex_);
         if (clients_.find(client_key) != clients_.end()) {
             Logger::instance().warn("Player already connected from " + client_ip + ":" + std::to_string(client_port));
             return;
         }
 
+        size_t connected_count = 0;
+        for (const auto& [key, client] : clients_) {
+            if (client.is_connected) {
+                connected_count++;
+            }
+        }
+
+        if (connected_count >= rtype::constants::MAX_PLAYERS) {
+            Logger::instance().warn("Server full: " + std::to_string(connected_count) +
+                                    " players already connected. "
+                                    "Rejecting connection from " +
+                                    client_ip + ":" + std::to_string(client_port));
+            if (protocol_adapter_ && message_serializer_ && udp_server_) {
+                rtype::net::PlayerJoinData reject_data(0);
+                rtype::net::Packet reject_packet = message_serializer_->serialize_player_join(reject_data);
+                auto reject_data_serialized = protocol_adapter_->serialize(reject_packet);
+                udp_server_->send(client_ip, client_port, reject_data_serialized);
+            }
+            return;
+        }
+    }
+
+    uint32_t player_id;
+    GameEngine::entity_t entity;
+    {
+        std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+        std::lock_guard<std::mutex> clients_lock(clients_mutex_);
         player_id = next_player_id_++;
 
         float start_x = 100.0f + (player_id - 1) * 150.0f;
@@ -615,6 +831,7 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         registry_.addComponent<rtype::ecs::component::Score>(entity, 0);
         registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
         registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
+        registry_.addComponent<rtype::ecs::component::NetworkId>(entity, player_id);
         registry_.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                   rtype::ecs::component::CollisionLayer::Player);
 
@@ -624,6 +841,7 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         info.player_id = player_id;
         info.is_connected = true;
         info.entity_id = entity;
+        info.last_seen = std::chrono::steady_clock::now();
 
         clients_[client_key] = info;
     }
@@ -672,8 +890,15 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
                 spawn_data.sub_type = (tag.name == "Obstacle_Floor") ? 1 : 0;
                 spawn_data.position_x = pos.x;
                 spawn_data.position_y = pos.y;
-                spawn_data.velocity_x = 0;
-                spawn_data.velocity_y = 0;
+
+                if (registry_.hasComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity))) {
+                    auto& vel = registry_.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
+                    spawn_data.velocity_x = vel.vx;
+                    spawn_data.velocity_y = vel.vy;
+                } else {
+                    spawn_data.velocity_x = 0;
+                    spawn_data.velocity_y = 0;
+                }
 
                 rtype::net::Packet spawn_packet = message_serializer_->serialize_entity_spawn(spawn_data);
                 auto serialized_spawn = protocol_adapter_->serialize(spawn_packet);
@@ -823,11 +1048,6 @@ void Server::handle_player_shoot(const std::string& client_ip, uint16_t client_p
             if (!registry_.isValid(entity_id)) {
                 return;
             }
-            if (registry_.hasComponent<rtype::ecs::component::Position>(entity_id)) {
-                auto& pos = registry_.getComponent<rtype::ecs::component::Position>(entity_id);
-                pos.x = shoot_data.position_x;
-                pos.y = shoot_data.position_y;
-            }
             if (registry_.hasComponent<rtype::ecs::component::Weapon>(entity_id)) {
                 auto& weapon = registry_.getComponent<rtype::ecs::component::Weapon>(entity_id);
                 weapon.isShooting = true;
@@ -917,6 +1137,72 @@ void Server::broadcast_message(const std::vector<uint8_t>& data, const std::stri
             }
         }
     }
+}
+
+void Server::check_client_timeouts() {
+    auto current_time = std::chrono::steady_clock::now();
+    std::vector<std::pair<std::string, ClientInfo>> timed_out_clients;
+
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        for (const auto& [key, client] : clients_) {
+            if (client.is_connected) {
+                auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(current_time - client.last_seen);
+                if (elapsed >= CLIENT_TIMEOUT_DURATION) {
+                    timed_out_clients.emplace_back(key, client);
+                }
+            }
+        }
+    }
+
+    for (const auto& [key, client] : timed_out_clients) {
+        disconnect_client(key, client);
+    }
+}
+
+void Server::disconnect_client(const std::string& client_key, const ClientInfo& client) {
+    Logger::instance().warn("Client timeout detected: player_id=" + std::to_string(client.player_id) + " from " +
+                            client.ip + ":" + std::to_string(client.port));
+
+    {
+        std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+        if (registry_.isValid(client.entity_id)) {
+            registry_.destroyEntity(client.entity_id);
+            Logger::instance().info("Removed entity " + std::to_string(static_cast<uint32_t>(client.entity_id)) +
+                                    " for timed out player " + std::to_string(client.player_id));
+        }
+    }
+
+    if (protocol_adapter_ && message_serializer_) {
+        rtype::net::PlayerLeaveData leave_data(client.player_id);
+        rtype::net::Packet leave_packet = message_serializer_->serialize_player_leave(leave_data);
+        auto serialized_leave = protocol_adapter_->serialize(leave_packet);
+
+        constexpr int RETRY_COUNT = 3;
+        for (int retry = 0; retry < RETRY_COUNT; ++retry) {
+            {
+                std::lock_guard<std::mutex> clients_lock(clients_mutex_);
+                for (const auto& [dest_key, dest_client] : clients_) {
+                    if (dest_client.is_connected && dest_key != client_key && udp_server_) {
+                        udp_server_->send(dest_client.ip, dest_client.port, serialized_leave);
+                    }
+                }
+            }
+            if (retry < RETRY_COUNT - 1) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+        }
+
+        Logger::instance().info("PlayerLeave message broadcasted " + std::to_string(RETRY_COUNT) +
+                                " times for player " + std::to_string(client.player_id));
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        clients_.erase(client_key);
+    }
+
+    Logger::instance().info("Client disconnected: player_id=" + std::to_string(client.player_id));
 }
 
 } // namespace rtype::server

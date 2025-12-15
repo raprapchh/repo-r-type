@@ -69,7 +69,7 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
         bool is_local = (data.entity_id == player_id_);
 
         if (is_player) {
-            uint32_t sprite_index = (data.entity_id) % 5;
+            uint32_t sprite_index = (data.entity_id - 1) % 4;
             registry.addComponent<rtype::ecs::component::Drawable>(
                 entity, "player_ships", 0, 0, static_cast<uint32_t>(rtype::constants::PLAYER_WIDTH),
                 static_cast<uint32_t>(rtype::constants::PLAYER_HEIGHT), rtype::constants::PLAYER_SCALE,
@@ -101,7 +101,7 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
                                                                    static_cast<uint32_t>(0), 4.0f, 4.0f);
             registry.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
-            registry.addComponent<rtype::ecs::component::HitBox>(entity, 150.0f, 150.0f);
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, 100.0f, 100.0f);
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::Enemy);
             registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, data.position_x, data.position_y,
@@ -115,27 +115,27 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 sprite_name = "monster_0-ball";
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
                                                                        static_cast<uint32_t>(0), 4.5f, 4.5f);
-                width = 110.0f;
-                height = 110.0f;
+                width = 70.0f;
+                height = 70.0f;
             } else if (data.sub_type >= 10 && data.sub_type <= 13) {
                 int frameW = 0;
                 int frameH = 0;
                 if (data.sub_type == 10) {
                     sprite_name = "shot_death-charge1";
-                    width = 90.0f;
-                    height = 90.0f;
+                    width = 60.0f;
+                    height = 60.0f;
                 } else if (data.sub_type == 11) {
                     sprite_name = "shot_death-charge2";
-                    width = 120.0f;
-                    height = 120.0f;
+                    width = 80.0f;
+                    height = 80.0f;
                 } else if (data.sub_type == 12) {
                     sprite_name = "shot_death-charge3";
-                    width = 150.0f;
-                    height = 150.0f;
+                    width = 100.0f;
+                    height = 100.0f;
                 } else if (data.sub_type == 13) {
                     sprite_name = "shot_death-charge4";
-                    width = 180.0f;
-                    height = 180.0f;
+                    width = 120.0f;
+                    height = 120.0f;
                 }
 
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, frameW, frameH, 3.0f,
@@ -166,6 +166,15 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                                                                  obs_h * rtype::constants::OBSTACLE_SCALE);
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::Obstacle);
+
+            // Add Tag so ParallaxSystem can move it
+            if (data.sub_type == 1) {
+                registry.addComponent<rtype::ecs::component::Tag>(
+                    entity,
+                    "Obstacle_Floor"); // Or just "Obstacle" if ParallaxSystem checks that? ParallaxSystem checks both.
+            } else {
+                registry.addComponent<rtype::ecs::component::Tag>(entity, "Obstacle");
+            }
         }
 
     } catch (const std::exception& e) {
@@ -213,18 +222,30 @@ void NetworkSystem::handle_move(GameEngine::Registry& registry, const rtype::net
                         break;
                     }
 
-                    if (!registry.hasComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs)) {
-                        auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id_ecs);
-                        registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs, pos.x, pos.y,
-                                                                                           vx, vy);
-                    }
+                    bool is_projectile = registry.hasComponent<rtype::ecs::component::Projectile>(entity_id_ecs);
 
-                    auto& interp = registry.getComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs);
-                    interp.target_x = x;
-                    interp.target_y = y;
-                    interp.target_vx = vx;
-                    interp.target_vy = vy;
-                    interp.last_update_time = std::chrono::steady_clock::now();
+                    if (is_projectile) {
+                        auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id_ecs);
+                        auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(entity_id_ecs);
+                        pos.x = x;
+                        pos.y = y;
+                        vel.vx = vx;
+                        vel.vy = vy;
+                    } else {
+                        if (!registry.hasComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs)) {
+                            auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id_ecs);
+                            registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs, pos.x,
+                                                                                               pos.y, vx, vy);
+                        }
+
+                        auto& interp =
+                            registry.getComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs);
+                        interp.target_x = x;
+                        interp.target_y = y;
+                        interp.target_vx = vx;
+                        interp.target_vy = vy;
+                        interp.last_update_time = std::chrono::steady_clock::now();
+                    }
 
                     found = true;
                     break;

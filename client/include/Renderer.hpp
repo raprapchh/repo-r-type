@@ -102,6 +102,7 @@ class Renderer {
     sf::Font font_;
     sf::Text score_text_;
     sf::Text lives_text_;
+    sf::Text wave_text_;
 
     bool keys_[sf::Keyboard::KeyCount];
     float background_x_;

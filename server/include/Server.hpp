@@ -16,14 +16,17 @@
 
 namespace rtype::server {
 
+/// @brief Connected client information
 struct ClientInfo {
     std::string ip;
     uint16_t port;
     uint32_t player_id;
     bool is_connected;
     GameEngine::entity_t entity_id;
+    std::chrono::steady_clock::time_point last_seen;
 };
 
+/// @brief Authoritative game server for R-Type multiplayer
 class Server {
   public:
     Server(GameEngine::Registry& registry, uint16_t port = 4242);
@@ -56,14 +59,19 @@ class Server {
     uint32_t next_player_id_;
     std::atomic<bool> running_;
     std::atomic<bool> game_started_;
+    std::atomic<bool> game_over_;
     std::thread game_thread_;
     std::thread network_thread_;
     std::optional<asio::executor_work_guard<asio::io_context::executor_type>> work_guard_;
     static constexpr double TARGET_TICK_RATE = 60.0;
     static constexpr std::chrono::milliseconds TICK_DURATION =
         std::chrono::milliseconds(static_cast<long>(1000.0 / TARGET_TICK_RATE));
+    static constexpr std::chrono::seconds CLIENT_TIMEOUT_DURATION = std::chrono::seconds(10);
 
     GameEngine::Registry& registry_;
+
+    void check_client_timeouts();
+    void disconnect_client(const std::string& client_key, const ClientInfo& client);
 };
 
 } // namespace rtype::server

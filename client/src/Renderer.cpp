@@ -32,6 +32,11 @@ void Renderer::load_fonts() {
     lives_text_.setCharacterSize(24);
     lives_text_.setFillColor(sf::Color::White);
     lives_text_.setPosition(10.0f, 40.0f);
+
+    wave_text_.setFont(font_);
+    wave_text_.setCharacterSize(24);
+    wave_text_.setFillColor(sf::Color::White);
+    wave_text_.setPosition(600.0f, 10.0f);
 }
 
 Renderer::~Renderer() = default;
@@ -188,7 +193,13 @@ void Renderer::draw_ui() {
     lives_text_.setString("Lives: " + std::to_string(static_cast<int>(game_state_.lives)));
 
     window_->draw(score_text_);
+    window_->draw(score_text_);
     window_->draw(lives_text_);
+
+    int level = game_state_.wave_number / 100;
+    int wave = game_state_.wave_number % 100;
+    wave_text_.setString("Level " + std::to_string(level + 1) + " - Wave " + std::to_string(wave));
+    window_->draw(wave_text_);
 
     if (charge_percentage_ > 0.0f) {
         sf::RectangleShape charge_bar_bg(sf::Vector2f(200.0f, 20.0f));

@@ -1,6 +1,7 @@
 #include "../../include/systems/InputSystem.hpp"
 #include "../../include/components/Controllable.hpp"
 #include "../../include/components/Velocity.hpp"
+#include "../../include/components/Tag.hpp"
 
 namespace rtype::ecs {
 
@@ -11,8 +12,20 @@ InputSystem::InputSystem(bool up, bool down, bool left, bool right, float speed)
 void InputSystem::update(GameEngine::Registry& registry, double /* dt */) {
     auto view = registry.view<component::Controllable, component::Velocity>();
 
-    view.each([this](component::Controllable& ctrl, component::Velocity& vel) {
+    view.each([this, &registry](const auto entity, component::Controllable& ctrl, component::Velocity& vel) {
         if (!ctrl.is_local_player) {
+            return;
+        }
+
+        bool is_player = false;
+        if (registry.hasComponent<component::Tag>(static_cast<size_t>(entity))) {
+            auto& tag = registry.getComponent<component::Tag>(static_cast<size_t>(entity));
+            if (tag.name == "Player") {
+                is_player = true;
+            }
+        }
+
+        if (!is_player) {
             return;
         }
 

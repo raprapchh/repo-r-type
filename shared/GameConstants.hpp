@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace rtype {
 namespace constants {
 constexpr float OBSTACLE_WIDTH = 48.0f;
@@ -15,5 +17,7 @@ constexpr float PLAYER_SCALE = 5.0f;
 
 constexpr float SCREEN_WIDTH = 1920.0f;
 constexpr float SCREEN_HEIGHT = 1080.0f;
+
+constexpr uint32_t MAX_PLAYERS = 4;
 } // namespace constants
 } // namespace rtype
