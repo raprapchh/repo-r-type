@@ -606,7 +606,19 @@ void Server::game_loop() {
 
                 rtype::net::GameStateData game_state_data;
                 game_state_data.game_time = static_cast<uint32_t>(elapsed.count());
-                game_state_data.wave_number = 1;
+
+                int current_wave_display = 1;
+                {
+                    std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+                    auto spawner_view = registry_.view<rtype::ecs::component::EnemySpawner>();
+                    for (auto entity : spawner_view) {
+                        auto& spawner =
+                            registry_.getComponent<rtype::ecs::component::EnemySpawner>(static_cast<size_t>(entity));
+                        current_wave_display = (spawner.currentLevel * 100) + (spawner.currentWave + 1);
+                        break;
+                    }
+                }
+                game_state_data.wave_number = static_cast<uint16_t>(current_wave_display);
                 game_state_data.enemies_remaining = 0;
                 game_state_data.score = 0;
                 game_state_data.game_state = 0;
