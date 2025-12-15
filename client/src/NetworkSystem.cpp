@@ -225,11 +225,12 @@ void NetworkSystem::handle_move(GameEngine::Registry& registry, const rtype::net
                     } else {
                         if (!registry.hasComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs)) {
                             auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id_ecs);
-                            registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs, pos.x, pos.y,
-                                                                                               vx, vy);
+                            registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs, pos.x,
+                                                                                               pos.y, vx, vy);
                         }
 
-                        auto& interp = registry.getComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs);
+                        auto& interp =
+                            registry.getComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs);
                         interp.target_x = x;
                         interp.target_y = y;
                         interp.target_vx = vx;

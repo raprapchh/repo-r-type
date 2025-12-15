@@ -137,8 +137,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
                 registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
                 registry_.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
-                registry_.addComponent<rtype::ecs::component::NetworkInterpolation>(
-                    entity, 100.0f, 100.0f, 0.0f, 0.0f);
+                registry_.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, 100.0f, 100.0f, 0.0f, 0.0f);
                 drawable.animation_sequences["idle"] = {2};
                 drawable.animation_sequences["up"] = {2, 3, 4};
                 drawable.animation_sequences["down"] = {2, 1, 0};
@@ -185,14 +184,14 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                     registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
                     registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
                     registry_.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
-                    
+
                     if (join_data.player_id == player_id_) {
                         registry_.addComponent<rtype::ecs::component::Controllable>(entity, true);
                     } else {
-                        registry_.addComponent<rtype::ecs::component::NetworkInterpolation>(
-                            entity, 100.0f, 100.0f, 0.0f, 0.0f);
+                        registry_.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, 100.0f, 100.0f,
+                                                                                            0.0f, 0.0f);
                     }
-                    
+
                     drawable.animation_sequences["idle"] = {2};
                     drawable.animation_sequences["up"] = {2, 3, 4};
                     drawable.animation_sequences["down"] = {2, 1, 0};
@@ -295,8 +294,10 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             if (!found) {
                 auto entity = registry_.createEntity();
                 registry_.addComponent<rtype::ecs::component::NetworkId>(entity, move_data.player_id);
-                registry_.addComponent<rtype::ecs::component::Position>(entity, move_data.position_x, move_data.position_y);
-                registry_.addComponent<rtype::ecs::component::Velocity>(entity, move_data.velocity_x, move_data.velocity_y);
+                registry_.addComponent<rtype::ecs::component::Position>(entity, move_data.position_x,
+                                                                        move_data.position_y);
+                registry_.addComponent<rtype::ecs::component::Velocity>(entity, move_data.velocity_x,
+                                                                        move_data.velocity_y);
                 uint32_t sprite_index = (move_data.player_id - 1) % 4;
                 registry_.addComponent<rtype::ecs::component::Drawable>(
                     entity, "player_ships", 0, 0, static_cast<uint32_t>(rtype::constants::PLAYER_WIDTH),
@@ -311,7 +312,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
                 registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
                 registry_.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
-                
+
                 if (move_data.player_id == player_id_) {
                     registry_.addComponent<rtype::ecs::component::Controllable>(entity, true);
                 }
@@ -334,7 +335,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                         auto& vel = registry_.getComponent<rtype::ecs::component::Velocity>(found_entity_id);
 
                         bool is_local_player = (move_data.player_id == player_id_);
-                        
+
                         if (!registry_.hasComponent<rtype::ecs::component::NetworkInterpolation>(found_entity_id)) {
                             registry_.addComponent<rtype::ecs::component::NetworkInterpolation>(
                                 found_entity_id, move_data.position_x, move_data.position_y, move_data.velocity_x,
@@ -351,7 +352,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                             interp.target_vx = move_data.velocity_x;
                             interp.target_vy = move_data.velocity_y;
                             interp.last_update_time = std::chrono::steady_clock::now();
-                            
+
                             if (is_local_player) {
                                 pos.x = move_data.position_x;
                                 pos.y = move_data.position_y;
