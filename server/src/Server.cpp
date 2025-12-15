@@ -790,8 +790,10 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         }
 
         if (connected_count >= rtype::constants::MAX_PLAYERS) {
-            Logger::instance().warn("Server full: " + std::to_string(connected_count) + " players already connected. "
-                                    "Rejecting connection from " + client_ip + ":" + std::to_string(client_port));
+            Logger::instance().warn("Server full: " + std::to_string(connected_count) +
+                                    " players already connected. "
+                                    "Rejecting connection from " +
+                                    client_ip + ":" + std::to_string(client_port));
             if (protocol_adapter_ && message_serializer_ && udp_server_) {
                 rtype::net::PlayerJoinData reject_data(0);
                 rtype::net::Packet reject_packet = message_serializer_->serialize_player_join(reject_data);
