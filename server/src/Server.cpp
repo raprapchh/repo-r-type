@@ -917,11 +917,6 @@ void Server::handle_player_shoot(const std::string& client_ip, uint16_t client_p
             if (!registry_.isValid(entity_id)) {
                 return;
             }
-            if (registry_.hasComponent<rtype::ecs::component::Position>(entity_id)) {
-                auto& pos = registry_.getComponent<rtype::ecs::component::Position>(entity_id);
-                pos.x = shoot_data.position_x;
-                pos.y = shoot_data.position_y;
-            }
             if (registry_.hasComponent<rtype::ecs::component::Weapon>(entity_id)) {
                 auto& weapon = registry_.getComponent<rtype::ecs::component::Weapon>(entity_id);
                 weapon.isShooting = true;
