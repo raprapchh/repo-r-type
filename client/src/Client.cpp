@@ -20,7 +20,8 @@
 namespace rtype::client {
 
 Client::Client(const std::string& host, uint16_t port, Renderer& renderer)
-    : host_(host), port_(port), connected_(false), player_id_(0), renderer_(renderer), network_system_(0) {
+    : host_(host), port_(port), connected_(false), player_id_(0), renderer_(renderer), network_system_(0),
+      last_ping_time_(std::chrono::steady_clock::now()) {
     io_context_ = std::make_unique<asio::io_context>();
     udp_client_ = std::make_unique<UdpClient>(*io_context_, host_, port_);
     udp_client_->set_message_handler(
@@ -57,6 +58,25 @@ void Client::connect() {
 
 void Client::disconnect() {
     bool was_connected = connected_.load();
+
+    // Send PlayerLeave message before disconnecting
+    if (was_connected && udp_client_) {
+        try {
+            rtype::net::MessageSerializer serializer;
+            rtype::net::PlayerLeaveData leave_data(player_id_);
+            rtype::net::Packet leave_packet = serializer.serialize_player_leave(leave_data);
+            std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(leave_packet);
+
+            // Send 3 times for reliability
+            for (int i = 0; i < 3; ++i) {
+                udp_client_->send(packet_data);
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error sending PlayerLeave: " << e.what() << std::endl;
+        }
+    }
+
     connected_ = false;
 
     if (io_context_) {
@@ -413,6 +433,28 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
         break;
     }
 
+    case rtype::net::MessageType::PlayerLeave: {
+        try {
+            auto leave_data = serializer.deserialize_player_leave(packet);
+            std::cout << "Player " << leave_data.player_id << " has left the game." << std::endl;
+
+            std::lock_guard<std::mutex> lock(registry_mutex_);
+            auto view = registry_.view<rtype::ecs::component::NetworkId>();
+            for (auto entity : view) {
+                auto& net_id =
+                    registry_.getComponent<rtype::ecs::component::NetworkId>(static_cast<GameEngine::entity_t>(entity));
+                if (net_id.id == leave_data.player_id) {
+                    registry_.destroyEntity(static_cast<GameEngine::entity_t>(entity));
+                    std::cout << "Removed entity for player " << leave_data.player_id << std::endl;
+                    break;
+                }
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error handling PlayerLeave: " << e.what() << std::endl;
+        }
+        break;
+    }
+
     case rtype::net::MessageType::Pong: {
         try {
             auto pong_data = serializer.deserialize_ping_pong(packet);
@@ -508,7 +550,28 @@ void Client::send_map_resize(float width, float height) {
     udp_client_->send(packet_data);
 }
 
+void Client::send_heartbeat() {
+    if (!connected_.load())
+        return;
+
+    auto current_time = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(current_time - last_ping_time_);
+
+    if (elapsed >= HEARTBEAT_INTERVAL) {
+        rtype::net::MessageSerializer serializer;
+        uint64_t timestamp =
+            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+                .count();
+        rtype::net::PingPongData ping_data(timestamp);
+        rtype::net::Packet ping_packet = serializer.serialize_ping(ping_data);
+        std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(ping_packet);
+        udp_client_->send(packet_data);
+        last_ping_time_ = current_time;
+    }
+}
+
 void Client::update(double dt) {
+    send_heartbeat();
     audio_system_.update(registry_, dt);
     network_system_.update(registry_, registry_mutex_);
 
