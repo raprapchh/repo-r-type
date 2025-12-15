@@ -64,7 +64,7 @@ void load_level(GameEngine::Registry& registry, const std::string& path) {
 
     int row = 0;
     while (std::getline(file, line)) {
-        for (int col = 0; col < line.length(); ++col) {
+        for (size_t col = 0; col < line.length(); ++col) {
             char c = line[col];
             if (c == ' ')
                 continue;
