@@ -30,6 +30,10 @@
 #include "../../shared/utils/GameConfig.hpp"
 #include <unordered_set>
 #include <chrono>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <iostream>
 
 namespace rtype::server {
 
@@ -42,7 +46,58 @@ Server::Server(GameEngine::Registry& registry, uint16_t port)
 }
 
 Server::~Server() {
-    stop();
+    game_started_ = false;
+}
+
+void load_level(GameEngine::Registry& registry, const std::string& path) {
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        Logger::instance().error("Failed to open map file: " + path);
+        return;
+    }
+
+    std::string line;
+    float cell_width = 288.0f;
+    float cell_height = 100.0f;
+
+    int row = 0;
+    while (std::getline(file, line)) {
+        for (int col = 0; col < line.length(); ++col) {
+            char c = line[col];
+            if (c == ' ')
+                continue;
+
+            float x = col * cell_width;
+            float y = row * cell_height;
+
+            if (c == '1' || c == '3' || c == '4') {
+                auto obstacle = registry.createEntity();
+                registry.addComponent<rtype::ecs::component::Position>(obstacle, x, y);
+                registry.addComponent<rtype::ecs::component::HitBox>(
+                    obstacle, rtype::constants::OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE,
+                    rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
+                registry.addComponent<rtype::ecs::component::Collidable>(
+                    obstacle, rtype::ecs::component::CollisionLayer::Obstacle);
+                registry.addComponent<rtype::ecs::component::NetworkId>(obstacle, static_cast<uint32_t>(obstacle));
+                registry.addComponent<rtype::ecs::component::Tag>(obstacle, "Obstacle");
+                registry.addComponent<rtype::ecs::component::Velocity>(obstacle, -100.0f, 0.0f);
+            } else if (c == '2') {
+                auto floor_obstacle = registry.createEntity();
+                registry.addComponent<rtype::ecs::component::Position>(floor_obstacle, x, y);
+                registry.addComponent<rtype::ecs::component::HitBox>(
+                    floor_obstacle, rtype::constants::FLOOR_OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE,
+                    rtype::constants::FLOOR_OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
+                registry.addComponent<rtype::ecs::component::Collidable>(
+                    floor_obstacle, rtype::ecs::component::CollisionLayer::Obstacle);
+                registry.addComponent<rtype::ecs::component::NetworkId>(floor_obstacle,
+                                                                        static_cast<uint32_t>(floor_obstacle));
+                registry.addComponent<rtype::ecs::component::Tag>(floor_obstacle, "Obstacle_Floor");
+                registry.addComponent<rtype::ecs::component::Velocity>(floor_obstacle, -100.0f, 0.0f);
+            }
+        }
+        row++;
+    }
+    Logger::instance().info("Level loaded from " + path);
 }
 
 void Server::start() {
@@ -55,7 +110,6 @@ void Server::start() {
         handle_client_message(ip, port, data);
     });
 
-    // Create enemy spawner entity
     auto spawner = registry_.createEntity();
     registry_.addComponent<rtype::ecs::component::EnemySpawner>(spawner, 2.0f, 0.0f);
 
@@ -70,25 +124,7 @@ void Server::start() {
                                                                  rtype::config::MAP_MAX_Y);
         Logger::instance().info("Map dimensions: 1920x1080");
 
-        auto obstacle = registry_.createEntity();
-        registry_.addComponent<rtype::ecs::component::Position>(obstacle, 600.0f, 936.0f);
-        registry_.addComponent<rtype::ecs::component::HitBox>(
-            obstacle, rtype::constants::OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE,
-            rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
-        registry_.addComponent<rtype::ecs::component::Collidable>(obstacle,
-                                                                  rtype::ecs::component::CollisionLayer::Obstacle);
-        registry_.addComponent<rtype::ecs::component::NetworkId>(obstacle, static_cast<uint32_t>(obstacle));
-        registry_.addComponent<rtype::ecs::component::Tag>(obstacle, "Obstacle");
-
-        auto floor_obstacle = registry_.createEntity();
-        registry_.addComponent<rtype::ecs::component::Position>(floor_obstacle, 1000.0f, 1030.0f);
-        registry_.addComponent<rtype::ecs::component::HitBox>(
-            floor_obstacle, rtype::constants::FLOOR_OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE,
-            rtype::constants::FLOOR_OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
-        registry_.addComponent<rtype::ecs::component::Collidable>(floor_obstacle,
-                                                                  rtype::ecs::component::CollisionLayer::Obstacle);
-        registry_.addComponent<rtype::ecs::component::NetworkId>(floor_obstacle, static_cast<uint32_t>(floor_obstacle));
-        registry_.addComponent<rtype::ecs::component::Tag>(floor_obstacle, "Obstacle_Floor");
+        load_level(registry_, "server/assets/map.txt");
     }
     Logger::instance().info("Enemy spawner initialized (interval: 2.0s)");
 }
@@ -314,7 +350,6 @@ void Server::game_loop() {
                 rtype::ecs::MovementSystem movement_system;
                 movement_system.update(registry_, dt);
 
-                // Track networked entities before systems (to detect destroyed ones)
                 std::unordered_set<uint32_t> entities_before;
                 {
                     auto network_view = registry_.view<rtype::ecs::component::NetworkId>();
@@ -766,8 +801,15 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
                 spawn_data.sub_type = (tag.name == "Obstacle_Floor") ? 1 : 0;
                 spawn_data.position_x = pos.x;
                 spawn_data.position_y = pos.y;
-                spawn_data.velocity_x = 0;
-                spawn_data.velocity_y = 0;
+
+                if (registry_.hasComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity))) {
+                    auto& vel = registry_.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
+                    spawn_data.velocity_x = vel.vx;
+                    spawn_data.velocity_y = vel.vy;
+                } else {
+                    spawn_data.velocity_x = 0;
+                    spawn_data.velocity_y = 0;
+                }
 
                 rtype::net::Packet spawn_packet = message_serializer_->serialize_entity_spawn(spawn_data);
                 auto serialized_spawn = protocol_adapter_->serialize(spawn_packet);

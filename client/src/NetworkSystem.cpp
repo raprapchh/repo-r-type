@@ -166,6 +166,15 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                                                                  obs_h * rtype::constants::OBSTACLE_SCALE);
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::Obstacle);
+
+            // Add Tag so ParallaxSystem can move it
+            if (data.sub_type == 1) {
+                registry.addComponent<rtype::ecs::component::Tag>(
+                    entity,
+                    "Obstacle_Floor"); // Or just "Obstacle" if ParallaxSystem checks that? ParallaxSystem checks both.
+            } else {
+                registry.addComponent<rtype::ecs::component::Tag>(entity, "Obstacle");
+            }
         }
 
     } catch (const std::exception& e) {
