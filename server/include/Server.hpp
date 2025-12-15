@@ -23,6 +23,7 @@ struct ClientInfo {
     uint32_t player_id;
     bool is_connected;
     GameEngine::entity_t entity_id;
+    std::chrono::steady_clock::time_point last_seen;
 };
 
 /// @brief Authoritative game server for R-Type multiplayer
@@ -65,8 +66,12 @@ class Server {
     static constexpr double TARGET_TICK_RATE = 60.0;
     static constexpr std::chrono::milliseconds TICK_DURATION =
         std::chrono::milliseconds(static_cast<long>(1000.0 / TARGET_TICK_RATE));
+    static constexpr std::chrono::seconds CLIENT_TIMEOUT_DURATION = std::chrono::seconds(10);
 
     GameEngine::Registry& registry_;
+
+    void check_client_timeouts();
+    void disconnect_client(const std::string& client_key, const ClientInfo& client);
 };
 
 } // namespace rtype::server

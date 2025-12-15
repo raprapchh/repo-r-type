@@ -173,12 +173,19 @@ void Server::run() {
 
 void Server::game_loop() {
     auto last_tick = std::chrono::steady_clock::now();
+    auto last_timeout_check = std::chrono::steady_clock::now();
 
     while (running_.load()) {
         auto current_time = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_tick);
 
-        // Call of different systems
+        auto timeout_check_elapsed =
+            std::chrono::duration_cast<std::chrono::seconds>(current_time - last_timeout_check);
+        if (timeout_check_elapsed >= std::chrono::seconds(1)) {
+            check_client_timeouts();
+            last_timeout_check = current_time;
+        }
+
         if (elapsed >= TICK_DURATION) {
             double dt = elapsed.count() / 1000.0;
             if (dt > 0.1) {
@@ -284,7 +291,6 @@ void Server::game_loop() {
                 }
             }
 
-            // Broadcast newly spawned enemies to clients
             if (protocol_adapter_ && message_serializer_) {
                 std::vector<std::pair<rtype::net::EntitySpawnData, std::vector<uint8_t>>> spawns_to_send;
                 {
@@ -421,7 +427,6 @@ void Server::game_loop() {
                 rtype::ecs::ProjectileSystem projectile_system;
                 projectile_system.update(registry_, dt);
 
-                // Track enemy entities after systems and find destroyed ones
                 if (protocol_adapter_ && message_serializer_) {
                     std::lock_guard<std::mutex> lock(clients_mutex_);
 
@@ -560,7 +565,6 @@ void Server::game_loop() {
                     }
                 }
 
-                // Broadcast enemy positions to all clients
                 std::vector<std::pair<rtype::net::EntityMoveData, std::vector<uint8_t>>> enemy_moves_to_send;
                 {
                     std::lock_guard<std::mutex> registry_lock(registry_mutex_);
@@ -674,6 +678,14 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
 
     std::string client_key = client_ip + ":" + std::to_string(client_port);
 
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        auto it = clients_.find(client_key);
+        if (it != clients_.end()) {
+            it->second.last_seen = std::chrono::steady_clock::now();
+        }
+    }
+
     switch (static_cast<rtype::net::MessageType>(packet.header.message_type)) {
     case rtype::net::MessageType::PlayerJoin:
         handle_player_join(client_ip, client_port);
@@ -702,6 +714,22 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
 
     case rtype::net::MessageType::MapResize: {
         handle_map_resize(client_ip, client_port, packet);
+    } break;
+
+    case rtype::net::MessageType::PlayerLeave: {
+        ClientInfo client_info;
+        bool found = false;
+        {
+            std::lock_guard<std::mutex> lock(clients_mutex_);
+            auto it = clients_.find(client_key);
+            if (it != clients_.end()) {
+                client_info = it->second;
+                found = true;
+            }
+        }
+        if (found) {
+            disconnect_client(client_key, client_info);
+        }
     } break;
 
     default:
@@ -753,6 +781,7 @@ void Server::handle_player_join(const std::string& client_ip, uint16_t client_po
         info.player_id = player_id;
         info.is_connected = true;
         info.entity_id = entity;
+        info.last_seen = std::chrono::steady_clock::now();
 
         clients_[client_key] = info;
     }
@@ -1048,6 +1077,72 @@ void Server::broadcast_message(const std::vector<uint8_t>& data, const std::stri
             }
         }
     }
+}
+
+void Server::check_client_timeouts() {
+    auto current_time = std::chrono::steady_clock::now();
+    std::vector<std::pair<std::string, ClientInfo>> timed_out_clients;
+
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        for (const auto& [key, client] : clients_) {
+            if (client.is_connected) {
+                auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(current_time - client.last_seen);
+                if (elapsed >= CLIENT_TIMEOUT_DURATION) {
+                    timed_out_clients.emplace_back(key, client);
+                }
+            }
+        }
+    }
+
+    for (const auto& [key, client] : timed_out_clients) {
+        disconnect_client(key, client);
+    }
+}
+
+void Server::disconnect_client(const std::string& client_key, const ClientInfo& client) {
+    Logger::instance().warn("Client timeout detected: player_id=" + std::to_string(client.player_id) + " from " +
+                            client.ip + ":" + std::to_string(client.port));
+
+    {
+        std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+        if (registry_.isValid(client.entity_id)) {
+            registry_.destroyEntity(client.entity_id);
+            Logger::instance().info("Removed entity " + std::to_string(static_cast<uint32_t>(client.entity_id)) +
+                                    " for timed out player " + std::to_string(client.player_id));
+        }
+    }
+
+    if (protocol_adapter_ && message_serializer_) {
+        rtype::net::PlayerLeaveData leave_data(client.player_id);
+        rtype::net::Packet leave_packet = message_serializer_->serialize_player_leave(leave_data);
+        auto serialized_leave = protocol_adapter_->serialize(leave_packet);
+
+        constexpr int RETRY_COUNT = 3;
+        for (int retry = 0; retry < RETRY_COUNT; ++retry) {
+            {
+                std::lock_guard<std::mutex> clients_lock(clients_mutex_);
+                for (const auto& [dest_key, dest_client] : clients_) {
+                    if (dest_client.is_connected && dest_key != client_key && udp_server_) {
+                        udp_server_->send(dest_client.ip, dest_client.port, serialized_leave);
+                    }
+                }
+            }
+            if (retry < RETRY_COUNT - 1) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+        }
+
+        Logger::instance().info("PlayerLeave message broadcasted " + std::to_string(RETRY_COUNT) +
+                                " times for player " + std::to_string(client.player_id));
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        clients_.erase(client_key);
+    }
+
+    Logger::instance().info("Client disconnected: player_id=" + std::to_string(client.player_id));
 }
 
 } // namespace rtype::server

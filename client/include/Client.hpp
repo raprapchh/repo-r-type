@@ -78,6 +78,10 @@ class Client {
     NetworkSystem network_system_;
     rtype::ecs::AudioSystem audio_system_;
     std::mutex registry_mutex_;
+
+    std::chrono::steady_clock::time_point last_ping_time_;
+    static constexpr std::chrono::seconds HEARTBEAT_INTERVAL = std::chrono::seconds(3);
+    void send_heartbeat();
 };
 
 } // namespace rtype::client
