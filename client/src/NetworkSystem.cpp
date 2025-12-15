@@ -213,18 +213,30 @@ void NetworkSystem::handle_move(GameEngine::Registry& registry, const rtype::net
                         break;
                     }
 
-                    if (!registry.hasComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs)) {
-                        auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id_ecs);
-                        registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs, pos.x, pos.y,
-                                                                                           vx, vy);
-                    }
+                    bool is_projectile = registry.hasComponent<rtype::ecs::component::Projectile>(entity_id_ecs);
 
-                    auto& interp = registry.getComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs);
-                    interp.target_x = x;
-                    interp.target_y = y;
-                    interp.target_vx = vx;
-                    interp.target_vy = vy;
-                    interp.last_update_time = std::chrono::steady_clock::now();
+                    if (is_projectile) {
+                        auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id_ecs);
+                        auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(entity_id_ecs);
+                        pos.x = x;
+                        pos.y = y;
+                        vel.vx = vx;
+                        vel.vy = vy;
+                    } else {
+                        if (!registry.hasComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs)) {
+                            auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity_id_ecs);
+                            registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs, pos.x,
+                                                                                               pos.y, vx, vy);
+                        }
+
+                        auto& interp =
+                            registry.getComponent<rtype::ecs::component::NetworkInterpolation>(entity_id_ecs);
+                        interp.target_x = x;
+                        interp.target_y = y;
+                        interp.target_vx = vx;
+                        interp.target_vy = vy;
+                        interp.last_update_time = std::chrono::steady_clock::now();
+                    }
 
                     found = true;
                     break;
