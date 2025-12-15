@@ -459,7 +459,6 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
         try {
             auto pong_data = serializer.deserialize_ping_pong(packet);
             (void)pong_data;
-            std::cout << "Received Pong." << std::endl;
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing Pong packet: " << e.what() << std::endl;
         }
