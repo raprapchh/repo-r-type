@@ -60,6 +60,8 @@ void load_level(GameEngine::Registry& registry, const std::string& path) {
     float cell_width = 288.0f;
     float cell_height = 100.0f;
 
+    static uint32_t next_obstacle_network_id = 10000;
+
     int row = 0;
     while (std::getline(file, line)) {
         for (int col = 0; col < line.length(); ++col) {
@@ -78,7 +80,7 @@ void load_level(GameEngine::Registry& registry, const std::string& path) {
                     rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
                 registry.addComponent<rtype::ecs::component::Collidable>(
                     obstacle, rtype::ecs::component::CollisionLayer::Obstacle);
-                registry.addComponent<rtype::ecs::component::NetworkId>(obstacle, static_cast<uint32_t>(obstacle));
+                registry.addComponent<rtype::ecs::component::NetworkId>(obstacle, next_obstacle_network_id++);
                 registry.addComponent<rtype::ecs::component::Tag>(obstacle, "Obstacle");
                 registry.addComponent<rtype::ecs::component::Velocity>(obstacle, -100.0f, 0.0f);
             } else if (c == '2') {
@@ -89,8 +91,7 @@ void load_level(GameEngine::Registry& registry, const std::string& path) {
                     rtype::constants::FLOOR_OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE);
                 registry.addComponent<rtype::ecs::component::Collidable>(
                     floor_obstacle, rtype::ecs::component::CollisionLayer::Obstacle);
-                registry.addComponent<rtype::ecs::component::NetworkId>(floor_obstacle,
-                                                                        static_cast<uint32_t>(floor_obstacle));
+                registry.addComponent<rtype::ecs::component::NetworkId>(floor_obstacle, next_obstacle_network_id++);
                 registry.addComponent<rtype::ecs::component::Tag>(floor_obstacle, "Obstacle_Floor");
                 registry.addComponent<rtype::ecs::component::Velocity>(floor_obstacle, -100.0f, 0.0f);
             }
