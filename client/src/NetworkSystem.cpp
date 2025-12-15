@@ -101,7 +101,7 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
                                                                    static_cast<uint32_t>(0), 4.0f, 4.0f);
             registry.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
-            registry.addComponent<rtype::ecs::component::HitBox>(entity, 150.0f, 150.0f);
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, 100.0f, 100.0f);
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::Enemy);
             registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, data.position_x, data.position_y,
@@ -115,27 +115,27 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 sprite_name = "monster_0-ball";
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
                                                                        static_cast<uint32_t>(0), 4.5f, 4.5f);
-                width = 110.0f;
-                height = 110.0f;
+                width = 70.0f;
+                height = 70.0f;
             } else if (data.sub_type >= 10 && data.sub_type <= 13) {
                 int frameW = 0;
                 int frameH = 0;
                 if (data.sub_type == 10) {
                     sprite_name = "shot_death-charge1";
-                    width = 90.0f;
-                    height = 90.0f;
+                    width = 60.0f;
+                    height = 60.0f;
                 } else if (data.sub_type == 11) {
                     sprite_name = "shot_death-charge2";
-                    width = 120.0f;
-                    height = 120.0f;
+                    width = 80.0f;
+                    height = 80.0f;
                 } else if (data.sub_type == 12) {
                     sprite_name = "shot_death-charge3";
-                    width = 150.0f;
-                    height = 150.0f;
+                    width = 100.0f;
+                    height = 100.0f;
                 } else if (data.sub_type == 13) {
                     sprite_name = "shot_death-charge4";
-                    width = 180.0f;
-                    height = 180.0f;
+                    width = 120.0f;
+                    height = 120.0f;
                 }
 
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, frameW, frameH, 3.0f,

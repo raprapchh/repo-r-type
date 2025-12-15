@@ -49,8 +49,8 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
             float hitBoxH = 0.0f;
 
             if (!is_player) {
-                hitBoxW = 110.0f;
-                hitBoxH = 110.0f;
+                hitBoxW = 70.0f;
+                hitBoxH = 70.0f;
             } else {
                 hitBoxW = 87.0f;
                 hitBoxH = 99.0f;
@@ -70,20 +70,20 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
                         break;
                     case 1:
                         projectileTag = "shot_death-charge2";
-                        hitBoxW = 120.0f;
-                        hitBoxH = 120.0f;
+                        hitBoxW = 80.0f;
+                        hitBoxH = 80.0f;
                         damage = 20.0f;
                         break;
                     case 2:
                         projectileTag = "shot_death-charge3";
-                        hitBoxW = 150.0f;
-                        hitBoxH = 150.0f;
+                        hitBoxW = 100.0f;
+                        hitBoxH = 100.0f;
                         damage = 30.0f;
                         break;
                     case 3:
                         projectileTag = "shot_death-charge4";
-                        hitBoxW = 180.0f;
-                        hitBoxH = 180.0f;
+                        hitBoxW = 120.0f;
+                        hitBoxH = 120.0f;
                         damage = 40.0f;
                         break;
                     }
