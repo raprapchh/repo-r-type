@@ -11,14 +11,11 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 
-# EnTT (local)
-add_subdirectory(external/entt)
+# EnTT (via vcpkg)
+find_package(EnTT CONFIG REQUIRED)
 
-# Asio (local)
-add_library(asio INTERFACE)
-target_include_directories(asio INTERFACE ${CMAKE_SOURCE_DIR}/external/asio/include)
-target_compile_definitions(asio INTERFACE ASIO_STANDALONE)
-add_library(asio::asio ALIAS asio)
+# Asio (via vcpkg)
+find_package(asio CONFIG REQUIRED)
 
 # SFML (via vcpkg) - using SFML 2.6.x
 find_package(SFML 2.5 COMPONENTS graphics window system audio REQUIRED)
