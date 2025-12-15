@@ -6,12 +6,13 @@
 #include "../../include/components/Velocity.hpp"
 #include "../../include/components/MapBounds.hpp"
 #include "../../include/components/Tag.hpp"
-#include "../../include/components/Tag.hpp"
 #include "../../include/components/Weapon.hpp"
 #include "../../include/components/CollisionLayer.hpp"
 #include "../../include/components/ScreenMode.hpp"
-#include "../../shared/utils/GameConfig.hpp"
+#include "../../../shared/utils/GameConfig.hpp"
 #include <random>
+#include <cmath>
+#include <string>
 
 namespace rtype::ecs {
 
@@ -30,98 +31,106 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
     } catch (const std::exception&) {
     }
 
+    if (_levels.empty()) {
+        _levels = config::getLevels();
+    }
+
     auto view = registry.view<component::EnemySpawner>();
 
-    view.each([&registry, dt, maxX, maxY](component::EnemySpawner& spawner) {
-        spawner.timeSinceLastSpawn += static_cast<float>(dt);
+    view.each([&registry, dt, maxX, maxY, this](component::EnemySpawner& spawner) {
+        spawner.waveTimer += static_cast<float>(dt);
 
-        if (spawner.timeSinceLastSpawn >= spawner.spawnInterval) {
-            spawner.timeSinceLastSpawn = 0.0f;
+        if (spawner.currentLevel >= static_cast<int>(_levels.size()))
+            return;
 
-            static std::random_device rd;
-            static std::mt19937 gen(rd());
+        const auto& level = _levels[spawner.currentLevel];
+        if (spawner.currentWave >= static_cast<int>(level.waves.size())) {
+            spawner.currentLevel = 0;
+            spawner.currentWave = 0;
+            spawner.waveTimer = 0;
+            spawner.currentEnemyIndex = 0;
+            return;
+        }
 
-            std::uniform_int_distribution<> dirDist(0, 3);
-            int direction = dirDist(gen);
+        const auto& wave = level.waves[spawner.currentWave];
 
-            float spawnX = 0, spawnY = 0;
-            float vx = 0, vy = 0;
-            std::string tag;
-            float dirX = 0.0f, dirY = 0.0f;
+        while (spawner.currentEnemyIndex < static_cast<int>(wave.enemies.size())) {
+            const auto& enemySpawn = wave.enemies[spawner.currentEnemyIndex];
+            if (spawner.waveTimer >= enemySpawn.spawnTime) {
 
-            float offX = 25.0f;
-            float offY = 25.0f;
+                auto enemy = registry.createEntity();
 
-            auto enemy = registry.createEntity();
+                float spawnX = enemySpawn.x;
+                float spawnY = enemySpawn.y;
+                float vx = enemySpawn.vx;
+                float vy = enemySpawn.vy;
+                std::string tag = enemySpawn.type;
 
-            if (direction == 0) {
-                std::uniform_real_distribution<float> xDist(0.0f, maxX - 50.0f);
-                spawnX = xDist(gen);
-                spawnY = -100.0f;
-                vx = 0.0f;
-                vy = 400.0f;
-                tag = "Monster_0_Top";
-                dirX = 0.0f;
-                dirY = 1.0f;
+                float dirX = 0.0f;
+                float dirY = 0.0f;
+                if (std::abs(vx) > 0.001f || std::abs(vy) > 0.001f) {
+                    float len = std::sqrt(vx * vx + vy * vy);
+                    dirX = vx / len;
+                    dirY = vy / len;
+                } else {
+                    dirX = -1.0f;
+                    dirY = 0.0f;
+                }
 
-                offX = 24.0f;
-                offY = 0.0f;
-            } else if (direction == 1) {
-                std::uniform_real_distribution<float> xDist(0.0f, maxX - 50.0f);
-                spawnX = xDist(gen);
-                spawnY = maxY + 10.0f;
-                vx = 0.0f;
-                vy = -400.0f;
-                tag = "Monster_0_Bot";
-                dirX = 0.0f;
-                dirY = 10.0f;
+                float offX = 25.0f;
+                float offY = 25.0f;
 
-                offX = 25.0f;
-                offY = 20.0f;
-            } else if (direction == 2) {
-                std::uniform_real_distribution<float> yDist(0.0f, maxY - 50.0f);
-                spawnX = -60.0f;
-                spawnY = yDist(gen);
-                vx = 400.0f;
-                vy = 0.0f;
-                tag = "Monster_0_Left";
-                dirX = 1.0f;
-                dirY = 0.0f;
+                if (tag == "Monster_0_Top") {
+                    offX = 24.0f;
+                    offY = 0.0f;
+                } else if (tag == "Monster_0_Bot") {
+                    offX = 25.0f;
+                    offY = 20.0f;
+                } else if (tag == "Monster_0_Left") {
+                    offX = 0.0f;
+                    offY = 20.0f;
+                } else if (tag == "Monster_0_Right") {
+                    offX = 50.0f;
+                    offY = 20.0f;
+                }
 
-                offX = 0.0f;
-                offY = 20.0f;
+                registry.addComponent<component::Position>(enemy, spawnX, spawnY);
+                registry.addComponent<component::Velocity>(enemy, vx, vy);
+                registry.addComponent<component::HitBox>(enemy, 150.0f, 150.0f);
+                registry.addComponent<component::Health>(enemy, 5, 5);
+                registry.addComponent<component::Tag>(enemy, tag);
+                registry.addComponent<component::Collidable>(enemy, component::CollisionLayer::Enemy);
+
+                auto& weapon = registry.addComponent<component::Weapon>(enemy);
+                weapon.autoFire = true;
+                weapon.fireRate = enemySpawn.fireRate;
+                weapon.projectileSpeed = 500.0f;
+                weapon.damage = 10.0f;
+                weapon.projectileLifetime = 3.0f;
+                weapon.projectileTag = "Monster_0_Ball";
+                weapon.spawnOffsetX = offX;
+                weapon.spawnOffsetY = offY;
+                weapon.directionX = dirX;
+                weapon.directionY = dirY;
+
+                spawner.currentEnemyIndex++;
             } else {
-                std::uniform_real_distribution<float> yDist(0.0f, maxY - 50.0f);
-                spawnX = maxX + 100.0f;
-                spawnY = yDist(gen);
-                vx = -400.0f;
-                vy = 0.0f;
-                tag = "Monster_0_Right";
-                dirX = -1.0f;
-                dirY = 0.0f;
-
-                offX = 50.0f;
-                offY = 20.0f;
+                break;
             }
+        }
 
-            registry.addComponent<component::Position>(enemy, spawnX, spawnY);
-            registry.addComponent<component::Velocity>(enemy, vx, vy);
-            registry.addComponent<component::HitBox>(enemy, 150.0f, 150.0f);
-            registry.addComponent<component::Health>(enemy, 5, 5);
-            registry.addComponent<component::Tag>(enemy, tag);
-            registry.addComponent<component::Collidable>(enemy, component::CollisionLayer::Enemy);
+        if (spawner.waveTimer >= wave.duration) {
+            spawner.currentWave++;
+            spawner.waveTimer = 0;
+            spawner.currentEnemyIndex = 0;
 
-            auto& weapon = registry.addComponent<component::Weapon>(enemy);
-            weapon.autoFire = true;
-            weapon.fireRate = 0.1f;
-            weapon.projectileSpeed = 0.0f;
-            weapon.damage = 10.0f;
-            weapon.projectileLifetime = 3.0f;
-            weapon.projectileTag = "Monster_0_Ball";
-            weapon.spawnOffsetX = offX;
-            weapon.spawnOffsetY = offY;
-            weapon.directionX = dirX;
-            weapon.directionY = dirY;
+            if (spawner.currentWave >= static_cast<int>(level.waves.size())) {
+                spawner.currentLevel++;
+                spawner.currentWave = 0;
+                if (spawner.currentLevel >= static_cast<int>(_levels.size())) {
+                    spawner.currentLevel = 0;
+                }
+            }
         }
     });
 }
