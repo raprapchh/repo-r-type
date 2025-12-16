@@ -1,6 +1,6 @@
 {
   "name": "rtype",
   "version-string": "0.1.0",
-  "builtin-baseline": "594ad8871e1e8e45f8e626c015fd611163430207",
+  "builtin-baseline": "2b6a882f61eaa764ec3cf816e2265fe804a44cd0",
   "dependencies": ["entt", "asio", "catch2"]
 }
