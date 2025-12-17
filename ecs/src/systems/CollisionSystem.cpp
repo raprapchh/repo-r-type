@@ -33,13 +33,9 @@ void CollisionSystem::update(GameEngine::Registry& registry, double dt) {
             continue;
         }
 
-        auto entt_entity1 = static_cast<entt::entity>(entity1);
-        if (!view.contains(entt_entity1))
-            continue;
-
-        auto& pos1 = view.get<component::Position>(entt_entity1);
-        auto& hitbox1 = view.get<component::HitBox>(entt_entity1);
-        auto& collidable1 = view.get<component::Collidable>(entt_entity1);
+        auto& pos1 = view.get<component::Position>(entity1);
+        auto& hitbox1 = view.get<component::HitBox>(entity1);
+        auto& collidable1 = view.get<component::Collidable>(entity1);
 
         if (!collidable1.is_active) {
             continue;
@@ -57,13 +53,9 @@ void CollisionSystem::update(GameEngine::Registry& registry, double dt) {
                 continue;
             }
 
-            auto entt_entity2 = static_cast<entt::entity>(entity2);
-            if (!view.contains(entt_entity2))
-                continue;
-
-            auto& pos2 = view.get<component::Position>(entt_entity2);
-            auto& hitbox2 = view.get<component::HitBox>(entt_entity2);
-            auto& collidable2 = view.get<component::Collidable>(entt_entity2);
+            auto& pos2 = view.get<component::Position>(entity2);
+            auto& hitbox2 = view.get<component::HitBox>(entity2);
+            auto& collidable2 = view.get<component::Collidable>(entity2);
 
             if (!collidable2.is_active) {
                 continue;
