@@ -22,6 +22,11 @@ class Serializer {
         data.insert(data.end(), bytes.begin(), bytes.end());
     }
 
+    void write(const void* ptr, size_t size) {
+        const uint8_t* byte_ptr = static_cast<const uint8_t*>(ptr);
+        data.insert(data.end(), byte_ptr, byte_ptr + size);
+    }
+
     void write(const std::string& str) {
         uint32_t size = str.size();
         write(size);
