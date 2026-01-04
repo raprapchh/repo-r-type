@@ -2,14 +2,15 @@
 #include "../include/GameState.hpp"
 #include "../include/States.hpp"
 #include <iostream>
-#include <algorithm>
 #include <thread>
 #include <chrono>
-#include <memory>
 
 namespace rtype::client {
 
-LobbyState::LobbyState() : font_loaded_(false), player_count_(0), game_started_(false), renderer_ref_(nullptr) {
+LobbyState::LobbyState()
+    : is_typing_name_(false), backspace_timer_(0.0f), backspace_delay_(INITIAL_BACKSPACE_DELAY),
+      was_backspace_pressed_(false), font_loaded_(false), player_count_(0), game_started_(false),
+      renderer_ref_(nullptr), local_player_id_(0) {
     setup_ui();
 }
 
@@ -51,8 +52,28 @@ void LobbyState::setup_ui() {
 
     start_button_text_.setFont(font_);
     start_button_text_.setString("START GAME");
+    start_button_text_.setString("START GAME");
     start_button_text_.setCharacterSize(30);
     start_button_text_.setFillColor(sf::Color::White);
+
+    // Name Input UI
+    input_background_.setSize(sf::Vector2f(300, 40));
+    input_background_.setFillColor(sf::Color(30, 30, 30, 200));  // Darker, slight transparency
+    input_background_.setOutlineColor(sf::Color(100, 100, 100)); // Softer outline
+    input_background_.setOutlineThickness(2);
+
+    name_input_label_.setFont(font_);
+    name_input_label_.setString("ENTER NAME:"); // All caps to match style
+    name_input_label_.setCharacterSize(18);     // Slightly smaller
+    name_input_label_.setFillColor(sf::Color(200, 200, 200));
+
+    name_input_text_.setFont(font_);
+    name_input_text_.setString("");
+    name_input_text_.setCharacterSize(20);
+    name_input_text_.setFillColor(sf::Color::White);
+
+    is_typing_name_ = false;
+    current_name_input_ = "";
 }
 
 void LobbyState::on_enter(Renderer& renderer, Client& client) {
@@ -68,15 +89,39 @@ void LobbyState::on_enter(Renderer& renderer, Client& client) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 
-    add_player(client.get_player_id());
-    set_player_count(1);
+    add_player(client.get_player_id(), client.get_player_name());
+    local_player_id_ = client.get_player_id(); // Store local player ID
+    set_player_count(static_cast<uint8_t>(connected_players_.size()));
 
-    client.set_player_join_callback([this](uint32_t player_id) {
-        add_player(player_id);
-        set_player_count(static_cast<uint8_t>(connected_players_.size()));
+    client.set_player_join_callback(
+        [this](uint32_t player_id, const std::string& name) { add_player(player_id, name); });
+
+    client.set_player_name_callback([this](uint32_t player_id, const std::string& name) {
+        if (connected_players_.find(player_id) != connected_players_.end()) {
+            std::string final_name = name;
+            // Robust check for default names
+            if (final_name.empty() || final_name == "Player" || final_name == "PLAYER" || final_name == "player" ||
+                final_name == "Player 0" || final_name == "PLAYER 0") {
+                final_name = "Player " + std::to_string(player_id);
+            }
+            connected_players_[player_id] = final_name;
+            update_player_display();
+        }
     });
 
     client.set_game_start_callback([this]() { game_started_.store(true); });
+
+    // Initialize current name input with local player name if available, or fetch it
+    current_name_input_ = client.get_player_name();
+    if (current_name_input_.empty()) {
+        current_name_input_ = "Player " + std::to_string(local_player_id_);
+    }
+    name_input_text_.setString(current_name_input_);
+
+    // Immediately send this default name to server so others see "Player X" instead of empty/default
+    if (client.is_connected()) {
+        client.send_player_name_update(current_name_input_);
+    }
 }
 
 void LobbyState::on_exit(Renderer& renderer, Client& client) {
@@ -99,12 +144,46 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                 if (player_count_ >= 2 && start_button_.getGlobalBounds().contains(mouse_pos)) {
                     state_manager.get_client().send_game_start_request();
                 }
+
+                // Check name input click
+                if (input_background_.getGlobalBounds().contains(mouse_pos)) {
+                    is_typing_name_ = true;
+                    input_background_.setOutlineColor(sf::Color::Cyan);
+                } else {
+                    is_typing_name_ = false;
+                    input_background_.setOutlineColor(sf::Color::White);
+                }
             }
         } else if (event.type == sf::Event::KeyPressed) {
-            if (event.key.code == sf::Keyboard::Escape) {
-            } else if ((event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) &&
-                       player_count_ >= 2) {
-                state_manager.get_client().send_game_start_request();
+            if (is_typing_name_) {
+                if (event.key.code == sf::Keyboard::Return) {
+                    is_typing_name_ = false;
+                    input_background_.setOutlineColor(sf::Color(100, 100, 100));
+
+                    // Immediate update
+                    if (current_name_input_.empty()) {
+                        current_name_input_ = "Player " + std::to_string(local_player_id_);
+                    }
+                    connected_players_[local_player_id_] = current_name_input_;
+                    update_player_display();
+                    name_input_text_.setString(current_name_input_);
+
+                    state_manager.get_client().send_player_name_update(current_name_input_);
+                }
+                // Backspace handled in update() for smooth repeat
+            } else {
+                if (event.key.code == sf::Keyboard::Escape) {
+                } else if ((event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) &&
+                           player_count_ >= 2) {
+                    state_manager.get_client().send_game_start_request();
+                }
+            }
+        } else if (event.type == sf::Event::TextEntered) {
+            if (is_typing_name_) {
+                if (event.text.unicode < 128 && event.text.unicode > 31 && current_name_input_.length() < 16) {
+                    current_name_input_ += static_cast<char>(event.text.unicode);
+                    name_input_text_.setString(current_name_input_);
+                }
             }
         }
     }
@@ -112,7 +191,47 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
 
 void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) {
     (void)client;
-    (void)delta_time;
+    // Backspace handling
+    if (is_typing_name_ && sf::Keyboard::isKeyPressed(sf::Keyboard::BackSpace)) {
+        bool delete_char = false;
+
+        if (!was_backspace_pressed_) {
+            // First press: delete immediately
+            delete_char = true;
+            backspace_timer_ = 0.0f;
+            backspace_delay_ = INITIAL_BACKSPACE_DELAY;
+        } else {
+            // Held down: wait for delay
+            backspace_timer_ += delta_time;
+            if (backspace_timer_ >= backspace_delay_) {
+                delete_char = true;
+                backspace_timer_ = 0.0f;
+                backspace_delay_ = REPEAT_BACKSPACE_DELAY;
+            }
+        }
+
+        if (delete_char && !current_name_input_.empty()) {
+            current_name_input_.pop_back();
+            name_input_text_.setString(current_name_input_);
+        }
+        was_backspace_pressed_ = true;
+    } else {
+        was_backspace_pressed_ = false;
+        backspace_timer_ = 0.0f;
+    }
+
+    // Update local ID and default name if it was 0
+    if (local_player_id_ == 0 && client.is_connected()) {
+        local_player_id_ = client.get_player_id();
+        if (local_player_id_ != 0) {
+            // If name was "Player 0" or empty, update it
+            if (current_name_input_.empty() || current_name_input_ == "Player" || current_name_input_ == "Player 0") {
+                current_name_input_ = "Player " + std::to_string(local_player_id_);
+                name_input_text_.setString(current_name_input_);
+                client.send_player_name_update(current_name_input_);
+            }
+        }
+    }
 
     if (game_started_.load()) {
         state_manager.change_state(std::make_unique<GameState>());
@@ -167,26 +286,36 @@ void LobbyState::render(Renderer& renderer, Client& /* client */) {
         renderer.draw_text(waiting_text_);
         renderer.draw_text(players_text_);
         renderer.draw_text(player_list_text_);
-        if (player_count_ >= 2) {
+        if (player_count_ >= 2 && local_player_id_ == 1) {
             renderer.draw_rectangle(start_button_);
             renderer.draw_text(start_button_text_);
         }
+
+        // Draw Name Input
+        renderer.draw_rectangle(input_background_);
+        renderer.draw_text(name_input_label_);
+        renderer.draw_text(name_input_text_);
     }
 
     renderer.display();
 }
 
-void LobbyState::add_player(uint32_t player_id) {
-    if (std::find(connected_players_.begin(), connected_players_.end(), player_id) == connected_players_.end()) {
-        connected_players_.push_back(player_id);
-        update_player_display();
+void LobbyState::add_player(uint32_t player_id, const std::string& name) {
+    if (connected_players_.find(player_id) == connected_players_.end()) {
+        std::string final_name = name;
+        if (final_name.empty() || final_name == "Player" || final_name == "PLAYER" || final_name == "player" ||
+            final_name == "Player 0" || final_name == "PLAYER 0") {
+            final_name = "Player " + std::to_string(player_id);
+        }
+        connected_players_[player_id] = final_name;
+        set_player_count(static_cast<uint8_t>(connected_players_.size()));
     }
 }
 
 void LobbyState::remove_player(uint32_t player_id) {
-    connected_players_.erase(std::remove(connected_players_.begin(), connected_players_.end(), player_id),
-                             connected_players_.end());
-    update_player_display();
+    if (connected_players_.erase(player_id)) {
+        set_player_count(static_cast<uint8_t>(connected_players_.size()));
+    }
 }
 
 void LobbyState::set_player_count(uint8_t count) {
@@ -201,10 +330,12 @@ void LobbyState::update_player_display() {
     players_text_.setString("Players: " + std::to_string(player_count_) + "/4");
 
     std::string player_list = "Connected: ";
-    for (size_t i = 0; i < connected_players_.size(); ++i) {
-        if (i > 0)
+    int idx = 0;
+    for (const auto& [id, name] : connected_players_) {
+        if (idx > 0)
             player_list += ", ";
-        player_list += "Player " + std::to_string(connected_players_[i]);
+        player_list += name; // Display name
+        idx++;
     }
     player_list_text_.setString(player_list);
 
@@ -232,6 +363,13 @@ void LobbyState::update_positions(const sf::Vector2u& window_size) {
     start_button_text_.setPosition(
         start_button_.getPosition().x + (button_width - start_button_text_.getLocalBounds().width) / 2.0f,
         start_button_.getPosition().y + (button_height - start_button_text_.getLocalBounds().height) / 2.0f - 5.0f);
+
+    float input_y = window_size.y * 0.25f;
+    input_background_.setPosition((window_size.x - 300) / 2.0f, input_y);
+    // Position label above the input box centered
+    name_input_label_.setPosition((window_size.x - name_input_label_.getLocalBounds().width) / 2.0f, input_y - 25);
+    // Position text inside input box
+    name_input_text_.setPosition(input_background_.getPosition().x + 10, input_y + 8);
 }
 
 } // namespace rtype::client

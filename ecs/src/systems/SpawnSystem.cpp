@@ -37,7 +37,7 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
 
     auto view = registry.view<component::EnemySpawner>();
 
-    view.each([&registry, dt, maxX, maxY, this](component::EnemySpawner& spawner) {
+    view.each([&registry, dt, maxX, maxY, this]([[maybe_unused]] auto entity, component::EnemySpawner& spawner) {
         spawner.waveTimer += static_cast<float>(dt);
 
         if (spawner.currentLevel >= static_cast<int>(_levels.size()))

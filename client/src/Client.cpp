@@ -20,7 +20,7 @@
 namespace rtype::client {
 
 Client::Client(const std::string& host, uint16_t port, Renderer& renderer)
-    : host_(host), port_(port), connected_(false), player_id_(0), renderer_(renderer), network_system_(0),
+    : connected_(false), player_id_(0), network_system_(0), renderer_(renderer), host_(host), port_(port),
       last_ping_time_(std::chrono::steady_clock::now()) {
     io_context_ = std::make_unique<asio::io_context>();
     udp_client_ = std::make_unique<UdpClient>(*io_context_, host_, port_);
@@ -30,12 +30,19 @@ Client::Client(const std::string& host, uint16_t port, Renderer& renderer)
         });
 }
 
-void Client::set_game_start_callback(GameStartCallback callback) {
+void Client::set_game_start_callback(std::function<void()> callback) {
     game_start_callback_ = callback;
 }
 
-void Client::set_player_join_callback(PlayerJoinCallback callback) {
+void Client::set_player_join_callback(std::function<void(uint32_t, const std::string&)> callback) {
     player_join_callback_ = callback;
+    // Process any pending player joins that were received before callback was set
+    for (const auto& player : pending_players_) {
+        if (player_join_callback_) {
+            player_join_callback_(player.first, player.second);
+        }
+    }
+    pending_players_.clear();
 }
 
 Client::~Client() {
@@ -45,7 +52,7 @@ Client::~Client() {
 void Client::connect() {
     asio::ip::udp::resolver resolver(*io_context_);
     rtype::net::MessageSerializer serializer;
-    rtype::net::PlayerJoinData join_data;
+    rtype::net::PlayerJoinData join_data(0, player_name_);
     rtype::net::Packet join_packet = serializer.serialize_player_join(join_data);
     std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(join_packet);
 
@@ -223,12 +230,41 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                     drawable.animation_frame = 0;
                 }
 
+                std::string player_name = "Player " + std::to_string(join_data.player_id);
+                if (join_data.player_name[0] != '\0') {
+                    player_name = std::string(join_data.player_name);
+                }
+
                 if (player_join_callback_) {
-                    player_join_callback_(join_data.player_id);
+                    player_join_callback_(join_data.player_id, player_name);
+                } else {
+                    // Store for later when callback is set
+                    pending_players_.emplace_back(join_data.player_id, player_name);
                 }
             }
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing PlayerJoin packet: " << e.what() << std::endl;
+        }
+        break;
+    }
+    case rtype::net::MessageType::PlayerName: {
+        try {
+            auto name_data = serializer.deserialize_player_name(packet);
+            std::string name(name_data.player_name);
+            if (player_name_callback_) {
+                player_name_callback_(name_data.player_id, name);
+            } else {
+                // If no callback (lobby not entered yet?), update pending if exists?
+                // Or just ignore for now, Lobby fetches list anyway.
+                // But updating pending_players_ name is good.
+                for (auto& p : pending_players_) {
+                    if (p.first == name_data.player_id) {
+                        p.second = name;
+                    }
+                }
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error deserializing PlayerName packet: " << e.what() << std::endl;
         }
         break;
     }
@@ -539,14 +575,34 @@ void Client::send_game_start_request() {
     udp_client_->send(packet_data);
 }
 
-void Client::send_map_resize(float width, float height) {
+void Client::send_player_name_update(const std::string& name) {
     if (!connected_.load())
         return;
-    rtype::net::MessageSerializer serializer;
-    rtype::net::MapResizeData resize_data(width, height);
-    rtype::net::Packet resize_packet = serializer.serialize_map_resize(resize_data);
-    std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(resize_packet);
-    udp_client_->send(packet_data);
+    if (message_serializer_) {
+        // Send player name update
+        rtype::net::PlayerNameData name_data;
+        name_data.player_id = player_id_;
+        std::strncpy(name_data.player_name, name.c_str(), sizeof(name_data.player_name) - 1);
+        name_data.player_name[sizeof(name_data.player_name) - 1] = '\0';
+
+        auto packet = message_serializer_->serialize_player_name(name_data);
+        if (protocol_adapter_) {
+            auto bytes = protocol_adapter_->serialize(packet);
+            udp_client_->send(bytes);
+        }
+    }
+}
+
+std::string Client::get_player_name() const {
+    return player_name_;
+}
+
+uint32_t Client::get_player_id() const {
+    return player_id_;
+}
+
+void Client::set_player_name_callback(std::function<void(uint32_t, const std::string&)> callback) {
+    player_name_callback_ = callback;
 }
 
 void Client::send_heartbeat() {
@@ -573,6 +629,109 @@ void Client::update(double dt) {
     send_heartbeat();
     audio_system_.update(registry_, dt);
     network_system_.update(registry_, registry_mutex_);
+
+    {
+        std::lock_guard<std::mutex> lock(registry_mutex_);
+        auto interp_view = registry_.view<rtype::ecs::component::NetworkInterpolation, rtype::ecs::component::Position,
+                                          rtype::ecs::component::Velocity>();
+        auto now = std::chrono::steady_clock::now();
+        constexpr auto timeout = std::chrono::milliseconds(500);
+
+        for (auto entity : interp_view) {
+            GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
+            auto& interp = registry_.getComponent<rtype::ecs::component::NetworkInterpolation>(entity_id);
+            auto& pos = registry_.getComponent<rtype::ecs::component::Position>(entity_id);
+            auto& vel = registry_.getComponent<rtype::ecs::component::Velocity>(entity_id);
+
+            auto time_since_update =
+                std::chrono::duration_cast<std::chrono::milliseconds>(now - interp.last_update_time);
+
+            if (time_since_update > timeout) {
+                pos.x = interp.target_x;
+                pos.y = interp.target_y;
+                vel.vx = 0.0f;
+                vel.vy = 0.0f;
+            } else {
+                float lerp_factor = std::min(1.0f, interp.interpolation_speed * static_cast<float>(dt));
+                pos.x = pos.x + (interp.target_x - pos.x) * lerp_factor;
+                pos.y = pos.y + (interp.target_y - pos.y) * lerp_factor;
+                vel.vx = interp.target_vx;
+                vel.vy = interp.target_vy;
+            }
+        }
+    }
+
+    std::lock_guard<std::mutex> lock(registry_mutex_);
+    auto view = registry_.view<rtype::ecs::component::Drawable, rtype::ecs::component::Velocity>();
+    for (auto entity : view) {
+        auto& drawable =
+            registry_.getComponent<rtype::ecs::component::Drawable>(static_cast<GameEngine::entity_t>(entity));
+        auto& vel = registry_.getComponent<rtype::ecs::component::Velocity>(static_cast<GameEngine::entity_t>(entity));
+
+        if (drawable.animation_sequences.empty())
+            continue;
+
+        if (vel.vy < 0)
+            drawable.current_state = "up";
+        else if (vel.vy > 0)
+            drawable.current_state = "down";
+        else
+            drawable.current_state = "idle";
+
+        if (drawable.current_state != drawable.last_state) {
+            drawable.animation_frame = 0;
+            const auto& seq = drawable.animation_sequences[drawable.current_state];
+            if (!seq.empty())
+                drawable.current_sprite = seq[0];
+            drawable.animation_timer = 0.0f;
+            drawable.last_state = drawable.current_state;
+            continue;
+        }
+
+        const auto& seq = drawable.animation_sequences[drawable.current_state];
+        if (seq.empty())
+            continue;
+
+        drawable.animation_timer += static_cast<float>(dt);
+        if (drawable.animation_timer >= drawable.animation_speed) {
+            drawable.animation_timer = 0.0f;
+            if (drawable.loop) {
+                drawable.animation_frame = (drawable.animation_frame + 1) % seq.size();
+            } else {
+                if (drawable.animation_frame + 1 < seq.size())
+                    drawable.animation_frame++;
+            }
+            drawable.current_sprite = seq[drawable.animation_frame];
+            if (drawable.current_sprite >= 5) {
+                std::cerr << "Invalid sprite index detected: " << drawable.current_sprite << std::endl;
+                drawable.current_sprite = 2;
+            }
+        }
+    }
+
+    {
+        std::vector<GameEngine::entity_t> to_destroy;
+        auto pos_view = registry_.view<rtype::ecs::component::Position>();
+        for (auto entity : pos_view) {
+            GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
+            bool is_player = false;
+            if (registry_.hasComponent<rtype::ecs::component::Tag>(entity_id)) {
+                auto& tag = registry_.getComponent<rtype::ecs::component::Tag>(entity_id);
+                if (tag.name == "Player") {
+                    is_player = true;
+                }
+            }
+            if (!is_player) {
+                auto& pos = registry_.getComponent<rtype::ecs::component::Position>(entity_id);
+                if (pos.x < -1000.0f || pos.x > 3000.0f || pos.y < -1000.0f || pos.y > 2000.0f) {
+                    to_destroy.push_back(entity_id);
+                }
+            }
+        }
+        for (auto entity : to_destroy) {
+            registry_.destroyEntity(entity);
+        }
+    }
 }
 
 } // namespace rtype::client
