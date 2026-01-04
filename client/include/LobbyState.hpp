@@ -3,7 +3,7 @@
 #include "States.hpp"
 #include <SFML/Graphics.hpp>
 #include <atomic>
-#include <vector>
+#include <map>
 
 namespace rtype::client {
 
@@ -21,7 +21,7 @@ class LobbyState : public IState {
         return StateType::Lobby;
     }
 
-    void add_player(uint32_t player_id);
+    void add_player(uint32_t player_id, const std::string& name);
     void remove_player(uint32_t player_id);
     void set_player_count(uint8_t count);
 
@@ -37,12 +37,23 @@ class LobbyState : public IState {
     sf::Text player_list_text_;
     sf::Text start_button_text_;
     sf::RectangleShape start_button_;
+    sf::RectangleShape input_background_;
+    sf::Text name_input_label_;
+    sf::Text name_input_text_;
+    bool is_typing_name_;
+    std::string current_name_input_;
+    float backspace_timer_;
+    float backspace_delay_;
+    bool was_backspace_pressed_;
+    static constexpr float INITIAL_BACKSPACE_DELAY = 0.4f;
+    static constexpr float REPEAT_BACKSPACE_DELAY = 0.05f;
 
     bool font_loaded_;
-    std::vector<uint32_t> connected_players_;
+    std::map<uint32_t, std::string> connected_players_;
     uint8_t player_count_;
     std::atomic<bool> game_started_;
     Renderer* renderer_ref_;
+    uint32_t local_player_id_;
 };
 
 } // namespace rtype::client
