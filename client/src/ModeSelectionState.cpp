@@ -69,20 +69,20 @@ void ModeSelectionState::on_exit(Renderer& renderer, Client& client) {
 }
 
 void ModeSelectionState::handle_input(Renderer& renderer, StateManager& state_manager) {
-    sf::Event event;
+    rtype::client::Event event;
     while (renderer.poll_event(event)) {
-        if (event.type == sf::Event::Closed) {
+        if (event.type == rtype::client::Event::Closed) {
             renderer.close_window();
-        } else if (event.type == sf::Event::Resized) {
+        } else if (event.type == rtype::client::Event::Resized) {
             renderer.handle_resize(event.size.width, event.size.height);
             update_positions(sf::Vector2u(event.size.width, event.size.height));
-        } else if (event.type == sf::Event::MouseButtonPressed) {
-            if (event.mouseButton.button == sf::Mouse::Left) {
+        } else if (event.type == rtype::client::Event::MouseButtonPressed) {
+            if (event.mouseButton.button == sf::Mouse::Button::Left) {
                 sf::Vector2f mouse_pos = renderer.get_mouse_position();
                 handle_button_click(mouse_pos, state_manager);
             }
-        } else if (event.type == sf::Event::KeyPressed) {
-            if (event.key.code == sf::Keyboard::Escape) {
+        } else if (event.type == rtype::client::Event::KeyPressed) {
+            if (event.key.code == sf::Keyboard::Key::Escape) {
                 renderer.close_window();
             }
         }

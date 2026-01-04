@@ -15,7 +15,9 @@
 #include "NetworkSystem.hpp"
 #include "UdpClient.hpp"
 #include "Renderer.hpp"
-#include "../../ecs/include/systems/AudioSystem.hpp"
+// #include "../../ecs/include/systems/AudioSystem.hpp"
+
+// rtype::ecs::AudioSystem audio_system_;
 
 namespace rtype::client {
 
@@ -79,7 +81,7 @@ class Client {
     std::vector<std::pair<uint32_t, std::string>> pending_players_;
     GameEngine::Registry registry_;
     NetworkSystem network_system_;
-    rtype::ecs::AudioSystem audio_system_;
+    // rtype::ecs::AudioSystem audio_system_;
     std::mutex registry_mutex_;
     Renderer& renderer_;
 

@@ -131,15 +131,15 @@ void LobbyState::on_exit(Renderer& renderer, Client& client) {
 
 void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
     (void)state_manager;
-    sf::Event event;
+    rtype::client::Event event;
     while (renderer.poll_event(event)) {
-        if (event.type == sf::Event::Closed) {
+        if (event.type == rtype::client::Event::Closed) {
             renderer.close_window();
-        } else if (event.type == sf::Event::Resized) {
+        } else if (event.type == rtype::client::Event::Resized) {
             renderer.handle_resize(event.size.width, event.size.height);
             update_positions(sf::Vector2u(event.size.width, event.size.height));
-        } else if (event.type == sf::Event::MouseButtonPressed) {
-            if (event.mouseButton.button == sf::Mouse::Left) {
+        } else if (event.type == rtype::client::Event::MouseButtonPressed) {
+            if (event.mouseButton.button == sf::Mouse::Button::Left) {
                 sf::Vector2f mouse_pos = renderer.get_mouse_position();
                 if (player_count_ >= 2 && start_button_.getGlobalBounds().contains(mouse_pos)) {
                     state_manager.get_client().send_game_start_request();
@@ -154,9 +154,9 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                     input_background_.setOutlineColor(sf::Color::White);
                 }
             }
-        } else if (event.type == sf::Event::KeyPressed) {
+        } else if (event.type == rtype::client::Event::KeyPressed) {
             if (is_typing_name_) {
-                if (event.key.code == sf::Keyboard::Return) {
+                if (event.key.code == sf::Keyboard::Key::Enter) {
                     is_typing_name_ = false;
                     input_background_.setOutlineColor(sf::Color(100, 100, 100));
 
@@ -172,13 +172,13 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                 }
                 // Backspace handled in update() for smooth repeat
             } else {
-                if (event.key.code == sf::Keyboard::Escape) {
+                if (event.key.code == sf::Keyboard::Key::Escape) {
                 } else if ((event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) &&
                            player_count_ >= 2) {
                     state_manager.get_client().send_game_start_request();
                 }
             }
-        } else if (event.type == sf::Event::TextEntered) {
+        } else if (event.type == rtype::client::Event::TextEntered) {
             if (is_typing_name_) {
                 if (event.text.unicode < 128 && event.text.unicode > 31 && current_name_input_.length() < 16) {
                     current_name_input_ += static_cast<char>(event.text.unicode);
@@ -192,7 +192,7 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
 void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) {
     (void)client;
     // Backspace handling
-    if (is_typing_name_ && sf::Keyboard::isKeyPressed(sf::Keyboard::BackSpace)) {
+    if (is_typing_name_ && sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Backspace)) {
         bool delete_char = false;
 
         if (!was_backspace_pressed_) {

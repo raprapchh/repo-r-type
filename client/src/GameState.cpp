@@ -36,11 +36,11 @@ void GameState::on_exit(Renderer& renderer, Client& client) {
 }
 
 void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
-    sf::Event event;
+    rtype::client::Event event;
     while (renderer.poll_event(event)) {
-        if (event.type == sf::Event::Closed) {
+        if (event.type == rtype::client::Event::Closed) {
             renderer.close_window();
-        } else if (event.type == sf::Event::Resized) {
+        } else if (event.type == rtype::client::Event::Resized) {
             renderer.handle_resize(event.size.width, event.size.height);
             if (client_) {
                 // client_->send_map_resize(static_cast<float>(event.size.width),
@@ -70,8 +70,8 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                 } catch (const std::exception&) {
                 }
             }
-        } else if (event.type == sf::Event::KeyPressed) {
-            if (event.key.code == sf::Keyboard::Escape) {
+        } else if (event.type == rtype::client::Event::KeyPressed) {
+            if (event.key.code == sf::Keyboard::Key::Escape) {
                 if (client_) {
                     GameEngine::Registry& registry = client_->get_registry();
                     std::mutex& registry_mutex = client_->get_registry_mutex();
@@ -99,7 +99,7 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                     charge_start_time_ = std::chrono::steady_clock::now();
                 }
             }
-        } else if (event.type == sf::Event::KeyReleased) {
+        } else if (event.type == rtype::client::Event::KeyReleased) {
             if (event.key.code == sf::Keyboard::Space) {
                 if (is_charging_) {
                     auto now = std::chrono::steady_clock::now();
@@ -124,7 +124,7 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                     }
                 }
             }
-        } else if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+        } else if (event.type == rtype::client::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Button::Left) {
             if (is_paused_) {
                 sf::Vector2f mouse_pos = renderer.get_mouse_position();
                 handle_pause_button_click(mouse_pos, state_manager);

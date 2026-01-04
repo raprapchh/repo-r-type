@@ -45,8 +45,48 @@ bool Renderer::is_open() const {
     return window_->isOpen();
 }
 
-bool Renderer::poll_event(sf::Event& event) {
-    return window_->pollEvent(event);
+bool Renderer::poll_event(Event& event) {
+    sf::Event sf_event;
+    if (window_->pollEvent(sf_event)) {
+        if (sf_event.type == sf::Event::Closed) {
+            event.type = Event::Closed;
+        } else if (sf_event.type == sf::Event::Resized) {
+            event.type = Event::Resized;
+            event.size.width = sf_event.size.width;
+            event.size.height = sf_event.size.height;
+        } else if (sf_event.type == sf::Event::KeyPressed) {
+            event.type = Event::KeyPressed;
+            event.key.code = sf_event.key.code;
+            event.key.alt = sf_event.key.alt;
+            event.key.control = sf_event.key.control;
+            event.key.shift = sf_event.key.shift;
+            event.key.system = sf_event.key.system;
+        } else if (sf_event.type == sf::Event::KeyReleased) {
+            event.type = Event::KeyReleased;
+            event.key.code = sf_event.key.code;
+            event.key.alt = sf_event.key.alt;
+            event.key.control = sf_event.key.control;
+            event.key.shift = sf_event.key.shift;
+            event.key.system = sf_event.key.system;
+        } else if (sf_event.type == sf::Event::MouseButtonPressed) {
+            event.type = Event::MouseButtonPressed;
+            event.mouseButton.button = sf_event.mouseButton.button;
+            event.mouseButton.x = sf_event.mouseButton.x;
+            event.mouseButton.y = sf_event.mouseButton.y;
+        } else if (sf_event.type == sf::Event::MouseButtonReleased) {
+            event.type = Event::MouseButtonReleased;
+            event.mouseButton.button = sf_event.mouseButton.button;
+            event.mouseButton.x = sf_event.mouseButton.x;
+            event.mouseButton.y = sf_event.mouseButton.y;
+        } else if (sf_event.type == sf::Event::TextEntered) {
+            event.type = Event::TextEntered;
+            event.text.unicode = sf_event.text.unicode;
+        } else {
+            event.type = Event::Unknown;
+        }
+        return true;
+    }
+    return false;
 }
 
 void Renderer::clear() {
@@ -199,6 +239,9 @@ void Renderer::draw_ui() {
     int level = game_state_.wave_number / 100;
     int wave = game_state_.wave_number % 100;
     wave_text_.setString("Level " + std::to_string(level + 1) + " - Wave " + std::to_string(wave));
+    sf::FloatRect text_bounds = wave_text_.getLocalBounds();
+    wave_text_.setOrigin(text_bounds.left + text_bounds.width / 2.0f, text_bounds.top);
+    wave_text_.setPosition(window_->getSize().x / 2.0f, 10.0f);
     window_->draw(wave_text_);
 
     if (charge_percentage_ > 0.0f) {

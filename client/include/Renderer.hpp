@@ -10,6 +10,47 @@
 
 namespace rtype::client {
 
+struct Event {
+    enum Type {
+        Closed,
+        Resized,
+        KeyPressed,
+        KeyReleased,
+        MouseButtonPressed,
+        MouseButtonReleased,
+        TextEntered,
+        Unknown
+    };
+    Type type;
+
+    struct SizeEvent {
+        unsigned int width;
+        unsigned int height;
+    };
+    SizeEvent size;
+
+    struct KeyEvent {
+        sf::Keyboard::Key code;
+        bool alt;
+        bool control;
+        bool shift;
+        bool system;
+    };
+    KeyEvent key;
+
+    struct MouseButtonEvent {
+        sf::Mouse::Button button;
+        int x;
+        int y;
+    };
+    MouseButtonEvent mouseButton;
+
+    struct TextEvent {
+        uint32_t unicode;
+    };
+    TextEvent text;
+};
+
 struct Entity {
     uint32_t id;
     uint16_t type;
@@ -29,7 +70,7 @@ class Renderer {
     ~Renderer();
 
     bool is_open() const;
-    bool poll_event(sf::Event& event);
+    bool poll_event(Event& event);
     void clear();
     void display();
 

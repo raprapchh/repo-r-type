@@ -627,7 +627,7 @@ void Client::send_heartbeat() {
 
 void Client::update(double dt) {
     send_heartbeat();
-    audio_system_.update(registry_, dt);
+    // audio_system_.update(registry_, dt);
     network_system_.update(registry_, registry_mutex_);
 
     {
