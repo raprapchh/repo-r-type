@@ -10,10 +10,6 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
-
-# EnTT (via vcpkg)
-find_package(EnTT CONFIG REQUIRED)
-
 # Asio (via vcpkg)
 find_package(asio CONFIG REQUIRED)
 
@@ -35,7 +31,7 @@ endif()
 file(GLOB_RECURSE ECS_SRC ${CMAKE_SOURCE_DIR}/ecs/src/*.cpp)
 add_library(rtype_ecs ${ECS_SRC})
 target_include_directories(rtype_ecs PUBLIC ${CMAKE_SOURCE_DIR}/ecs/include)
-target_link_libraries(rtype_ecs PUBLIC EnTT::EnTT sfml-graphics sfml-window sfml-system sfml-audio)
+target_link_libraries(rtype_ecs PUBLIC sfml-graphics sfml-window sfml-system sfml-audio)
 
 # 2. Shared Library
 add_library(rtype_shared INTERFACE)
@@ -62,7 +58,6 @@ target_link_libraries(r-type_server PRIVATE
     rtype_ecs
     rtype_shared
     asio::asio
-    EnTT::EnTT
 )
 
 if(UNIX)

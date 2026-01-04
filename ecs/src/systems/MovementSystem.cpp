@@ -7,7 +7,7 @@ namespace rtype::ecs {
 void MovementSystem::update(GameEngine::Registry& registry, double dt) {
     auto view = registry.view<component::Position, component::Velocity>();
 
-    view.each([dt](component::Position& pos, component::Velocity& vel) {
+    view.each([dt]([[maybe_unused]] auto entity, component::Position& pos, component::Velocity& vel) {
         pos.x += vel.vx * static_cast<float>(dt);
         pos.y += vel.vy * static_cast<float>(dt);
     });

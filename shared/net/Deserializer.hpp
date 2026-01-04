@@ -25,6 +25,14 @@ class Deserializer {
         return value;
     }
 
+    void read(void* dest, size_t size) {
+        if (offset + size > data.size()) {
+            throw std::runtime_error("Deserializer: not enough data");
+        }
+        std::memcpy(dest, data.data() + offset, size);
+        offset += size;
+    }
+
     std::vector<uint8_t> read_bytes(size_t count) {
         if (offset + count > data.size()) {
             throw std::runtime_error("Deserializer: not enough data");

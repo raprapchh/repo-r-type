@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
+#include <string>
 #include "Protocol.hpp"
 
 namespace rtype::net {
@@ -39,11 +41,19 @@ struct PlayerShootData {
 
 struct PlayerJoinData {
     uint32_t player_id;
+    char player_name[17];
 
     PlayerJoinData() : player_id(0) {
+        memset(player_name, 0, sizeof(player_name));
     }
 
     explicit PlayerJoinData(uint32_t id) : player_id(id) {
+        memset(player_name, 0, sizeof(player_name));
+    }
+
+    PlayerJoinData(uint32_t id, const std::string& name) : player_id(id) {
+        memset(player_name, 0, sizeof(player_name));
+        strncpy(player_name, name.c_str(), 16);
     }
 };
 
@@ -54,6 +64,20 @@ struct PlayerLeaveData {
     }
 
     explicit PlayerLeaveData(uint32_t id) : player_id(id) {
+    }
+};
+
+struct PlayerNameData {
+    uint32_t player_id;
+    char player_name[17];
+
+    PlayerNameData() : player_id(0) {
+        memset(player_name, 0, sizeof(player_name));
+    }
+
+    PlayerNameData(uint32_t id, const std::string& name) : player_id(id) {
+        memset(player_name, 0, sizeof(player_name));
+        strncpy(player_name, name.c_str(), 16);
     }
 };
 
