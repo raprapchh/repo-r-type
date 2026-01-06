@@ -21,6 +21,9 @@ class IMessageSerializer {
     virtual Packet serialize_player_leave(const PlayerLeaveData& data) = 0;
     virtual PlayerLeaveData deserialize_player_leave(const Packet& packet) = 0;
 
+    virtual Packet serialize_player_name(const PlayerNameData& data) = 0;
+    virtual PlayerNameData deserialize_player_name(const Packet& packet) = 0;
+
     virtual Packet serialize_entity_spawn(const EntitySpawnData& data) = 0;
     virtual EntitySpawnData deserialize_entity_spawn(const Packet& packet) = 0;
 

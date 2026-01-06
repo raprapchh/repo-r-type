@@ -17,7 +17,8 @@ enum class MessageType : uint16_t {
     GameState = 9,     ///< Periodic state snapshot
     Ping = 10,         ///< Latency probe
     Pong = 11,         ///< Latency response
-    MapResize = 12     ///< Viewport resize notification
+    MapResize = 12,    ///< Viewport resize notification
+    PlayerName = 13
 };
 
 } // namespace rtype::net

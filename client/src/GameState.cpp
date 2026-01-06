@@ -43,7 +43,8 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
         } else if (event.type == sf::Event::Resized) {
             renderer.handle_resize(event.size.width, event.size.height);
             if (client_) {
-                client_->send_map_resize(static_cast<float>(event.size.width), static_cast<float>(event.size.height));
+                // client_->send_map_resize(static_cast<float>(event.size.width),
+                // static_cast<float>(event.size.height));
 
                 GameEngine::Registry& registry = client_->get_registry();
                 std::mutex& registry_mutex = client_->get_registry_mutex();
