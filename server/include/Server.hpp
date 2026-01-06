@@ -5,6 +5,8 @@
 #include "../../shared/interfaces/network/IProtocolAdapter.hpp"
 #include "../../shared/interfaces/network/IMessageSerializer.hpp"
 #include "../../shared/net/Packet.hpp"
+#include "ClientInfo.hpp"
+#include "BroadcastSystem.hpp"
 #include <atomic>
 #include <chrono>
 #include <map>
@@ -15,16 +17,6 @@
 #include <thread>
 
 namespace rtype::server {
-
-/// @brief Connected client information
-struct ClientInfo {
-    std::string ip;
-    uint16_t port;
-    uint32_t player_id;
-    bool is_connected;
-    GameEngine::entity_t entity_id;
-    std::chrono::steady_clock::time_point last_seen;
-};
 
 /// @brief Authoritative game server for R-Type multiplayer
 class Server {
@@ -53,6 +45,7 @@ class Server {
     std::unique_ptr<UdpServer> udp_server_;
     std::unique_ptr<rtype::net::IProtocolAdapter> protocol_adapter_;
     std::unique_ptr<rtype::net::IMessageSerializer> message_serializer_;
+    std::unique_ptr<BroadcastSystem> broadcast_system_;
     std::map<std::string, ClientInfo> clients_;
     std::mutex clients_mutex_;
     std::mutex registry_mutex_;
