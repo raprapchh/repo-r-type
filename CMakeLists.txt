@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 project(rtype LANGUAGES CXX)
 
+# --- CONFIGURATION ---
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -10,20 +12,35 @@ add_compile_options(-Wall -Wextra -Wpedantic)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
+# --- DEPENDENCIES ---
+
+include(FetchContent)
+
 # Asio (via vcpkg)
 find_package(asio CONFIG REQUIRED)
 
-# SFML (via vcpkg) - using SFML 2.6.x
-find_package(SFML 2.5 COMPONENTS graphics window system audio REQUIRED)
+# SFML 2.6.2 (via FetchContent - self-contained)
+FetchContent_Declare(
+    SFML
+    GIT_REPOSITORY https://github.com/SFML/SFML.git
+    GIT_TAG        2.6.2
+    GIT_SHALLOW    TRUE
+)
+set(SFML_BUILD_AUDIO TRUE CACHE BOOL "" FORCE)
+set(SFML_BUILD_GRAPHICS TRUE CACHE BOOL "" FORCE)
+set(SFML_BUILD_WINDOW TRUE CACHE BOOL "" FORCE)
+set(SFML_BUILD_NETWORK FALSE CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS FALSE CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(SFML)
 
+# Catch2 (via vcpkg) - optional
 find_package(Catch2 CONFIG QUIET)
 if(Catch2_FOUND)
     enable_testing()
     add_subdirectory(tests)
 else()
-    message(WARNING "Catch2 not found (missing CONFIG). Tests will be skipped.")
+    message(WARNING "Catch2 not found. Tests will be skipped.")
 endif()
-
 
 # --- LIBRARIES ---
 
