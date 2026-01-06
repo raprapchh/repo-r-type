@@ -45,6 +45,9 @@ class IMessageSerializer {
 
     virtual Packet serialize_map_resize(const MapResizeData& data) = 0;
     virtual MapResizeData deserialize_map_resize(const Packet& packet) = 0;
+
+    virtual Packet serialize_chat_message(const ChatMessageData& data) = 0;
+    virtual ChatMessageData deserialize_chat_message(const Packet& packet) = 0;
 };
 
 } // namespace rtype::net

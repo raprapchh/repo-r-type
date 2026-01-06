@@ -262,6 +262,31 @@ class MessageSerializer : public IMessageSerializer {
         data.height = deserializer.read<float>();
         return data;
     }
+
+    Packet serialize_chat_message(const ChatMessageData& data) override {
+        Serializer serializer;
+        serializer.write(data.player_id);
+        for (int i = 0; i < 17; ++i) {
+            serializer.write(static_cast<uint8_t>(data.player_name[i]));
+        }
+        for (int i = 0; i < 128; ++i) {
+            serializer.write(static_cast<uint8_t>(data.message[i]));
+        }
+        return Packet(static_cast<uint16_t>(MessageType::ChatMessage), serializer.get_data());
+    }
+
+    ChatMessageData deserialize_chat_message(const Packet& packet) override {
+        Deserializer deserializer(packet.body);
+        ChatMessageData data;
+        data.player_id = deserializer.read<uint32_t>();
+        for (int i = 0; i < 17; ++i) {
+            data.player_name[i] = static_cast<char>(deserializer.read<uint8_t>());
+        }
+        for (int i = 0; i < 128; ++i) {
+            data.message[i] = static_cast<char>(deserializer.read<uint8_t>());
+        }
+        return data;
+    }
 };
 
 } // namespace rtype::net
