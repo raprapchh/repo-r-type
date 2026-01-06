@@ -11,12 +11,6 @@ entity_t Registry::createEntity() {
 void Registry::destroyEntity(entity_t entity) {
     if (_validEntities.find(entity) != _validEntities.end()) {
         _validEntities.erase(entity);
-
-        // Remove entity from all component arrays
-        for (auto& [typeIndex, storage] : _componentArrays) {
-            // Note: SparseArray will handle entity removal gracefully
-            // We can't easily iterate over all types, but erase is safe
-        }
     }
 }
 
