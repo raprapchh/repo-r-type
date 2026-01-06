@@ -52,6 +52,9 @@ class Client {
 
     void send_game_start_request();
     void send_player_name_update(const std::string& name);
+    void send_chat_message(const std::string& message);
+
+    void set_chat_message_callback(std::function<void(uint32_t, const std::string&, const std::string&)> callback);
 
     uint32_t get_player_id() const;
     std::string get_player_name() const;
@@ -74,6 +77,7 @@ class Client {
     std::function<void(uint32_t, const std::string&)> player_join_callback_;
     std::function<void(uint32_t, const std::string&)> player_name_callback_;
     std::function<void()> game_start_callback_;
+    std::function<void(uint32_t, const std::string&, const std::string&)> chat_message_callback_;
 
     // Store pending players (ID, Name)
     std::vector<std::pair<uint32_t, std::string>> pending_players_;
