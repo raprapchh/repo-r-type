@@ -4,13 +4,15 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <vector>
 
 namespace rtype::client {
 
 LobbyState::LobbyState()
     : is_typing_name_(false), backspace_timer_(0.0f), backspace_delay_(INITIAL_BACKSPACE_DELAY),
       was_backspace_pressed_(false), font_loaded_(false), player_count_(0), game_started_(false),
-      renderer_ref_(nullptr), local_player_id_(0) {
+      renderer_ref_(nullptr), local_player_id_(0), is_typing_chat_(false), chat_backspace_timer_(0.0f),
+      chat_backspace_delay_(INITIAL_BACKSPACE_DELAY), was_chat_backspace_pressed_(false) {
     setup_ui();
 }
 
@@ -74,6 +76,30 @@ void LobbyState::setup_ui() {
 
     is_typing_name_ = false;
     current_name_input_ = "";
+
+    // Chat UI setup - Professional Gaming Style
+    chat_background_.setSize(sf::Vector2f(600, 200));
+    chat_background_.setFillColor(sf::Color(15, 15, 20, 240));
+    chat_background_.setOutlineColor(sf::Color(0, 180, 220, 180)); // Cyan accent
+    chat_background_.setOutlineThickness(2);
+
+    chat_input_background_.setSize(sf::Vector2f(600, 40));
+    chat_input_background_.setFillColor(sf::Color(25, 25, 35, 240));
+    chat_input_background_.setOutlineColor(sf::Color(0, 180, 220, 120)); // Cyan accent
+    chat_input_background_.setOutlineThickness(1);
+
+    chat_input_label_.setFont(font_);
+    chat_input_label_.setString("CHAT:");
+    chat_input_label_.setCharacterSize(14);
+    chat_input_label_.setFillColor(sf::Color(0, 200, 255)); // Cyan text
+
+    chat_input_text_.setFont(font_);
+    chat_input_text_.setString("");
+    chat_input_text_.setCharacterSize(14);
+    chat_input_text_.setFillColor(sf::Color(220, 220, 220));
+
+    is_typing_chat_ = false;
+    current_chat_input_ = "";
 }
 
 void LobbyState::on_enter(Renderer& renderer, Client& client) {
@@ -93,23 +119,24 @@ void LobbyState::on_enter(Renderer& renderer, Client& client) {
     local_player_id_ = client.get_player_id(); // Store local player ID
     set_player_count(static_cast<uint8_t>(connected_players_.size()));
 
-    client.set_player_join_callback(
-        [this](uint32_t player_id, const std::string& name) { add_player(player_id, name); });
+    client.set_player_join_callback([this](uint32_t player_id, const std::string& name) {
+        std::lock_guard<std::mutex> lock(pending_mutex_);
+        pending_player_joins_.emplace_back(player_id, name);
+    });
 
     client.set_player_name_callback([this](uint32_t player_id, const std::string& name) {
-        if (connected_players_.find(player_id) != connected_players_.end()) {
-            std::string final_name = name;
-            // Robust check for default names
-            if (final_name.empty() || final_name == "Player" || final_name == "PLAYER" || final_name == "player" ||
-                final_name == "Player 0" || final_name == "PLAYER 0") {
-                final_name = "Player " + std::to_string(player_id);
-            }
-            connected_players_[player_id] = final_name;
-            update_player_display();
-        }
+        std::lock_guard<std::mutex> lock(pending_mutex_);
+        pending_name_updates_.emplace_back(player_id, name);
     });
 
     client.set_game_start_callback([this]() { game_started_.store(true); });
+
+    // Thread-safe chat callback
+    client.set_chat_message_callback(
+        [this](uint32_t /*player_id*/, const std::string& player_name, const std::string& message) {
+            std::lock_guard<std::mutex> lock(pending_mutex_);
+            pending_chat_messages_.emplace_back(player_name, message);
+        });
 
     // Initialize current name input with local player name if available, or fetch it
     current_name_input_ = client.get_player_name();
@@ -122,11 +149,26 @@ void LobbyState::on_enter(Renderer& renderer, Client& client) {
     if (client.is_connected()) {
         client.send_player_name_update(current_name_input_);
     }
+
+    // Setup chat message callback
+    chat_messages_.clear();
+    chat_message_texts_.clear();
+    // Callback already set above
 }
 
 void LobbyState::on_exit(Renderer& renderer, Client& client) {
     (void)renderer;
-    (void)client;
+
+    // CRITICAL: Clear all callbacks to prevent dangling pointer crashes
+    // These callbacks capture 'this' and will be called from network thread
+    client.set_player_join_callback(nullptr);
+    client.set_player_name_callback(nullptr);
+    client.set_game_start_callback(nullptr);
+    client.set_chat_message_callback(nullptr);
+
+    // Clear chat data
+    chat_messages_.clear();
+    chat_message_texts_.clear();
 }
 
 void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
@@ -148,10 +190,19 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                 // Check name input click
                 if (input_background_.getGlobalBounds().contains(mouse_pos)) {
                     is_typing_name_ = true;
+                    is_typing_chat_ = false;
                     input_background_.setOutlineColor(sf::Color::Cyan);
+                    chat_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                } else if (chat_input_background_.getGlobalBounds().contains(mouse_pos)) {
+                    is_typing_chat_ = true;
+                    is_typing_name_ = false;
+                    chat_input_background_.setOutlineColor(sf::Color::Cyan);
+                    input_background_.setOutlineColor(sf::Color(100, 100, 100));
                 } else {
                     is_typing_name_ = false;
-                    input_background_.setOutlineColor(sf::Color::White);
+                    is_typing_chat_ = false;
+                    input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                    chat_input_background_.setOutlineColor(sf::Color(100, 100, 100));
                 }
             }
         } else if (event.type == sf::Event::KeyPressed) {
@@ -171,6 +222,16 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                     state_manager.get_client().send_player_name_update(current_name_input_);
                 }
                 // Backspace handled in update() for smooth repeat
+            } else if (is_typing_chat_) {
+                if (event.key.code == sf::Keyboard::Return) {
+                    // Send chat message
+                    if (!current_chat_input_.empty()) {
+                        state_manager.get_client().send_chat_message(current_chat_input_);
+                        current_chat_input_.clear();
+                        chat_input_text_.setString("");
+                    }
+                }
+                // Backspace handled in update() for smooth repeat
             } else {
                 if (event.key.code == sf::Keyboard::Escape) {
                 } else if ((event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) &&
@@ -183,6 +244,17 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                 if (event.text.unicode < 128 && event.text.unicode > 31 && current_name_input_.length() < 16) {
                     current_name_input_ += static_cast<char>(event.text.unicode);
                     name_input_text_.setString(current_name_input_);
+                }
+            } else if (is_typing_chat_) {
+                if (event.text.unicode < 128 && event.text.unicode > 31 &&
+                    current_chat_input_.length() < MAX_CHAT_INPUT_LENGTH) {
+                    current_chat_input_ += static_cast<char>(event.text.unicode);
+                    if (current_chat_input_.length() > 40) {
+                        chat_input_text_.setString("..." +
+                                                   current_chat_input_.substr(current_chat_input_.length() - 37));
+                    } else {
+                        chat_input_text_.setString(current_chat_input_);
+                    }
                 }
             }
         }
@@ -220,6 +292,37 @@ void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_
         backspace_timer_ = 0.0f;
     }
 
+    // Chat backspace handling
+    if (is_typing_chat_ && sf::Keyboard::isKeyPressed(sf::Keyboard::BackSpace)) {
+        bool delete_char = false;
+
+        if (!was_chat_backspace_pressed_) {
+            delete_char = true;
+            chat_backspace_timer_ = 0.0f;
+            chat_backspace_delay_ = INITIAL_BACKSPACE_DELAY;
+        } else {
+            chat_backspace_timer_ += delta_time;
+            if (chat_backspace_timer_ >= chat_backspace_delay_) {
+                delete_char = true;
+                chat_backspace_timer_ = 0.0f;
+                chat_backspace_delay_ = REPEAT_BACKSPACE_DELAY;
+            }
+        }
+
+        if (delete_char && !current_chat_input_.empty()) {
+            current_chat_input_.pop_back();
+            if (current_chat_input_.length() > 40) {
+                chat_input_text_.setString("..." + current_chat_input_.substr(current_chat_input_.length() - 37));
+            } else {
+                chat_input_text_.setString(current_chat_input_);
+            }
+        }
+        was_chat_backspace_pressed_ = true;
+    } else {
+        was_chat_backspace_pressed_ = false;
+        chat_backspace_timer_ = 0.0f;
+    }
+
     // Update local ID and default name if it was 0
     if (local_player_id_ == 0 && client.is_connected()) {
         local_player_id_ = client.get_player_id();
@@ -232,6 +335,9 @@ void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_
             }
         }
     }
+
+    // Process pending network events on main thread
+    process_pending_events();
 
     if (game_started_.load()) {
         state_manager.change_state(std::make_unique<GameState>());
@@ -295,6 +401,15 @@ void LobbyState::render(Renderer& renderer, Client& /* client */) {
         renderer.draw_rectangle(input_background_);
         renderer.draw_text(name_input_label_);
         renderer.draw_text(name_input_text_);
+
+        // Draw Chat UI
+        renderer.draw_rectangle(chat_background_);
+        renderer.draw_rectangle(chat_input_background_);
+        renderer.draw_text(chat_input_label_);
+        renderer.draw_text(chat_input_text_);
+        for (const auto& msg_text : chat_message_texts_) {
+            renderer.draw_text(msg_text);
+        }
     }
 
     renderer.display();
@@ -345,11 +460,11 @@ void LobbyState::update_player_display() {
 }
 
 void LobbyState::update_positions(const sf::Vector2u& window_size) {
-    float title_y = window_size.y * 0.1f;
-    float waiting_y = window_size.y * 0.35f;
-    float players_y = window_size.y * 0.45f;
-    float list_y = window_size.y * 0.53f;
-    float button_y = window_size.y * 0.7f;
+    float title_y = window_size.y * 0.05f;
+    float waiting_y = window_size.y * 0.32f;
+    float players_y = window_size.y * 0.40f;
+    float list_y = window_size.y * 0.46f;
+    float button_y = window_size.y * 0.54f;
 
     title_text_.setPosition((window_size.x - title_text_.getLocalBounds().width) / 2.0f, title_y);
     waiting_text_.setPosition((window_size.x - waiting_text_.getLocalBounds().width) / 2.0f, waiting_y);
@@ -364,12 +479,110 @@ void LobbyState::update_positions(const sf::Vector2u& window_size) {
         start_button_.getPosition().x + (button_width - start_button_text_.getLocalBounds().width) / 2.0f,
         start_button_.getPosition().y + (button_height - start_button_text_.getLocalBounds().height) / 2.0f - 5.0f);
 
-    float input_y = window_size.y * 0.25f;
+    float input_y = window_size.y * 0.20f;
     input_background_.setPosition((window_size.x - 300) / 2.0f, input_y);
     // Position label above the input box centered
     name_input_label_.setPosition((window_size.x - name_input_label_.getLocalBounds().width) / 2.0f, input_y - 25);
     // Position text inside input box
     name_input_text_.setPosition(input_background_.getPosition().x + 10, input_y + 8);
+
+    // Chat UI positioning - Bottom Center
+    float chat_width = 600.0f;
+    float chat_height = 200.0f;
+    float chat_x = (window_size.x - chat_width) / 2.0f;
+    float chat_y = window_size.y - chat_height - 20.0f; // Minimal padding from bottom
+
+    chat_background_.setPosition(chat_x, chat_y);
+    chat_input_background_.setPosition(chat_x, chat_y + chat_height + 5.0f);
+    // Center text vertically in the 40px height input box
+    // Box Y is chat_y + chat_height + 5.0f
+    // Text size is 14px. 40/2 = 20. Text/2 = 7. Offset = 20 - 7 = 13.
+    float input_text_y = chat_y + chat_height + 5.0f + 13.0f;
+    chat_input_label_.setPosition(chat_x + 10, input_text_y);
+    chat_input_text_.setPosition(chat_x + 70, input_text_y); // After "CHAT:" label (reduced gap slightly)
+
+    // Update chat message text positions
+    update_chat_display();
+}
+
+void LobbyState::add_chat_message(const std::string& player_name, const std::string& message) {
+    chat_messages_.push_back({player_name, message});
+
+    // Keep only last MAX_CHAT_MESSAGES
+    if (chat_messages_.size() > MAX_CHAT_MESSAGES) {
+        chat_messages_.erase(chat_messages_.begin());
+    }
+
+    update_chat_display();
+}
+
+void LobbyState::update_chat_display() {
+    if (!font_loaded_)
+        return;
+
+    // Clear and rebuild text objects
+    chat_message_texts_.clear();
+    chat_message_texts_.reserve(chat_messages_.size());
+
+    float chat_x = chat_background_.getPosition().x + 8.0f;
+    float chat_y = chat_background_.getPosition().y + 8.0f;
+    float line_height = 20.0f;
+
+    // Show last MAX_CHAT_MESSAGES messages (scroll effect)
+    size_t start_idx = chat_messages_.size() > MAX_CHAT_MESSAGES ? chat_messages_.size() - MAX_CHAT_MESSAGES : 0;
+    size_t display_count = 0;
+
+    for (size_t i = start_idx; i < chat_messages_.size() && display_count < MAX_CHAT_MESSAGES; ++i, ++display_count) {
+        sf::Text msg_text;
+        msg_text.setFont(font_);
+        msg_text.setCharacterSize(13);
+
+        std::string name = chat_messages_[i].first;
+        std::string msg = chat_messages_[i].second;
+        if (name.length() > 16)
+            name = name.substr(0, 14) + "..";
+        if (msg.length() > 60)
+            msg = msg.substr(0, 57) + "...";
+
+        msg_text.setString(name + ": " + msg);
+        msg_text.setFillColor(sf::Color(200, 200, 200));
+        msg_text.setPosition(chat_x, chat_y + (static_cast<float>(display_count) * line_height));
+        chat_message_texts_.push_back(std::move(msg_text));
+    }
+}
+
+void LobbyState::process_pending_events() {
+    std::lock_guard<std::mutex> lock(pending_mutex_);
+
+    // Process player joins
+    for (const auto& player : pending_player_joins_) {
+        add_player(player.first, player.second);
+    }
+    pending_player_joins_.clear();
+
+    // Process name updates
+    for (const auto& update : pending_name_updates_) {
+        uint32_t player_id = update.first;
+        std::string name = update.second;
+
+        if (connected_players_.find(player_id) != connected_players_.end()) {
+            std::string final_name = name;
+            // Robust check for default names
+            if (final_name.empty() || final_name == "Player" || final_name == "PLAYER" || final_name == "player" ||
+                final_name == "Player 0" || final_name == "PLAYER 0") {
+                final_name = "Player " + std::to_string(player_id);
+            }
+            connected_players_[player_id] = final_name;
+            update_player_display();
+        }
+    }
+    pending_name_updates_.clear();
+
+    // Process chat messages
+    for (const auto& msg : pending_chat_messages_) {
+        add_chat_message(msg.first, msg.second);
+    }
+    pending_chat_messages_.clear();
 }
 
 } // namespace rtype::client
