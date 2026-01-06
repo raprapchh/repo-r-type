@@ -474,16 +474,26 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             auto leave_data = serializer.deserialize_player_leave(packet);
             std::cout << "Player " << leave_data.player_id << " has left the game." << std::endl;
 
-            std::lock_guard<std::mutex> lock(registry_mutex_);
-            auto view = registry_.view<rtype::ecs::component::NetworkId>();
-            for (auto entity : view) {
-                auto& net_id =
-                    registry_.getComponent<rtype::ecs::component::NetworkId>(static_cast<GameEngine::entity_t>(entity));
-                if (net_id.id == leave_data.player_id) {
-                    registry_.destroyEntity(static_cast<GameEngine::entity_t>(entity));
-                    std::cout << "Removed entity for player " << leave_data.player_id << std::endl;
-                    break;
+            // Find entity to destroy FIRST, then destroy AFTER iteration
+            GameEngine::entity_t entity_to_destroy = static_cast<GameEngine::entity_t>(-1);
+            {
+                std::lock_guard<std::mutex> lock(registry_mutex_);
+                auto view = registry_.view<rtype::ecs::component::NetworkId>();
+                for (auto entity : view) {
+                    auto& net_id = registry_.getComponent<rtype::ecs::component::NetworkId>(
+                        static_cast<GameEngine::entity_t>(entity));
+                    if (net_id.id == leave_data.player_id) {
+                        entity_to_destroy = static_cast<GameEngine::entity_t>(entity);
+                        break;
+                    }
                 }
+            }
+
+            // Destroy outside iteration to prevent iterator invalidation crash
+            if (entity_to_destroy != static_cast<GameEngine::entity_t>(-1)) {
+                std::lock_guard<std::mutex> lock(registry_mutex_);
+                registry_.destroyEntity(entity_to_destroy);
+                std::cout << "Removed entity for player " << leave_data.player_id << std::endl;
             }
         } catch (const std::exception& e) {
             std::cerr << "Error handling PlayerLeave: " << e.what() << std::endl;
@@ -497,6 +507,19 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             (void)pong_data;
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing Pong packet: " << e.what() << std::endl;
+        }
+        break;
+    }
+    case rtype::net::MessageType::ChatMessage: {
+        try {
+            auto chat_data = serializer.deserialize_chat_message(packet);
+            std::string sender_name(chat_data.player_name);
+            std::string message(chat_data.message);
+            if (chat_message_callback_) {
+                chat_message_callback_(chat_data.player_id, sender_name, message);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error deserializing ChatMessage packet: " << e.what() << std::endl;
         }
         break;
     }
@@ -603,6 +626,20 @@ uint32_t Client::get_player_id() const {
 
 void Client::set_player_name_callback(std::function<void(uint32_t, const std::string&)> callback) {
     player_name_callback_ = callback;
+}
+
+void Client::set_chat_message_callback(std::function<void(uint32_t, const std::string&, const std::string&)> callback) {
+    chat_message_callback_ = callback;
+}
+
+void Client::send_chat_message(const std::string& message) {
+    if (!connected_.load() || message.empty())
+        return;
+    rtype::net::MessageSerializer serializer;
+    rtype::net::ChatMessageData chat_data(player_id_, player_name_, message);
+    rtype::net::Packet chat_packet = serializer.serialize_chat_message(chat_data);
+    std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(chat_packet);
+    udp_client_->send(packet_data);
 }
 
 void Client::send_heartbeat() {
