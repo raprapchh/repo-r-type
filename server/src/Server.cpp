@@ -772,5 +772,4 @@ void Server::send_existing_entities_to_client(const std::string& client_ip, uint
                           vel.vx, vel.vy);
     }
 }
-
 } // namespace rtype::server
