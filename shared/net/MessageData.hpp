@@ -81,6 +81,24 @@ struct PlayerNameData {
     }
 };
 
+struct ChatMessageData {
+    uint32_t player_id;
+    char player_name[17];
+    char message[128];
+
+    ChatMessageData() : player_id(0) {
+        memset(player_name, 0, sizeof(player_name));
+        memset(message, 0, sizeof(message));
+    }
+
+    ChatMessageData(uint32_t id, const std::string& name, const std::string& msg) : player_id(id) {
+        memset(player_name, 0, sizeof(player_name));
+        memset(message, 0, sizeof(message));
+        strncpy(player_name, name.c_str(), 16);
+        strncpy(message, msg.c_str(), 127);
+    }
+};
+
 struct EntitySpawnData {
     uint32_t entity_id;
     uint16_t entity_type;
