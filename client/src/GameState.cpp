@@ -273,38 +273,48 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
             rtype::ecs::MovementSystem movement_system;
             movement_system.update(registry, delta_time);
         }
+    }
 
-        {
-            std::lock_guard<std::mutex> lock(registry_mutex);
-            rtype::ecs::BoundarySystem boundary_system;
-            boundary_system.update(registry, delta_time);
-            rtype::ecs::CollisionSystem collision_system;
-            collision_system.update(registry, delta_time);
-        }
-
-        {
-            std::lock_guard<std::mutex> lock(registry_mutex);
-            auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
-            for (auto entity : view) {
-                auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
-                client.send_move(vel.vx, vel.vy);
-            }
-        }
-
-        if (shoot_requested_) {
-            client.send_shoot(0, 0);
-            shoot_requested_ = false;
-        }
-    } else {
+    {
         std::lock_guard<std::mutex> lock(registry_mutex);
-        auto controllable_view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
-        for (auto entity : controllable_view) {
-            GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
-            auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(entity_id);
-            vel.vx = 0.0f;
-            vel.vy = 0.0f;
+        auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Position>();
+        for (auto entity : view) {
+            auto& pos = registry.getComponent<rtype::ecs::component::Position>(static_cast<size_t>(entity));
+            if (pos.x < 0)
+                pos.x = 0;
+            if (pos.x > 1920 - 100)
+                pos.x = 1920 - 100;
+            if (pos.y < 0)
+                pos.y = 0;
+            if (pos.y > 1080 - 100)
+                pos.y = 1080 - 100;
         }
     }
+
+    {
+        std::lock_guard<std::mutex> lock(registry_mutex);
+        auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
+        for (auto entity : view) {
+            auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
+            client.send_move(vel.vx, vel.vy);
+        }
+    }
+
+    if (shoot_requested_) {
+        client.send_shoot(0, 0);
+        shoot_requested_ = false;
+    }
+}
+else {
+    std::lock_guard<std::mutex> lock(registry_mutex);
+    auto controllable_view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
+    for (auto entity : controllable_view) {
+        GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
+        auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(entity_id);
+        vel.vx = 0.0f;
+        vel.vy = 0.0f;
+    }
+}
 }
 
 void GameState::render(Renderer& renderer, Client& client) {

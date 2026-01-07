@@ -91,6 +91,25 @@ void Renderer::update_animations(float delta_time) {
     for (auto& [id, entity] : entities_) {
         if (entity.type == rtype::net::EntityType::PROJECTILE) {
             entity.animation_timer += delta_time;
+            if (entity.sub_type == 20) { // Bayblade
+                if (entity.animation_timer >= 0.1f) {
+                    entity.animation_timer = 0.0f;
+                    entity.animation_frame = (entity.animation_frame + 1) % 4;
+                }
+            } else if (entity.sub_type == 21) { // Attack
+                if (entity.animation_timer >= 0.1f) {
+                    entity.animation_timer = 0.0f;
+                    entity.animation_frame = (entity.animation_frame + 1) % 9;
+                }
+            } else {
+                if (entity.animation_timer >= 0.1f) {
+                    entity.animation_timer = 0.0f;
+                    entity.animation_frame = (entity.animation_frame + 1) % 4;
+                }
+            }
+        }
+        if (entity.type == rtype::net::EntityType::ENEMY && entity.sub_type == 100) { // Boss
+            entity.animation_timer += delta_time;
             if (entity.animation_timer >= 0.1f) {
                 entity.animation_timer = 0.0f;
                 entity.animation_frame = (entity.animation_frame + 1) % 4;
@@ -145,11 +164,24 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
         texture_name = "player_ships";
         break;
     case rtype::net::EntityType::ENEMY:
-        texture_name = "enemy_basic";
-        sprite.setScale(6.0f, 6.0f);
+        if (entity.sub_type == 100) {
+            texture_name = "boss_1";
+            sprite.setScale(4.0f, 4.0f); // Adjust scale as needed
+        } else {
+            texture_name = "enemy_basic";
+            sprite.setScale(6.0f, 6.0f);
+        }
         break;
     case rtype::net::EntityType::PROJECTILE:
-        texture_name = "shot";
+        if (entity.sub_type == 20) {
+            texture_name = "boss_1_bayblade";
+            sprite.setScale(2.0f, 2.0f);
+        } else if (entity.sub_type == 21) {
+            texture_name = "boss_1_attack";
+            sprite.setScale(2.0f, 2.0f);
+        } else {
+            texture_name = "shot";
+        }
         break;
     default:
         texture_name = "default";
@@ -163,7 +195,15 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
     }
 
     if (entity.type == rtype::net::EntityType::PROJECTILE) {
-        sprite.setTextureRect(sf::IntRect(entity.animation_frame * 29, 0, 29, 33));
+        if (entity.sub_type == 20) { // Bayblade
+            sprite.setTextureRect(sf::IntRect(entity.animation_frame * 34, 0, 34, 34));
+        } else if (entity.sub_type == 21) { // Attack
+            sprite.setTextureRect(sf::IntRect(entity.animation_frame * 64, 0, 64, 64));
+        } else {
+            sprite.setTextureRect(sf::IntRect(entity.animation_frame * 29, 0, 29, 33));
+        }
+    } else if (entity.type == rtype::net::EntityType::ENEMY && entity.sub_type == 100) { // Boss
+        sprite.setTextureRect(sf::IntRect(entity.animation_frame * 100, 0, 100, 100));
     } else if (entity.type == rtype::net::EntityType::PLAYER) {
         if (textures_.count("player_ships")) {
             sf::Vector2u texture_size = textures_["player_ships"].getSize();
@@ -214,6 +254,36 @@ void Renderer::draw_ui() {
     }
 
     window_->setView(current_view);
+
+    if (game_state_.game_state == rtype::net::GameState::BOSS_WARNING) {
+        static float blink_timer = 0.0f;
+        static bool visible = true;
+        blink_timer += 0.016f;
+        if (blink_timer >= 0.5f) {
+            blink_timer = 0.0f;
+            visible = !visible;
+        }
+
+        if (visible) {
+            sf::View default_view = window_->getDefaultView();
+            window_->setView(default_view);
+
+            sf::Text warning_text;
+            warning_text.setFont(font_);
+            warning_text.setString("BOSS INCOMING");
+            warning_text.setCharacterSize(60);
+            warning_text.setFillColor(sf::Color::Red);
+            warning_text.setStyle(sf::Text::Bold);
+
+            sf::FloatRect text_bounds = warning_text.getLocalBounds();
+            warning_text.setOrigin(text_bounds.left + text_bounds.width / 2.0f,
+                                   text_bounds.top + text_bounds.height / 2.0f);
+            warning_text.setPosition(default_view.getSize().x / 2.0f, default_view.getSize().y / 2.0f);
+
+            window_->draw(warning_text);
+            window_->setView(current_view);
+        }
+    }
 }
 
 void Renderer::draw_game_over(bool all_players_dead) {
@@ -385,6 +455,9 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/shot_death-charge4.gif", "shot_death-charge4");
     load_texture("client/sprites/shot_death-charge-paricule.gif", "charge_particle");
     load_texture("client/sprites/explosion.gif", "explosion");
+    load_texture("client/sprites/boss_1-ezgif.com-crop.gif", "boss_1");
+    load_texture("client/sprites/boss_1-attack.gif", "boss_1_attack");
+    load_texture("client/sprites/boss_1-bayblade.gif", "boss_1_bayblade");
     load_texture("client/sprites/players_ship.png", "default");
 }
 
