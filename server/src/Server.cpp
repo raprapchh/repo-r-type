@@ -160,7 +160,7 @@ void Server::game_loop() {
 
     while (running_.load()) {
         auto current_time = std::chrono::steady_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_tick);
+        std::chrono::duration<double> elapsed = current_time - last_tick;
 
         auto timeout_check_elapsed =
             std::chrono::duration_cast<std::chrono::seconds>(current_time - last_timeout_check);
@@ -170,7 +170,7 @@ void Server::game_loop() {
         }
 
         if (elapsed >= TICK_DURATION) {
-            double dt = elapsed.count() / 1000.0;
+            double dt = elapsed.count();
             if (dt > 0.1) {
                 Logger::instance().warn("Server lag spike detected: " + std::to_string(dt * 1000) + "ms");
             }
