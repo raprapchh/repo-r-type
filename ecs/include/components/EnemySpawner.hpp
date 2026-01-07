@@ -9,6 +9,8 @@ struct EnemySpawner {
     int currentWave = 0;
     int currentEnemyIndex = 0;
     float waveTimer = 0.0f;
+    bool bossWarningActive = false;
+    float bossWarningTimer = 0.0f;
 };
 
 } // namespace rtype::ecs::component
