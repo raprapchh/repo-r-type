@@ -1,4 +1,5 @@
 #include "../../include/systems/WeaponSystem.hpp"
+#include "../../include/components/MovementPattern.hpp"
 #include "../../include/components/Weapon.hpp"
 #include "../../include/components/Position.hpp"
 #include "../../include/components/Velocity.hpp"
@@ -26,6 +27,9 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
         float w, h;
         component::CollisionLayer layer;
         std::size_t ownerId;
+        component::MovementPatternType patternType;
+        float patternAmplitude;
+        float patternFrequency;
     };
 
     std::vector<ProjectileRequest> requests;
@@ -107,8 +111,16 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
                 }
             }
 
+            float freq = weapon.projectileFrequency;
+            if (projectileTag == "Boss_1_Bayblade") {
+                if (rand() % 2 == 0) {
+                    freq = -freq;
+                }
+            }
+
             requests.push_back({spawnX, spawnY, vx, vy, damage, weapon.projectileLifetime, projectileTag, hitBoxW,
-                                hitBoxH, projLayer, static_cast<std::size_t>(entity)});
+                                hitBoxH, projLayer, static_cast<std::size_t>(entity), weapon.projectilePattern,
+                                weapon.projectileAmplitude, freq});
 
             weapon.timeSinceLastFire = 0.0f;
             if (!weapon.autoFire) {
@@ -126,6 +138,10 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
         registry.addComponent<component::HitBox>(projectile, req.w, req.h);
         registry.addComponent<component::Tag>(projectile, req.tag);
         registry.addComponent<component::Collidable>(projectile, req.layer);
+        if (req.patternType != component::MovementPatternType::None) {
+            registry.addComponent<component::MovementPattern>(projectile, req.patternType, 0.0f, req.patternAmplitude,
+                                                              req.patternFrequency);
+        }
     }
 }
 

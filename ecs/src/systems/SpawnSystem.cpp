@@ -9,6 +9,7 @@
 #include "../../include/components/Weapon.hpp"
 #include "../../include/components/CollisionLayer.hpp"
 #include "../../include/components/ScreenMode.hpp"
+#include "../../include/components/MovementPattern.hpp"
 #include "../../../shared/utils/GameConfig.hpp"
 #include <random>
 #include <cmath>
@@ -55,6 +56,35 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
         const auto& wave = level.waves[spawner.currentWave];
 
         while (spawner.currentEnemyIndex < static_cast<int>(wave.enemies.size())) {
+            // Boss Warning Logic
+            if (spawner.currentLevel == static_cast<int>(_levels.size()) - 1 && spawner.currentWave == 0 &&
+                spawner.currentEnemyIndex == 0) {
+                if (!spawner.bossWarningActive && spawner.bossWarningTimer == 0.0f) {
+                    spawner.bossWarningActive = true;
+                    spawner.bossWarningTimer = 4.0f;
+
+                    auto playerView = registry.view<component::Position, component::Tag>();
+                    for (auto entity : playerView) {
+                        const auto& tag = registry.getComponent<component::Tag>(entity);
+                        if (tag.name == "Player") {
+                            auto& pos = registry.getComponent<component::Position>(entity);
+                            pos.x = 100.0f;
+                            pos.y = 540.0f;
+                        }
+                    }
+                }
+            }
+
+            if (spawner.bossWarningActive) {
+                spawner.bossWarningTimer -= static_cast<float>(dt);
+                if (spawner.bossWarningTimer <= 0.0f) {
+                    spawner.bossWarningActive = false;
+                    spawner.bossWarningTimer = 0.0f;
+                } else {
+                    return;
+                }
+            }
+
             const auto& enemySpawn = wave.enemies[spawner.currentEnemyIndex];
             if (spawner.waveTimer >= enemySpawn.spawnTime) {
 
@@ -92,12 +122,14 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                 } else if (tag == "Monster_0_Right") {
                     offX = 50.0f;
                     offY = 20.0f;
+                } else if (tag == "Boss_1") {
+                    offX = 0.0f;
+                    offY = 100.0f;
                 }
 
                 registry.addComponent<component::Position>(enemy, spawnX, spawnY);
                 registry.addComponent<component::Velocity>(enemy, vx, vy);
-                registry.addComponent<component::HitBox>(enemy, 100.0f, 100.0f);
-                registry.addComponent<component::Health>(enemy, 5, 5);
+
                 registry.addComponent<component::Tag>(enemy, tag);
                 registry.addComponent<component::Collidable>(enemy, component::CollisionLayer::Enemy);
 
@@ -107,11 +139,27 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                 weapon.projectileSpeed = 500.0f;
                 weapon.damage = 10.0f;
                 weapon.projectileLifetime = 3.0f;
-                weapon.projectileTag = "Monster_0_Ball";
                 weapon.spawnOffsetX = offX;
                 weapon.spawnOffsetY = offY;
                 weapon.directionX = dirX;
                 weapon.directionY = dirY;
+
+                if (tag == "Boss_1") {
+                    registry.addComponent<component::HitBox>(enemy, 200.0f, 200.0f);
+                    registry.addComponent<component::Health>(enemy, 1000, 1000);
+                    registry.addComponent<component::MovementPattern>(
+                        enemy, component::MovementPatternType::RandomVertical, 0.0f, 200.0f, 1.0f);
+                    weapon.projectileTag = "Boss_1_Bayblade";
+                    weapon.projectilePattern = component::MovementPatternType::Circular;
+                    weapon.projectileAmplitude = 150.0f;
+                    weapon.projectileFrequency = 5.0f;
+                    weapon.damage = 50.0f;
+                    weapon.fireRate = 0.2f;
+                } else {
+                    registry.addComponent<component::HitBox>(enemy, 100.0f, 100.0f);
+                    registry.addComponent<component::Health>(enemy, 5, 5);
+                    weapon.projectileTag = "Monster_0_Ball";
+                }
 
                 spawner.currentEnemyIndex++;
             } else {
