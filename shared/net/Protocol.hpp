@@ -18,7 +18,8 @@ enum class MessageType : uint16_t {
     Ping = 10,         ///< Latency probe
     Pong = 11,         ///< Latency response
     MapResize = 12,    ///< Viewport resize notification
-    PlayerName = 13
+    PlayerName = 13,
+    ChatMessage = 14 ///< Lobby chat message
 };
 
 } // namespace rtype::net
