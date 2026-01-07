@@ -69,7 +69,19 @@ inline std::vector<Level> getLevels() {
                          {"Monster_0_Top", 500.0f, -100.0f, 0.0f, 600.0f, 1.0f, 0.05f},
                          {"Monster_0_Bot", 1000.0f, 1180.0f, 0.0f, -600.0f, 1.2f, 0.05f},
                          {"Monster_0_Right", 2020.0f, 540.0f, -600.0f, 0.0f, 1.5f, 0.05f}},
-                        5.0f}}}};
+                        5.0f}}},
+
+            Level{{Wave{{{"Boss_1", 1500.0f, 540.0f, 0.0f, 0.0f, 0.0f, 0.6f},
+                         {"Monster_0_Top", 1800.0f, 200.0f, -300.0f, 100.0f, 2.0f, 1.0f},
+                         {"Monster_0_Bot", 1800.0f, 880.0f, -300.0f, -100.0f, 2.0f, 1.0f},
+                         {"Monster_0_Top", 1800.0f, 200.0f, -300.0f, 100.0f, 5.0f, 1.0f},
+                         {"Monster_0_Bot", 1800.0f, 880.0f, -300.0f, -100.0f, 5.0f, 1.0f},
+                         {"Monster_0_Left", -100.0f, 300.0f, 400.0f, 0.0f, 8.0f, 1.0f},
+                         {"Monster_0_Left", -100.0f, 700.0f, 400.0f, 0.0f, 8.0f, 1.0f},
+                         {"Monster_0_Top", 1800.0f, 200.0f, -300.0f, 100.0f, 12.0f, 1.0f},
+                         {"Monster_0_Bot", 1800.0f, 880.0f, -300.0f, -100.0f, 12.0f, 1.0f},
+                         {"Monster_0_Left", -100.0f, 540.0f, 400.0f, 0.0f, 15.0f, 1.0f}},
+                        999.0f}}}};
 }
 
 } // namespace rtype::config
