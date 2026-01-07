@@ -266,7 +266,7 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
         if (window_has_focus && !game_over_) {
             {
                 rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(),
-                                                     renderer.is_moving_left(), renderer.is_moving_right(), 200.0f);
+                                                     renderer.is_moving_left(), renderer.is_moving_right(), 400.0f);
                 input_system.update(registry, delta_time);
             }
 
