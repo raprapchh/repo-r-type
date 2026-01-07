@@ -221,6 +221,7 @@ constexpr uint8_t LOBBY = 0;
 constexpr uint8_t PLAYING = 1;
 constexpr uint8_t PAUSED = 2;
 constexpr uint8_t GAME_OVER = 3;
+constexpr uint8_t BOSS_WARNING = 4;
 } // namespace GameState
 
 } // namespace rtype::net
