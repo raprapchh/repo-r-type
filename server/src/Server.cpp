@@ -366,6 +366,9 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
         if (found)
             disconnect_client(client_key, info);
     } break;
+    case rtype::net::MessageType::ChatMessage:
+        handle_chat_message(client_ip, client_port, packet);
+        break;
     default:
         Logger::instance().warn("Unknown message type: " + std::to_string(packet.header.message_type));
     }
@@ -771,4 +774,39 @@ void Server::send_existing_entities_to_client(const std::string& client_ip, uint
                           vel.vx, vel.vy);
     }
 }
+
+void Server::handle_chat_message(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet) {
+    if (!message_serializer_ || !protocol_adapter_ || !udp_server_)
+        return;
+
+    try {
+        auto chat_data = message_serializer_->deserialize_chat_message(packet);
+        std::string client_key = client_ip + ":" + std::to_string(client_port);
+
+        // Get the sender's current name from clients_ to ensure real-time name display
+        std::string sender_name;
+        {
+            std::lock_guard<std::mutex> lock(clients_mutex_);
+            auto it = clients_.find(client_key);
+            if (it != clients_.end() && it->second.is_connected) {
+                sender_name = it->second.player_name;
+            } else {
+                // Fallback to the name in the packet if client not found
+                sender_name = std::string(chat_data.player_name);
+            }
+        }
+
+        // Update the chat data with the current name
+        rtype::net::ChatMessageData broadcast_data(chat_data.player_id, sender_name, std::string(chat_data.message));
+        auto serialized = protocol_adapter_->serialize(message_serializer_->serialize_chat_message(broadcast_data));
+
+        // Broadcast to all connected clients
+        broadcast_to_all_clients(serialized);
+
+        Logger::instance().info("Chat message from " + sender_name + ": " + std::string(chat_data.message));
+    } catch (const std::exception& e) {
+        Logger::instance().error("Error handling chat message: " + std::string(e.what()));
+    }
+}
+
 } // namespace rtype::server

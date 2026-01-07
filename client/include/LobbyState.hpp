@@ -54,6 +54,31 @@ class LobbyState : public IState {
     std::atomic<bool> game_started_;
     Renderer* renderer_ref_;
     uint32_t local_player_id_;
+
+    // Thread-safe pending queues for callbacks (network thread -> main thread)
+    std::mutex pending_mutex_;
+    std::vector<std::pair<uint32_t, std::string>> pending_player_joins_;
+    std::vector<std::pair<uint32_t, std::string>> pending_name_updates_;
+    std::vector<std::pair<std::string, std::string>> pending_chat_messages_;
+
+    // Chat UI
+    sf::RectangleShape chat_background_;
+    sf::RectangleShape chat_input_background_;
+    sf::Text chat_input_label_;
+    sf::Text chat_input_text_;
+    std::string current_chat_input_;
+    std::vector<std::pair<std::string, std::string>> chat_messages_; // {player_name, message}
+    std::vector<sf::Text> chat_message_texts_;
+    bool is_typing_chat_;
+    float chat_backspace_timer_;
+    float chat_backspace_delay_;
+    bool was_chat_backspace_pressed_;
+    static constexpr size_t MAX_CHAT_MESSAGES = 9;
+    static constexpr size_t MAX_CHAT_INPUT_LENGTH = 100;
+
+    void add_chat_message(const std::string& player_name, const std::string& message);
+    void update_chat_display();
+    void process_pending_events();
 };
 
 } // namespace rtype::client
