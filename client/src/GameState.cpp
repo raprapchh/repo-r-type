@@ -252,69 +252,69 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
             }
             all_players_dead_ = (alive_players == 0);
         }
-    }
 
-    if (game_over_ && all_players_dead_) {
-        return;
-    }
-
-    bool window_has_focus = renderer.get_window() && renderer.get_window()->hasFocus();
-
-    if (window_has_focus && !game_over_) {
-        {
-            std::lock_guard<std::mutex> lock(registry_mutex);
-            rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(),
-                                                 renderer.is_moving_left(), renderer.is_moving_right(), 200.0f);
-            input_system.update(registry, delta_time);
+        if (game_over_ && all_players_dead_) {
+            return;
         }
 
-        {
-            std::lock_guard<std::mutex> lock(registry_mutex);
-            rtype::ecs::MovementSystem movement_system;
-            movement_system.update(registry, delta_time);
+        if (game_over_ && all_players_dead_) {
+            return;
+        }
+
+        bool window_has_focus = renderer.get_window() && renderer.get_window()->hasFocus();
+
+        if (window_has_focus && !game_over_) {
+            {
+                rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(),
+                                                     renderer.is_moving_left(), renderer.is_moving_right(), 200.0f);
+                input_system.update(registry, delta_time);
+            }
+
+            {
+                rtype::ecs::MovementSystem movement_system;
+                movement_system.update(registry, delta_time);
+            }
+
+            // Client-side player boundary clamping (visual only)
+            {
+                auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Position>();
+                for (auto entity : view) {
+                    auto& pos = registry.getComponent<rtype::ecs::component::Position>(static_cast<size_t>(entity));
+                    // Hardcoded map bounds for client visual clamping
+                    if (pos.x < 0)
+                        pos.x = 0;
+                    if (pos.x > 1920 - 100)
+                        pos.x = 1920 - 100; // Assuming player width
+                    if (pos.y < 0)
+                        pos.y = 0;
+                    if (pos.y > 1080 - 100)
+                        pos.y = 1080 - 100; // Assuming player height
+                }
+            }
+
+            {
+                auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
+                for (auto entity : view) {
+                    auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
+                    client.send_move(vel.vx, vel.vy);
+                }
+            }
+
+            if (shoot_requested_) {
+                client.send_shoot(0, 0);
+                shoot_requested_ = false;
+            }
+        } else {
+            auto controllable_view =
+                registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
+            for (auto entity : controllable_view) {
+                GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
+                auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(entity_id);
+                vel.vx = 0.0f;
+                vel.vy = 0.0f;
+            }
         }
     }
-
-    {
-        std::lock_guard<std::mutex> lock(registry_mutex);
-        auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Position>();
-        for (auto entity : view) {
-            auto& pos = registry.getComponent<rtype::ecs::component::Position>(static_cast<size_t>(entity));
-            if (pos.x < 0)
-                pos.x = 0;
-            if (pos.x > 1920 - 100)
-                pos.x = 1920 - 100;
-            if (pos.y < 0)
-                pos.y = 0;
-            if (pos.y > 1080 - 100)
-                pos.y = 1080 - 100;
-        }
-    }
-
-    {
-        std::lock_guard<std::mutex> lock(registry_mutex);
-        auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
-        for (auto entity : view) {
-            auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
-            client.send_move(vel.vx, vel.vy);
-        }
-    }
-
-    if (shoot_requested_) {
-        client.send_shoot(0, 0);
-        shoot_requested_ = false;
-    }
-}
-else {
-    std::lock_guard<std::mutex> lock(registry_mutex);
-    auto controllable_view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
-    for (auto entity : controllable_view) {
-        GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
-        auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(entity_id);
-        vel.vx = 0.0f;
-        vel.vy = 0.0f;
-    }
-}
 }
 
 void GameState::render(Renderer& renderer, Client& client) {
