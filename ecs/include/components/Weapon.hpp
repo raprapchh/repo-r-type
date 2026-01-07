@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "MovementPattern.hpp"
 
 namespace rtype::ecs::component {
 
@@ -17,6 +18,9 @@ struct Weapon {
     float spawnOffsetY = 0.0f;
     std::string projectileTag = "BasicProjectile";
     int chargeLevel = 0;
+    MovementPatternType projectilePattern = MovementPatternType::None;
+    float projectileAmplitude = 0.0f;
+    float projectileFrequency = 0.0f;
 };
 
 } // namespace rtype::ecs::component
