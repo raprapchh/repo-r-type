@@ -89,6 +89,11 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             registry.addComponent<rtype::ecs::component::HitBox>(entity, 165.0f, 110.0f);
         } else if (data.entity_type == rtype::net::EntityType::ENEMY) {
             std::string sprite_name = "enemy_basic";
+            float scale = 4.0f;
+            int frameW = 0;
+            int frameH = 0;
+
+            int frameCount = 1;
             if (data.sub_type == 1)
                 sprite_name = "monster_0-top";
             else if (data.sub_type == 2)
@@ -97,11 +102,30 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 sprite_name = "monster_0-left";
             else if (data.sub_type == 4)
                 sprite_name = "monster_0-right";
+            else if (data.sub_type == 100) {
+                sprite_name = "boss_1";
+                frameW = 161;
+                frameH = 219;
+                scale = 2.0f;
+                frameCount = 4;
+            }
 
-            registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
-                                                                   static_cast<uint32_t>(0), 4.0f, 4.0f);
-            registry.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
-            registry.addComponent<rtype::ecs::component::HitBox>(entity, 100.0f, 100.0f);
+            registry.addComponent<rtype::ecs::component::Drawable>(
+                entity, sprite_name, static_cast<uint32_t>(0), static_cast<uint32_t>(0), static_cast<uint32_t>(frameW),
+                static_cast<uint32_t>(frameH), scale, scale, frameCount, 0.1f, true);
+
+            float hp = 100.0f;
+            float hitboxW = 100.0f;
+            float hitboxH = 100.0f;
+
+            if (data.sub_type == 100) {
+                hp = 500.0f;
+                hitboxW = 200.0f;
+                hitboxH = 200.0f;
+            }
+
+            registry.addComponent<rtype::ecs::component::Health>(entity, hp, hp);
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, hitboxW, hitboxH);
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::Enemy);
             registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, data.position_x, data.position_y,
@@ -140,6 +164,18 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
 
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, frameW, frameH, 3.0f,
                                                                        3.0f, 2, 0.05f, false);
+            } else if (data.sub_type == 20) {
+                sprite_name = "boss_1_bayblade";
+                width = 46.0f;
+                height = 42.0f;
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 23, 21, 2.0f, 2.0f, 4,
+                                                                       0.1f, true);
+            } else if (data.sub_type == 21) {
+                sprite_name = "boss_1_attack";
+                width = 42.0f;
+                height = 40.0f;
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 21, 20, 2.0f, 2.0f, 8,
+                                                                       0.1f, true);
             } else {
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 29, 33, 3.0f, 3.0f, 4,
                                                                        0.05f, false);
@@ -167,11 +203,8 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::Obstacle);
 
-            // Add Tag so ParallaxSystem can move it
             if (data.sub_type == 1) {
-                registry.addComponent<rtype::ecs::component::Tag>(
-                    entity,
-                    "Obstacle_Floor"); // Or just "Obstacle" if ParallaxSystem checks that? ParallaxSystem checks both.
+                registry.addComponent<rtype::ecs::component::Tag>(entity, "Obstacle_Floor");
             } else {
                 registry.addComponent<rtype::ecs::component::Tag>(entity, "Obstacle");
             }

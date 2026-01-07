@@ -272,6 +272,17 @@ void Server::game_loop() {
                 rtype::net::GameStateData state;
                 state.score = 0;
                 state.lives = 0;
+                state.game_state = rtype::net::GameState::PLAYING;
+
+                auto spawnerView = registry_.view<rtype::ecs::component::EnemySpawner>();
+                for (auto entity : spawnerView) {
+                    const auto& spawner = registry_.getComponent<rtype::ecs::component::EnemySpawner>(entity);
+                    if (spawner.bossWarningActive) {
+                        state.game_state = rtype::net::GameState::BOSS_WARNING;
+                    }
+                    break;
+                }
+
                 if (registry_.isValid(client.entity_id)) {
                     if (registry_.hasComponent<rtype::ecs::component::Score>(client.entity_id))
                         state.score = registry_.getComponent<rtype::ecs::component::Score>(client.entity_id).value;
@@ -660,6 +671,8 @@ uint16_t Server::get_monster_subtype(const std::string& tag_name) {
         return 3;
     if (tag_name == "Monster_0_Right")
         return 4;
+    if (tag_name == "Boss_1")
+        return 100;
     return 0;
 }
 
@@ -674,6 +687,10 @@ uint16_t Server::get_projectile_subtype(const std::string& tag_name) {
         return 12;
     if (tag_name == "shot_death-charge4")
         return 13;
+    if (tag_name == "Boss_1_Bayblade")
+        return 20;
+    if (tag_name == "Boss_1_Attack")
+        return 21;
     return 0;
 }
 
