@@ -155,26 +155,25 @@ void Server::run() {
 }
 
 void Server::game_loop() {
-    auto last_tick = std::chrono::steady_clock::now();
+    auto last_time = std::chrono::high_resolution_clock::now();
+    double accumulator = 0.0;
+    const double target_delta_time = 1.0 / TARGET_TICK_RATE;
     auto last_timeout_check = std::chrono::steady_clock::now();
 
     while (running_.load()) {
-        auto current_time = std::chrono::steady_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_tick);
+        auto current_time = std::chrono::high_resolution_clock::now();
+        double frame_delta = std::chrono::duration<double>(current_time - last_time).count();
+        last_time = current_time;
 
-        auto timeout_check_elapsed =
-            std::chrono::duration_cast<std::chrono::seconds>(current_time - last_timeout_check);
-        if (timeout_check_elapsed >= std::chrono::seconds(1)) {
+        accumulator += frame_delta;
+
+        auto now = std::chrono::steady_clock::now();
+        if (std::chrono::duration_cast<std::chrono::seconds>(now - last_timeout_check) >= std::chrono::seconds(1)) {
             check_client_timeouts();
-            last_timeout_check = current_time;
+            last_timeout_check = now;
         }
 
-        if (elapsed >= TICK_DURATION) {
-            double dt = elapsed.count() / 1000.0;
-            if (dt > 0.1) {
-                Logger::instance().warn("Server lag spike detected: " + std::to_string(dt * 1000) + "ms");
-            }
-
+        while (accumulator >= target_delta_time) {
             if (game_started_ && !game_over_.load()) {
                 bool all_players_dead = true;
                 bool has_players = false;
@@ -204,15 +203,12 @@ void Server::game_loop() {
                 if (has_players && all_players_dead) {
                     game_over_ = true;
                     Logger::instance().info("Game Over - All players are dead. Destroying game entities.");
-
                     std::vector<GameEngine::entity_t> entities_to_destroy;
-
                     {
                         std::lock_guard<std::mutex> registry_lock(registry_mutex_);
                         auto network_view = registry_.view<rtype::ecs::component::NetworkId>();
                         for (auto entity : network_view) {
                             bool should_destroy = true;
-
                             if (registry_.hasComponent<rtype::ecs::component::MapBounds>(static_cast<size_t>(entity))) {
                                 should_destroy = false;
                             }
@@ -227,12 +223,10 @@ void Server::game_loop() {
                                     should_destroy = false;
                                 }
                             }
-
                             if (should_destroy) {
                                 entities_to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
                             }
                         }
-
                         for (auto entity : entities_to_destroy) {
                             registry_.destroyEntity(entity);
                         }
@@ -243,40 +237,31 @@ void Server::game_loop() {
 
                 if (!game_over_.load()) {
                     std::lock_guard<std::mutex> registry_lock(registry_mutex_);
-
                     rtype::ecs::SpawnSystem spawn_system;
-                    spawn_system.update(registry_, dt);
-
+                    spawn_system.update(registry_, target_delta_time);
                     rtype::ecs::MovementSystem movement_system;
-                    movement_system.update(registry_, dt);
-
+                    movement_system.update(registry_, target_delta_time);
                     rtype::ecs::MobSystem mob_system;
-                    mob_system.update(registry_, dt);
-
+                    mob_system.update(registry_, target_delta_time);
                     rtype::ecs::BoundarySystem boundary_system;
-                    boundary_system.update(registry_, dt);
-
+                    boundary_system.update(registry_, target_delta_time);
                     rtype::ecs::CollisionSystem collision_system;
-                    collision_system.update(registry_, dt);
-
+                    collision_system.update(registry_, target_delta_time);
                     rtype::ecs::LivesSystem lives_system;
-                    lives_system.update(registry_, dt);
-
+                    lives_system.update(registry_, target_delta_time);
                     rtype::ecs::WeaponSystem weapon_system;
-                    weapon_system.update(registry_, dt);
-
+                    weapon_system.update(registry_, target_delta_time);
                     rtype::ecs::ProjectileSystem projectile_system;
-                    projectile_system.update(registry_, dt);
-
+                    projectile_system.update(registry_, target_delta_time);
                     rtype::ecs::ScoreSystem score_system;
-                    score_system.update(registry_, dt);
+                    score_system.update(registry_, target_delta_time);
                 }
             }
 
             if (broadcast_system_) {
                 std::lock_guard<std::mutex> registry_lock(registry_mutex_);
                 std::lock_guard<std::mutex> clients_lock(clients_mutex_);
-                broadcast_system_->update(dt, clients_);
+                broadcast_system_->update(target_delta_time, clients_);
             }
 
             std::lock_guard<std::mutex> registry_lock(registry_mutex_);
@@ -296,10 +281,11 @@ void Server::game_loop() {
                 udp_server_->send(client.ip, client.port,
                                   protocol_adapter_->serialize(message_serializer_->serialize_game_state(state)));
             }
-            last_tick = current_time;
-        } else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+            accumulator -= target_delta_time;
         }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
