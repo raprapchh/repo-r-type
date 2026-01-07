@@ -6,6 +6,8 @@
 #include "../../shared/interfaces/network/IProtocolAdapter.hpp"
 #include "../../shared/interfaces/network/IMessageSerializer.hpp"
 #include "../../shared/net/Packet.hpp"
+#include "ClientInfo.hpp"
+#include "BroadcastSystem.hpp"
 #include <atomic>
 #include <chrono>
 #include <map>
@@ -17,18 +19,6 @@
 
 namespace rtype::server {
 
-/// @brief Connected client information
-struct ClientInfo {
-    std::string ip;
-    uint16_t port;
-    uint32_t player_id;
-    std::string player_name; // Custom player name
-    bool is_connected;
-    GameEngine::entity_t entity_id;
-    std::chrono::steady_clock::time_point last_seen;
-};
-
-/// @brief Authoritative game server for R-Type multiplayer
 class Server {
   public:
     Server(GameEngine::Registry& registry, uint16_t port = 4242);
@@ -56,6 +46,7 @@ class Server {
     std::unique_ptr<UdpServer> udp_server_;
     std::unique_ptr<rtype::net::IProtocolAdapter> protocol_adapter_;
     std::unique_ptr<rtype::net::IMessageSerializer> message_serializer_;
+    std::unique_ptr<BroadcastSystem> broadcast_system_;
     std::map<std::string, ClientInfo> clients_;
     std::mutex clients_mutex_;
     std::mutex registry_mutex_;
@@ -77,7 +68,6 @@ class Server {
     void check_client_timeouts();
     void disconnect_client(const std::string& client_key, const ClientInfo& client);
 
-    // Network sync helpers
     void broadcast_game_state(std::chrono::milliseconds elapsed);
     void broadcast_entity_positions();
     void broadcast_enemy_spawns();
