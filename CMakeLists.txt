@@ -1,66 +1,109 @@
 cmake_minimum_required(VERSION 3.20)
 project(rtype LANGUAGES CXX)
 
+# ─────────────────────────────
+# vcpkg Integration
+# ─────────────────────────────
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE AND EXISTS "${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake")
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake")
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_compile_definitions(ASIO_STANDALONE)
-add_compile_options(-Wall -Wextra -Wpedantic)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
+# Warnings
+if (MSVC)
+    add_compile_options(/W4)
+else()
+    add_compile_options(-Wall -Wextra)
+endif()
 
-# Asio (via vcpkg)
+# Platform Detection & Output Directories
+if (WIN32)
+    set(PLATFORM_NAME "windows")
+    add_compile_definitions(RTYPE_WINDOWS)
+else()
+    set(PLATFORM_NAME "linux")
+    add_compile_definitions(RTYPE_LINUX)
+endif()
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
+
+# ─────────────────────────────
+# Dependencies (vcpkg)
+# ─────────────────────────────
 find_package(asio CONFIG REQUIRED)
-
-# SFML (via vcpkg) - using SFML 2.6.x
-find_package(SFML 2.5 COMPONENTS graphics window system audio REQUIRED)
+find_package(SFML 2.6 COMPONENTS graphics window system audio REQUIRED)
+find_package(EnTT CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(Threads REQUIRED)
 
 find_package(Catch2 CONFIG QUIET)
-if(Catch2_FOUND)
+if(Catch2_FOUND OR TARGET Catch2::Catch2WithMain)
     enable_testing()
     add_subdirectory(tests)
 else()
-    message(WARNING "Catch2 not found (missing CONFIG). Tests will be skipped.")
+    message(STATUS "Catch2 not found, tests disabled")
 endif()
 
+# ─────────────────────────────
+# Libraries
+# ─────────────────────────────
 
-# --- LIBRARIES ---
-
-# 1. ECS Library
-file(GLOB_RECURSE ECS_SRC ${CMAKE_SOURCE_DIR}/ecs/src/*.cpp)
+# ECS
+file(GLOB_RECURSE ECS_SRC CONFIGURE_DEPENDS ecs/src/*.cpp)
 add_library(rtype_ecs ${ECS_SRC})
-target_include_directories(rtype_ecs PUBLIC ${CMAKE_SOURCE_DIR}/ecs/include)
-target_link_libraries(rtype_ecs PUBLIC sfml-graphics sfml-window sfml-system sfml-audio)
+target_include_directories(rtype_ecs PUBLIC ecs/include)
+target_link_libraries(rtype_ecs PUBLIC
+    sfml-graphics
+    sfml-window
+    sfml-system
+    sfml-audio
+    EnTT::EnTT
+    nlohmann_json::nlohmann_json
+)
 
-# 2. Shared Library
+# Shared
 add_library(rtype_shared INTERFACE)
-target_include_directories(rtype_shared INTERFACE ${CMAKE_SOURCE_DIR}/shared)
+target_include_directories(rtype_shared INTERFACE shared)
 
-# --- EXECUTABLES ---
-
-# 3. Client
-file(GLOB_RECURSE CLIENT_SRC ${CMAKE_SOURCE_DIR}/client/src/*.cpp)
+# ─────────────────────────────
+# Client executable
+# ─────────────────────────────
+file(GLOB_RECURSE CLIENT_SRC CONFIGURE_DEPENDS client/src/*.cpp)
 add_executable(r-type_client ${CLIENT_SRC})
-target_include_directories(r-type_client PRIVATE ${CMAKE_SOURCE_DIR}/client/include)
+target_include_directories(r-type_client PRIVATE client/include)
 target_link_libraries(r-type_client PRIVATE
     rtype_ecs
     rtype_shared
     asio::asio
-    sfml-graphics sfml-window sfml-system sfml-audio
+    Threads::Threads
+    sfml-graphics
+    sfml-window
+    sfml-system
+    sfml-audio
 )
 
-# 4. Server
-file(GLOB_RECURSE SERVER_SRC ${CMAKE_SOURCE_DIR}/server/src/*.cpp)
+# ─────────────────────────────
+# Server executable
+# ─────────────────────────────
+file(GLOB_RECURSE SERVER_SRC CONFIGURE_DEPENDS server/src/*.cpp)
 add_executable(r-type_server ${SERVER_SRC})
-target_include_directories(r-type_server PRIVATE ${CMAKE_SOURCE_DIR}/server/include)
+target_include_directories(r-type_server PRIVATE server/include)
 target_link_libraries(r-type_server PRIVATE
     rtype_ecs
     rtype_shared
     asio::asio
+    Threads::Threads
 )
 
-if(UNIX)
-    target_link_libraries(r-type_server PRIVATE pthread)
-    target_link_libraries(r-type_client PRIVATE pthread)
+# Windows specifics
+if (WIN32)
+    target_compile_definitions(r-type_client PRIVATE WIN32_LEAN_AND_MEAN)
+    target_compile_definitions(r-type_server PRIVATE WIN32_LEAN_AND_MEAN)
 endif()
