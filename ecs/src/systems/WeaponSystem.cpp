@@ -9,7 +9,6 @@
 #include "../../include/components/CollisionLayer.hpp"
 #include "../../include/components/ScreenMode.hpp"
 #include "../../shared/utils/GameConfig.hpp"
-#include <iostream>
 #include <vector>
 #include "../../../shared/utils/Logger.hpp"
 
@@ -108,6 +107,8 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
                 auto& ownerCollidable = registry.getComponent<component::Collidable>(static_cast<std::size_t>(entity));
                 if (ownerCollidable.layer == component::CollisionLayer::Enemy) {
                     projLayer = component::CollisionLayer::EnemyProjectile;
+                } else if (ownerCollidable.layer == component::CollisionLayer::Companion) {
+                    projLayer = component::CollisionLayer::PlayerProjectile;
                 }
             }
 

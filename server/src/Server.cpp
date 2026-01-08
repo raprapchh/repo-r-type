@@ -11,6 +11,8 @@
 #include "../../ecs/include/systems/WeaponSystem.hpp"
 #include "../../ecs/include/systems/SpawnSystem.hpp"
 #include "../../ecs/include/systems/MobSystem.hpp"
+#include "../../ecs/include/systems/ForcePodSystem.hpp"
+#include "../../ecs/include/systems/SpawnEffectSystem.hpp"
 #include "../../ecs/include/components/Position.hpp"
 #include "../../ecs/include/components/Velocity.hpp"
 #include "../../ecs/include/components/Weapon.hpp"
@@ -262,6 +264,9 @@ void Server::game_loop() {
                     rtype::ecs::LivesSystem lives_system;
                     lives_system.update(registry_, dt);
 
+                    rtype::ecs::ForcePodSystem forcepod_system;
+                    forcepod_system.update(registry_, dt);
+
                     rtype::ecs::WeaponSystem weapon_system;
                     weapon_system.update(registry_, dt);
 
@@ -270,6 +275,9 @@ void Server::game_loop() {
 
                     rtype::ecs::ScoreSystem score_system;
                     score_system.update(registry_, dt);
+
+                    rtype::ecs::SpawnEffectSystem spawneffect_system;
+                    spawneffect_system.update(registry_, dt);
                 }
             }
 
@@ -705,6 +713,8 @@ uint16_t Server::get_projectile_subtype(const std::string& tag_name) {
         return 20;
     if (tag_name == "Boss_1_Attack")
         return 21;
+    if (tag_name == "PodProjectile")
+        return 30;
     return 0;
 }
 

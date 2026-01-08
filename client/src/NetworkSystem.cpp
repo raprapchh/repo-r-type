@@ -176,6 +176,20 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 height = 40.0f;
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 21, 20, 2.0f, 2.0f, 8,
                                                                        0.1f, true);
+            } else if (data.sub_type == 30 || data.sub_type == 31) {
+                // Force Pod Projectile
+                if (data.sub_type == 31) {
+                    sprite_name = "pod_projectile_red_0";
+                    width = 36.0f;
+                    height = 13.0f;
+                } else {
+                    sprite_name = "pod_projectile_0";
+                    width = 34.0f;
+                    height = 19.0f;
+                }
+                // Use 1 frame for now to match other logic, or let Renderer handle animation if it overrides
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, width, height, 2.5f,
+                                                                       2.5f, 1, 0.1f, false);
             } else {
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 29, 33, 3.0f, 3.0f, 4,
                                                                        0.05f, false);
@@ -208,6 +222,17 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             } else {
                 registry.addComponent<rtype::ecs::component::Tag>(entity, "Obstacle");
             }
+        } else if (data.entity_type == rtype::net::EntityType::POWERUP) {
+            std::string sprite_name = "force_pod";
+            std::string tag_name = (data.sub_type == 1) ? "ForcePodItem" : "ForcePod";
+
+            registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
+                                                                   static_cast<uint32_t>(0), static_cast<uint32_t>(0),
+                                                                   static_cast<uint32_t>(0), 2.5f, 2.5f);
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, 64.0f, 64.0f);
+            registry.addComponent<rtype::ecs::component::Collidable>(entity,
+                                                                     rtype::ecs::component::CollisionLayer::PowerUp);
+            registry.addComponent<rtype::ecs::component::Tag>(entity, tag_name);
         }
 
     } catch (const std::exception& e) {
