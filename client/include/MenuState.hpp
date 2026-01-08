@@ -23,6 +23,7 @@ class MenuState : public IState {
     void setup_ui();
     void handle_button_click(const sf::Vector2f& mouse_pos, StateManager& state_manager);
     void update_positions(const sf::Vector2u& window_size);
+    void update_scoreboard_display(Client& client);
 
     sf::Font font_;
     sf::Texture logo_texture_;
@@ -32,6 +33,12 @@ class MenuState : public IState {
     sf::RectangleShape start_button_;
     sf::RectangleShape settings_button_;
     sf::RectangleShape quit_button_;
+
+    // Scoreboard display
+    sf::Text solo_scores_title_;
+    sf::Text multi_scores_title_;
+    std::vector<sf::Text> solo_score_texts_;
+    std::vector<sf::Text> multi_score_texts_;
 
     bool show_settings_ = false;
     ColorBlindMode pending_mode_ = ColorBlindMode::None;

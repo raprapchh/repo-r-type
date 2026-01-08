@@ -2,6 +2,8 @@
 #include "../include/ModeSelectionState.hpp"
 #include <iostream>
 #include <memory>
+#include <sstream>
+#include <iomanip>
 
 namespace rtype::client {
 
@@ -55,6 +57,17 @@ void MenuState::setup_ui() {
     settings_button_text_.setCharacterSize(40);
     settings_button_text_.setFillColor(sf::Color::White);
 
+    // Scoreboard titles
+    solo_scores_title_.setFont(font_);
+    solo_scores_title_.setString("SOLO TOP 10");
+    solo_scores_title_.setCharacterSize(24);
+    solo_scores_title_.setFillColor(sf::Color::Yellow);
+
+    multi_scores_title_.setFont(font_);
+    multi_scores_title_.setString("MULTI TOP 10");
+    multi_scores_title_.setCharacterSize(24);
+    multi_scores_title_.setFillColor(sf::Color::Yellow);
+
     accessibility_cycle_button_.setSize(sf::Vector2f(400, 60));
     accessibility_cycle_button_.setFillColor(sf::Color(50, 50, 150));
     accessibility_cycle_button_.setOutlineColor(sf::Color::White);
@@ -87,7 +100,8 @@ void MenuState::setup_ui() {
 }
 
 void MenuState::on_enter(Renderer& renderer, Client& client) {
-    (void)client;
+    client.get_scoreboard_manager().load();
+    update_scoreboard_display(client);
     update_positions(renderer.get_window_size());
 }
 
@@ -274,6 +288,17 @@ void MenuState::render(Renderer& renderer, Client& /* client */) {
         renderer.draw_rectangle(quit_button_);
         renderer.draw_text(quit_button_text_);
 
+        // Draw scoreboard columns
+        renderer.draw_text(solo_scores_title_);
+        for (const auto& text : solo_score_texts_) {
+            renderer.draw_text(text);
+        }
+
+        renderer.draw_text(multi_scores_title_);
+        for (const auto& text : multi_score_texts_) {
+            renderer.draw_text(text);
+        }
+
         if (show_settings_) {
             sf::RectangleShape modal_bg(sf::Vector2f(renderer.get_window_size()));
             modal_bg.setFillColor(sf::Color(0, 0, 0, 200));
@@ -320,6 +345,30 @@ void MenuState::update_positions(const sf::Vector2u& window_size) {
         settings_button_.getPosition().y + (button_height - settings_button_text_.getLocalBounds().height) / 2.0f -
             5.0f);
 
+    // Position scoreboard columns - both on the left side
+    float left_margin = 50.0f;
+    float column_width = 280.0f;
+    float left_column_x = left_margin;
+    float right_column_x = left_margin + column_width + 40.0f; // 40px spacing between columns
+    float scoreboard_y = window_size.y * 0.50f;
+    float score_spacing = 28.0f;
+
+    // Solo scores (left column)
+    solo_scores_title_.setPosition(left_column_x, scoreboard_y);
+    float solo_y = scoreboard_y + 35.0f;
+    for (auto& text : solo_score_texts_) {
+        text.setPosition(left_column_x, solo_y);
+        solo_y += score_spacing;
+    }
+
+    // Multi scores (right column, next to solo)
+    multi_scores_title_.setPosition(right_column_x, scoreboard_y);
+    float multi_y = scoreboard_y + 35.0f;
+    for (auto& text : multi_score_texts_) {
+        text.setPosition(right_column_x, multi_y);
+        multi_y += score_spacing;
+    }
+
     if (show_settings_) {
         float center_x = window_size.x / 2.0f;
         float center_y = window_size.y * 0.4f;
@@ -348,6 +397,49 @@ void MenuState::update_positions(const sf::Vector2u& window_size) {
                                       cancel_text_bounds.top + cancel_text_bounds.height / 2.0f);
         cancel_button_text_.setPosition(cancel_button_.getPosition().x + cancel_button_.getSize().x / 2.0f,
                                         cancel_button_.getPosition().y + cancel_button_.getSize().y / 2.0f);
+    }
+}
+
+void MenuState::update_scoreboard_display(Client& client) {
+    solo_score_texts_.clear();
+    multi_score_texts_.clear();
+
+    const auto& data = client.get_scoreboard_manager().get_data();
+
+    // Create solo score texts (top 10)
+    int rank = 1;
+    size_t max_solo = std::min(size_t(10), data.solo_scores.size());
+    for (size_t i = 0; i < max_solo; i++) {
+        const auto& entry = data.solo_scores[i];
+        sf::Text text;
+        text.setFont(font_);
+
+        std::ostringstream oss;
+        oss << rank << ". " << std::left << std::setw(12) << entry.player_name.substr(0, 12) << " " << entry.score;
+
+        text.setString(oss.str());
+        text.setCharacterSize(18);
+        text.setFillColor(sf::Color::White);
+        solo_score_texts_.push_back(text);
+        rank++;
+    }
+
+    // Create multi score texts (top 10)
+    rank = 1;
+    size_t max_multi = std::min(size_t(10), data.multi_scores.size());
+    for (size_t i = 0; i < max_multi; i++) {
+        const auto& entry = data.multi_scores[i];
+        sf::Text text;
+        text.setFont(font_);
+
+        std::ostringstream oss;
+        oss << rank << ". " << std::left << std::setw(12) << entry.player_name.substr(0, 12) << " " << entry.score;
+
+        text.setString(oss.str());
+        text.setCharacterSize(18);
+        text.setFillColor(sf::Color::White);
+        multi_score_texts_.push_back(text);
+        rank++;
     }
 }
 

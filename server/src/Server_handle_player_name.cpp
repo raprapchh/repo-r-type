@@ -34,12 +34,12 @@ void Server::handle_player_name(const std::string& client_ip, uint16_t client_po
         }
     }
 
-    // Broadcast the name change to all clients
+    // Broadcast the name change to all clients (including sender)
     if (protocol_adapter_ && message_serializer_ && udp_server_) {
         rtype::net::PlayerNameData name_data(player_id, new_name);
         rtype::net::Packet response = message_serializer_->serialize_player_name(name_data);
         auto response_data = protocol_adapter_->serialize(response);
-        broadcast_message(response_data, client_ip, client_port);
+        broadcast_message(response_data); // Send to ALL clients
     }
 }
 } // namespace rtype::server
