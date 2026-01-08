@@ -54,10 +54,8 @@ bool ScoreboardManager::load() {
         uint64_t timestamp;
         char delim1;
 
-        if (std::getline(iss, name, ':') && 
-            (iss >> score) && (iss >> delim1) && 
-            (iss >> timestamp)) {
-            
+        if (std::getline(iss, name, ':') && (iss >> score) && (iss >> delim1) && (iss >> timestamp)) {
+
             if (current_section == "SOLO") {
                 data_.solo_scores.emplace_back(name, score, timestamp);
             } else if (current_section == "MULTI") {
@@ -67,8 +65,8 @@ bool ScoreboardManager::load() {
     }
 
     file.close();
-    std::cout << "Loaded " << data_.solo_scores.size() << " solo scores and " 
-              << data_.multi_scores.size() << " multi scores." << std::endl;
+    std::cout << "Loaded " << data_.solo_scores.size() << " solo scores and " << data_.multi_scores.size()
+              << " multi scores." << std::endl;
     return true;
 }
 

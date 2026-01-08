@@ -92,12 +92,11 @@ void ScoreboardState::update_score_display() {
     for (const auto& entry : data.solo_scores) {
         sf::Text text;
         text.setFont(font_);
-        
+
         std::ostringstream oss;
-        oss << std::setw(2) << rank << ". " 
-            << std::setw(20) << std::left << entry.player_name 
-            << std::setw(10) << std::right << entry.score;
-        
+        oss << std::setw(2) << rank << ". " << std::setw(20) << std::left << entry.player_name << std::setw(10)
+            << std::right << entry.score;
+
         text.setString(oss.str());
         text.setCharacterSize(24);
         text.setFillColor(sf::Color::White);
@@ -110,12 +109,11 @@ void ScoreboardState::update_score_display() {
     for (const auto& entry : data.multi_scores) {
         sf::Text text;
         text.setFont(font_);
-        
+
         std::ostringstream oss;
-        oss << std::setw(2) << rank << ". " 
-            << std::setw(20) << std::left << entry.player_name 
-            << std::setw(10) << std::right << entry.score;
-        
+        oss << std::setw(2) << rank << ". " << std::setw(20) << std::left << entry.player_name << std::setw(10)
+            << std::right << entry.score;
+
         text.setString(oss.str());
         text.setCharacterSize(24);
         text.setFillColor(sf::Color::White);
@@ -136,15 +134,13 @@ void ScoreboardState::update_positions(const sf::Vector2u& window_size) {
     solo_tab_.setPosition(center_x - 260.0f, tab_y);
     multi_tab_.setPosition(center_x + 10.0f, tab_y);
 
-    solo_tab_text_.setPosition(
-        solo_tab_.getPosition().x + (solo_tab_.getSize().x - solo_tab_text_.getGlobalBounds().width) / 2.0f,
-        solo_tab_.getPosition().y + 10.0f
-    );
+    solo_tab_text_.setPosition(solo_tab_.getPosition().x +
+                                   (solo_tab_.getSize().x - solo_tab_text_.getGlobalBounds().width) / 2.0f,
+                               solo_tab_.getPosition().y + 10.0f);
 
-    multi_tab_text_.setPosition(
-        multi_tab_.getPosition().x + (multi_tab_.getSize().x - multi_tab_text_.getGlobalBounds().width) / 2.0f,
-        multi_tab_.getPosition().y + 10.0f
-    );
+    multi_tab_text_.setPosition(multi_tab_.getPosition().x +
+                                    (multi_tab_.getSize().x - multi_tab_text_.getGlobalBounds().width) / 2.0f,
+                                multi_tab_.getPosition().y + 10.0f);
 
     // Section title
     float content_y = tab_y + 80.0f;
@@ -166,10 +162,9 @@ void ScoreboardState::update_positions(const sf::Vector2u& window_size) {
 
     // Back button
     back_button_.setPosition(center_x - back_button_.getSize().x / 2.0f, window_size.y - 100.0f);
-    back_button_text_.setPosition(
-        back_button_.getPosition().x + (back_button_.getSize().x - back_button_text_.getGlobalBounds().width) / 2.0f,
-        back_button_.getPosition().y + 10.0f
-    );
+    back_button_text_.setPosition(back_button_.getPosition().x +
+                                      (back_button_.getSize().x - back_button_text_.getGlobalBounds().width) / 2.0f,
+                                  back_button_.getPosition().y + 10.0f);
 }
 
 void ScoreboardState::handle_input(Renderer& renderer, StateManager& state_manager) {
@@ -183,12 +178,12 @@ void ScoreboardState::handle_input(Renderer& renderer, StateManager& state_manag
         } else if (event.type == sf::Event::MouseButtonPressed) {
             if (event.mouseButton.button == sf::Mouse::Left) {
                 sf::Vector2f mouse_pos = renderer.get_mouse_position();
-                
+
                 // Check back button
                 if (back_button_.getGlobalBounds().contains(mouse_pos)) {
                     state_manager.change_state(std::make_unique<MenuState>());
                 }
-                
+
                 // Check solo tab
                 if (solo_tab_.getGlobalBounds().contains(mouse_pos)) {
                     current_tab_ = TabMode::Solo;
@@ -196,7 +191,7 @@ void ScoreboardState::handle_input(Renderer& renderer, StateManager& state_manag
                     multi_tab_.setFillColor(sf::Color(80, 80, 80));
                     update_positions(renderer.get_window_size());
                 }
-                
+
                 // Check multi tab
                 if (multi_tab_.getGlobalBounds().contains(mouse_pos)) {
                     current_tab_ = TabMode::Multi;
@@ -234,13 +229,13 @@ void ScoreboardState::update(Renderer& renderer, Client& client, StateManager& s
 
 void ScoreboardState::render(Renderer& renderer, Client& client) {
     (void)client;
-    
+
     if (!font_loaded_) {
         return;
     }
 
     renderer.draw_text(title_text_);
-    
+
     // Draw tabs
     renderer.draw_rectangle(solo_tab_);
     renderer.draw_rectangle(multi_tab_);

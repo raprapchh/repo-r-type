@@ -413,11 +413,10 @@ void MenuState::update_scoreboard_display(Client& client) {
         const auto& entry = data.solo_scores[i];
         sf::Text text;
         text.setFont(font_);
-        
+
         std::ostringstream oss;
-        oss << rank << ". " << std::left << std::setw(12) << entry.player_name.substr(0, 12) 
-            << " " << entry.score;
-        
+        oss << rank << ". " << std::left << std::setw(12) << entry.player_name.substr(0, 12) << " " << entry.score;
+
         text.setString(oss.str());
         text.setCharacterSize(18);
         text.setFillColor(sf::Color::White);
@@ -432,11 +431,10 @@ void MenuState::update_scoreboard_display(Client& client) {
         const auto& entry = data.multi_scores[i];
         sf::Text text;
         text.setFont(font_);
-        
+
         std::ostringstream oss;
-        oss << rank << ". " << std::left << std::setw(12) << entry.player_name.substr(0, 12) 
-            << " " << entry.score;
-        
+        oss << rank << ". " << std::left << std::setw(12) << entry.player_name.substr(0, 12) << " " << entry.score;
+
         text.setString(oss.str());
         text.setCharacterSize(18);
         text.setFillColor(sf::Color::White);

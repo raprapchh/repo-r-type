@@ -8,7 +8,7 @@ namespace rtype::client {
 
 /// @brief Manages loading and saving scoreboard data to disk
 class ScoreboardManager {
-public:
+  public:
     ScoreboardManager();
     ~ScoreboardManager() = default;
 
@@ -27,12 +27,14 @@ public:
     void add_multi_score(const std::string& player_name, uint32_t score);
 
     /// @brief Get the scoreboard data
-    const rtype::score::ScoreboardData& get_data() const { return data_; }
+    const rtype::score::ScoreboardData& get_data() const {
+        return data_;
+    }
 
     /// @brief Clear all scores (useful for testing)
     void clear_all_scores();
 
-private:
+  private:
     rtype::score::ScoreboardData data_;
     std::string save_file_path_;
 

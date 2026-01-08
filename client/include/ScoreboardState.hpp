@@ -8,7 +8,7 @@ namespace rtype::client {
 
 /// @brief State that displays the scoreboard
 class ScoreboardState : public IState {
-public:
+  public:
     ScoreboardState(ScoreboardManager& scoreboard_manager);
     ~ScoreboardState() override = default;
 
@@ -21,32 +21,32 @@ public:
         return StateType::Scoreboard;
     }
 
-private:
+  private:
     void setup_ui();
     void update_positions(const sf::Vector2u& window_size);
     void update_score_display();
 
     ScoreboardManager& scoreboard_manager_;
-    
+
     sf::Font font_;
     bool font_loaded_;
-    
+
     // UI Elements
     sf::Text title_text_;
     sf::Text solo_title_text_;
     sf::Text multi_title_text_;
-    
+
     std::vector<sf::Text> solo_score_texts_;
     std::vector<sf::Text> multi_score_texts_;
-    
+
     sf::RectangleShape back_button_;
     sf::Text back_button_text_;
-    
+
     sf::RectangleShape solo_tab_;
     sf::RectangleShape multi_tab_;
     sf::Text solo_tab_text_;
     sf::Text multi_tab_text_;
-    
+
     enum class TabMode { Solo, Multi };
     TabMode current_tab_;
 };
