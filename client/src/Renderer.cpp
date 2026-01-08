@@ -128,6 +128,23 @@ void Renderer::update_animations(float delta_time) {
                 entity.player_state = 0;
             }
         }
+
+        // Force Pod animation (13 frames)
+        if (entity.type == rtype::net::EntityType::POWERUP) {
+            entity.animation_timer += delta_time;
+            if (entity.animation_timer >= 0.04f) {
+                entity.animation_timer = 0.0f;
+                entity.animation_frame = (entity.animation_frame + 1) % 13;
+            }
+        }
+        // Force Pod Projectile animation (2 frames)
+        if (entity.type == rtype::net::EntityType::PROJECTILE && (entity.sub_type == 30 || entity.sub_type == 31)) {
+            entity.animation_timer += delta_time;
+            if (entity.animation_timer >= 0.1f) {
+                entity.animation_timer = 0.0f;
+                entity.animation_frame = (entity.animation_frame + 1) % 2;
+            }
+        }
     }
 }
 
@@ -179,9 +196,19 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
         } else if (entity.sub_type == 21) {
             texture_name = "boss_1_attack";
             sprite.setScale(2.0f, 2.0f);
+        } else if (entity.sub_type == 30) {
+            texture_name = "pod_projectile_" + std::to_string(entity.animation_frame % 2);
+            sprite.setScale(2.5f, 2.5f);
+        } else if (entity.sub_type == 31) {
+            texture_name = "pod_projectile_red_" + std::to_string(entity.animation_frame % 2);
+            sprite.setScale(2.5f, 2.5f);
         } else {
             texture_name = "shot";
         }
+        break;
+    case rtype::net::EntityType::POWERUP:
+        texture_name = "force_pod_" + std::to_string(entity.animation_frame % 13);
+        sprite.setScale(2.5f, 2.5f);
         break;
     default:
         texture_name = "default";
@@ -199,8 +226,16 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
             sprite.setTextureRect(sf::IntRect(entity.animation_frame * 34, 0, 34, 34));
         } else if (entity.sub_type == 21) { // Attack
             sprite.setTextureRect(sf::IntRect(entity.animation_frame * 64, 0, 64, 64));
+        } else if (entity.sub_type == 30 || entity.sub_type == 31) { // Pod Projectile
+            if (entity.sub_type == 31) {
+                texture_name = "pod_projectile_red_" + std::to_string(entity.animation_frame % 2);
+                sprite.setTextureRect(sf::IntRect(0, 0, 36, 13));
+            } else {
+                texture_name = "pod_projectile_" + std::to_string(entity.animation_frame % 2);
+                sprite.setTextureRect(sf::IntRect(0, 0, 34, 19));
+            }
         } else {
-            sprite.setTextureRect(sf::IntRect(entity.animation_frame * 29, 0, 29, 33));
+            texture_name = "shot";
         }
     } else if (entity.type == rtype::net::EntityType::ENEMY && entity.sub_type == 100) { // Boss
         sprite.setTextureRect(sf::IntRect(entity.animation_frame * 100, 0, 100, 100));
@@ -238,8 +273,8 @@ void Renderer::draw_ui() {
 
     int level = game_state_.wave_number / 100;
     int wave = game_state_.wave_number % 100;
-    wave_text_.setString("Level " + std::to_string(level + 1) + " - Wave " + std::to_string(wave));
-    window_->draw(wave_text_);
+    // wave_text_.setString("Level " + std::to_string(level + 1) + " - Wave " + std::to_string(wave));
+    // window_->draw(wave_text_);
 
     if (charge_percentage_ > 0.0f) {
         sf::RectangleShape charge_bar_bg(sf::Vector2f(200.0f, 20.0f));
@@ -458,6 +493,19 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/boss_1-ezgif.com-crop.gif", "boss_1");
     load_texture("client/sprites/boss_1-attack.gif", "boss_1_attack");
     load_texture("client/sprites/boss_1-bayblade.gif", "boss_1_bayblade");
+    // Force Pod animation frames (13 frames)
+    for (int i = 0; i < 13; i++) {
+        std::string path =
+            "client/sprites/force_pod/tile" + std::string(i < 10 ? "00" : "0") + std::to_string(i) + ".png";
+        load_texture(path, "force_pod_" + std::to_string(i));
+    }
+    load_texture("client/sprites/force_pod/tile000.png", "force_pod"); // Default
+    // Force Pod projectile sprites
+    load_texture("client/sprites/force_pod/tile013.png", "pod_projectile_0");
+    load_texture("client/sprites/force_pod/tile014.png", "pod_projectile_1");
+    // Force Pod Red projectile sprites
+    load_texture("client/sprites/force_pod/tile015.png", "pod_projectile_red_0");
+    load_texture("client/sprites/force_pod/tile016.png", "pod_projectile_red_1");
     load_texture("client/sprites/players_ship.png", "default");
 }
 
