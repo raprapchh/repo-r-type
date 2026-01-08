@@ -6,18 +6,24 @@
 #include "../../include/components/NetworkId.hpp"
 #include "../../../client/include/AccessibilityManager.hpp"
 #include "../../../shared/net/MessageData.hpp"
-#include <SFML/Graphics.hpp>
 #include <algorithm>
 #include <vector>
 
 namespace rtype::ecs {
 
-RenderSystem::RenderSystem(sf::RenderWindow& window, std::unordered_map<std::string, sf::Texture>& textures,
+RenderSystem::RenderSystem(std::shared_ptr<rtype::rendering::IRenderer> renderer,
                            rtype::client::AccessibilityManager* accessibility_mgr)
-    : window_(window), textures_(textures), accessibility_manager_(accessibility_mgr) {
+    : renderer_(renderer), accessibility_manager_(accessibility_mgr) {
 }
 
 void RenderSystem::update(GameEngine::Registry& registry, double dt) {
+    // If no renderer is available, system operates in headless mode (no-op)
+    if (!renderer_ || !renderer_->is_open()) {
+        return;
+    }
+
+    renderer_->clear();
+
     auto view = registry.view<component::Position, component::Drawable>();
     std::vector<GameEngine::entity_t> explosions_to_destroy;
 
@@ -26,11 +32,15 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
         auto& pos = registry.getComponent<component::Position>(static_cast<size_t>(entity));
         auto& drawable = registry.getComponent<component::Drawable>(static_cast<size_t>(entity));
 
-        if (textures_.find(drawable.texture_name) == textures_.end())
+        // Check if texture exists
+        uint32_t texture_width = 0, texture_height = 0;
+        if (!renderer_->get_texture_size(drawable.texture_name, texture_width, texture_height)) {
             continue;
+        }
 
         bool is_explosion = registry.hasComponent<component::Explosion>(entity_id);
 
+        // Handle animation state updates
         if (!drawable.current_state.empty() && drawable.animation_sequences.count(drawable.current_state)) {
             const auto& sequence = drawable.animation_sequences.at(drawable.current_state);
             if (!sequence.empty()) {
@@ -85,49 +95,23 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
             }
         }
 
-        const sf::Texture& texture = textures_.at(drawable.texture_name);
-        sf::Vector2u texture_size = texture.getSize();
-        sf::IntRect texture_rect;
+        // Determine texture rectangle coordinates
+        rtype::rendering::RenderData render_data;
+        render_data.x = pos.x;
+        render_data.y = pos.y;
+        render_data.scale_x = drawable.scale_x;
+        render_data.scale_y = drawable.scale_y;
+        render_data.texture_name = drawable.texture_name;
+        render_data.current_sprite = drawable.current_sprite;
+        render_data.sprite_index = drawable.sprite_index;
+        render_data.frame_count = drawable.frame_count;
+        render_data.rect_x = drawable.rect_x;
+        render_data.rect_y = drawable.rect_y;
+        render_data.rect_width = drawable.rect_width;
+        render_data.rect_height = drawable.rect_height;
+        render_data.visible = true;
 
-        if (drawable.texture_name == "player_ships") {
-            const uint32_t columns = 5;
-            const uint32_t rows = 5;
-            uint32_t sprite_width = texture_size.x / columns;
-            uint32_t sprite_height = texture_size.y / rows;
-            uint32_t row = drawable.sprite_index;
-            uint32_t col = drawable.current_sprite % columns;
-            texture_rect = sf::IntRect(col * sprite_width, row * sprite_height, sprite_width, sprite_height);
-        } else if (drawable.rect_width > 0 && drawable.rect_height > 0) {
-            int rect_width = drawable.rect_width;
-            int rect_height = drawable.rect_height;
-
-            if (is_explosion &&
-                static_cast<int>(drawable.current_sprite) == static_cast<int>(drawable.frame_count) - 1) {
-                const sf::Texture& texture_check = textures_.at(drawable.texture_name);
-                int total_width = static_cast<int>(texture_check.getSize().x);
-                int calculated_pos =
-                    drawable.rect_x + (static_cast<int>(drawable.current_sprite) * drawable.rect_width);
-                int remaining_width = total_width - calculated_pos;
-                if (remaining_width > 0 && remaining_width < drawable.rect_width) {
-                    rect_width = remaining_width;
-                }
-            }
-
-            texture_rect = sf::IntRect(drawable.rect_x + (drawable.current_sprite * drawable.rect_width),
-                                       drawable.rect_y, rect_width, rect_height);
-        } else if (drawable.texture_name == "obstacle_1") {
-            texture_rect = sf::IntRect(0, 1, texture_size.x, texture_size.y - 1);
-        } else {
-            uint32_t frame_count = (drawable.frame_count > 0) ? drawable.frame_count : 1;
-            uint32_t sprite_width = texture_size.x / frame_count;
-            uint32_t sprite_height = texture_size.y;
-            texture_rect = sf::IntRect(drawable.current_sprite * sprite_width, 0, sprite_width, sprite_height);
-        }
-
-        sf::Sprite sprite(texture, texture_rect);
-        sprite.setPosition(pos.x, pos.y);
-        sprite.setScale(drawable.scale_x, drawable.scale_y);
-
+        // Handle accessibility color overlay
         if (accessibility_manager_) {
             uint16_t entity_type = rtype::net::EntityType::ENEMY;
 
@@ -142,15 +126,34 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
             }
 
             sf::Color color = accessibility_manager_->get_entity_color(entity_type);
-            sprite.setColor(color);
+            render_data.color_r = color.r;
+            render_data.color_g = color.g;
+            render_data.color_b = color.b;
+            render_data.color_a = color.a;
+        } else {
+            render_data.color_r = 255;
+            render_data.color_g = 255;
+            render_data.color_b = 255;
+            render_data.color_a = 255;
         }
 
-        window_.draw(sprite);
+        renderer_->draw_sprite(render_data);
     }
 
+    renderer_->display();
+
+    // Cleanup finished explosions
     for (auto explosion_entity : explosions_to_destroy) {
         registry.destroyEntity(explosion_entity);
     }
+}
+
+void RenderSystem::set_renderer(std::shared_ptr<rtype::rendering::IRenderer> renderer) {
+    renderer_ = renderer;
+}
+
+std::shared_ptr<rtype::rendering::IRenderer> RenderSystem::get_renderer() const {
+    return renderer_;
 }
 
 } // namespace rtype::ecs
