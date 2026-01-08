@@ -146,4 +146,4 @@ std::shared_ptr<rtype::rendering::IRenderer> RenderSystem::get_renderer() const 
     return renderer_;
 }
 
-}
+} // namespace rtype::ecs

@@ -87,4 +87,4 @@ sf::IntRect SFMLRenderer::calculate_texture_rect(const RenderData& data, uint32_
     return sf::IntRect(data.current_sprite * sprite_width, 0, sprite_width, sprite_height);
 }
 
-}
+} // namespace rtype::rendering
