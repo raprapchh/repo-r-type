@@ -15,6 +15,7 @@
 #include "NetworkSystem.hpp"
 #include "UdpClient.hpp"
 #include "Renderer.hpp"
+#include "ScoreboardManager.hpp"
 #include "../../ecs/include/systems/AudioSystem.hpp"
 
 namespace rtype::client {
@@ -59,6 +60,10 @@ class Client {
     uint32_t get_player_id() const;
     std::string get_player_name() const;
 
+    ScoreboardManager& get_scoreboard_manager() {
+        return scoreboard_manager_;
+    }
+
   private:
     void receive_loop();
     void handle_udp_receive(const asio::error_code& error, std::size_t bytes_transferred,
@@ -84,6 +89,7 @@ class Client {
     GameEngine::Registry registry_;
     NetworkSystem network_system_;
     rtype::ecs::AudioSystem audio_system_;
+    ScoreboardManager scoreboard_manager_;
     std::mutex registry_mutex_;
     Renderer& renderer_;
 
