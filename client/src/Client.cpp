@@ -20,7 +20,7 @@
 namespace rtype::client {
 
 Client::Client(const std::string& host, uint16_t port, Renderer& renderer)
-    : host_(host), port_(port), connected_(false), player_id_(0), renderer_(renderer), network_system_(0),
+    : connected_(false), player_id_(0), network_system_(0), renderer_(renderer), host_(host), port_(port),
       last_ping_time_(std::chrono::steady_clock::now()) {
     io_context_ = std::make_unique<asio::io_context>();
     udp_client_ = std::make_unique<UdpClient>(*io_context_, host_, port_);
@@ -30,12 +30,19 @@ Client::Client(const std::string& host, uint16_t port, Renderer& renderer)
         });
 }
 
-void Client::set_game_start_callback(GameStartCallback callback) {
+void Client::set_game_start_callback(std::function<void()> callback) {
     game_start_callback_ = callback;
 }
 
-void Client::set_player_join_callback(PlayerJoinCallback callback) {
+void Client::set_player_join_callback(std::function<void(uint32_t, const std::string&)> callback) {
     player_join_callback_ = callback;
+    // Process any pending player joins that were received before callback was set
+    for (const auto& player : pending_players_) {
+        if (player_join_callback_) {
+            player_join_callback_(player.first, player.second);
+        }
+    }
+    pending_players_.clear();
 }
 
 Client::~Client() {
@@ -45,7 +52,7 @@ Client::~Client() {
 void Client::connect() {
     asio::ip::udp::resolver resolver(*io_context_);
     rtype::net::MessageSerializer serializer;
-    rtype::net::PlayerJoinData join_data;
+    rtype::net::PlayerJoinData join_data(0, player_name_);
     rtype::net::Packet join_packet = serializer.serialize_player_join(join_data);
     std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(join_packet);
 
@@ -223,12 +230,41 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                     drawable.animation_frame = 0;
                 }
 
+                std::string player_name = "Player " + std::to_string(join_data.player_id);
+                if (join_data.player_name[0] != '\0') {
+                    player_name = std::string(join_data.player_name);
+                }
+
                 if (player_join_callback_) {
-                    player_join_callback_(join_data.player_id);
+                    player_join_callback_(join_data.player_id, player_name);
+                } else {
+                    // Store for later when callback is set
+                    pending_players_.emplace_back(join_data.player_id, player_name);
                 }
             }
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing PlayerJoin packet: " << e.what() << std::endl;
+        }
+        break;
+    }
+    case rtype::net::MessageType::PlayerName: {
+        try {
+            auto name_data = serializer.deserialize_player_name(packet);
+            std::string name(name_data.player_name);
+            if (player_name_callback_) {
+                player_name_callback_(name_data.player_id, name);
+            } else {
+                // If no callback (lobby not entered yet?), update pending if exists?
+                // Or just ignore for now, Lobby fetches list anyway.
+                // But updating pending_players_ name is good.
+                for (auto& p : pending_players_) {
+                    if (p.first == name_data.player_id) {
+                        p.second = name;
+                    }
+                }
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error deserializing PlayerName packet: " << e.what() << std::endl;
         }
         break;
     }
@@ -438,16 +474,26 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             auto leave_data = serializer.deserialize_player_leave(packet);
             std::cout << "Player " << leave_data.player_id << " has left the game." << std::endl;
 
-            std::lock_guard<std::mutex> lock(registry_mutex_);
-            auto view = registry_.view<rtype::ecs::component::NetworkId>();
-            for (auto entity : view) {
-                auto& net_id =
-                    registry_.getComponent<rtype::ecs::component::NetworkId>(static_cast<GameEngine::entity_t>(entity));
-                if (net_id.id == leave_data.player_id) {
-                    registry_.destroyEntity(static_cast<GameEngine::entity_t>(entity));
-                    std::cout << "Removed entity for player " << leave_data.player_id << std::endl;
-                    break;
+            // Find entity to destroy FIRST, then destroy AFTER iteration
+            GameEngine::entity_t entity_to_destroy = static_cast<GameEngine::entity_t>(-1);
+            {
+                std::lock_guard<std::mutex> lock(registry_mutex_);
+                auto view = registry_.view<rtype::ecs::component::NetworkId>();
+                for (auto entity : view) {
+                    auto& net_id = registry_.getComponent<rtype::ecs::component::NetworkId>(
+                        static_cast<GameEngine::entity_t>(entity));
+                    if (net_id.id == leave_data.player_id) {
+                        entity_to_destroy = static_cast<GameEngine::entity_t>(entity);
+                        break;
+                    }
                 }
+            }
+
+            // Destroy outside iteration to prevent iterator invalidation crash
+            if (entity_to_destroy != static_cast<GameEngine::entity_t>(-1)) {
+                std::lock_guard<std::mutex> lock(registry_mutex_);
+                registry_.destroyEntity(entity_to_destroy);
+                std::cout << "Removed entity for player " << leave_data.player_id << std::endl;
             }
         } catch (const std::exception& e) {
             std::cerr << "Error handling PlayerLeave: " << e.what() << std::endl;
@@ -461,6 +507,19 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             (void)pong_data;
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing Pong packet: " << e.what() << std::endl;
+        }
+        break;
+    }
+    case rtype::net::MessageType::ChatMessage: {
+        try {
+            auto chat_data = serializer.deserialize_chat_message(packet);
+            std::string sender_name(chat_data.player_name);
+            std::string message(chat_data.message);
+            if (chat_message_callback_) {
+                chat_message_callback_(chat_data.player_id, sender_name, message);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error deserializing ChatMessage packet: " << e.what() << std::endl;
         }
         break;
     }
@@ -539,13 +598,47 @@ void Client::send_game_start_request() {
     udp_client_->send(packet_data);
 }
 
-void Client::send_map_resize(float width, float height) {
+void Client::send_player_name_update(const std::string& name) {
     if (!connected_.load())
         return;
+    if (message_serializer_) {
+        // Send player name update
+        rtype::net::PlayerNameData name_data;
+        name_data.player_id = player_id_;
+        std::strncpy(name_data.player_name, name.c_str(), sizeof(name_data.player_name) - 1);
+        name_data.player_name[sizeof(name_data.player_name) - 1] = '\0';
+
+        auto packet = message_serializer_->serialize_player_name(name_data);
+        if (protocol_adapter_) {
+            auto bytes = protocol_adapter_->serialize(packet);
+            udp_client_->send(bytes);
+        }
+    }
+}
+
+std::string Client::get_player_name() const {
+    return player_name_;
+}
+
+uint32_t Client::get_player_id() const {
+    return player_id_;
+}
+
+void Client::set_player_name_callback(std::function<void(uint32_t, const std::string&)> callback) {
+    player_name_callback_ = callback;
+}
+
+void Client::set_chat_message_callback(std::function<void(uint32_t, const std::string&, const std::string&)> callback) {
+    chat_message_callback_ = callback;
+}
+
+void Client::send_chat_message(const std::string& message) {
+    if (!connected_.load() || message.empty())
+        return;
     rtype::net::MessageSerializer serializer;
-    rtype::net::MapResizeData resize_data(width, height);
-    rtype::net::Packet resize_packet = serializer.serialize_map_resize(resize_data);
-    std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(resize_packet);
+    rtype::net::ChatMessageData chat_data(player_id_, player_name_, message);
+    rtype::net::Packet chat_packet = serializer.serialize_chat_message(chat_data);
+    std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(chat_packet);
     udp_client_->send(packet_data);
 }
 

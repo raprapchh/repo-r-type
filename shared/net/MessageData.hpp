@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
+#include <string>
 #include "Protocol.hpp"
 
 namespace rtype::net {
@@ -39,11 +41,19 @@ struct PlayerShootData {
 
 struct PlayerJoinData {
     uint32_t player_id;
+    char player_name[17];
 
     PlayerJoinData() : player_id(0) {
+        memset(player_name, 0, sizeof(player_name));
     }
 
     explicit PlayerJoinData(uint32_t id) : player_id(id) {
+        memset(player_name, 0, sizeof(player_name));
+    }
+
+    PlayerJoinData(uint32_t id, const std::string& name) : player_id(id) {
+        memset(player_name, 0, sizeof(player_name));
+        strncpy(player_name, name.c_str(), 16);
     }
 };
 
@@ -54,6 +64,38 @@ struct PlayerLeaveData {
     }
 
     explicit PlayerLeaveData(uint32_t id) : player_id(id) {
+    }
+};
+
+struct PlayerNameData {
+    uint32_t player_id;
+    char player_name[17];
+
+    PlayerNameData() : player_id(0) {
+        memset(player_name, 0, sizeof(player_name));
+    }
+
+    PlayerNameData(uint32_t id, const std::string& name) : player_id(id) {
+        memset(player_name, 0, sizeof(player_name));
+        strncpy(player_name, name.c_str(), 16);
+    }
+};
+
+struct ChatMessageData {
+    uint32_t player_id;
+    char player_name[17];
+    char message[128];
+
+    ChatMessageData() : player_id(0) {
+        memset(player_name, 0, sizeof(player_name));
+        memset(message, 0, sizeof(message));
+    }
+
+    ChatMessageData(uint32_t id, const std::string& name, const std::string& msg) : player_id(id) {
+        memset(player_name, 0, sizeof(player_name));
+        memset(message, 0, sizeof(message));
+        strncpy(player_name, name.c_str(), 16);
+        strncpy(message, msg.c_str(), 127);
     }
 };
 
@@ -179,6 +221,7 @@ constexpr uint8_t LOBBY = 0;
 constexpr uint8_t PLAYING = 1;
 constexpr uint8_t PAUSED = 2;
 constexpr uint8_t GAME_OVER = 3;
+constexpr uint8_t BOSS_WARNING = 4;
 } // namespace GameState
 
 } // namespace rtype::net

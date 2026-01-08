@@ -6,6 +6,8 @@
 #include <iostream>
 #include <string>
 #include <memory>
+#include <ctime>
+#include <cstdlib>
 
 std::unique_ptr<rtype::server::Server> g_server;
 GameEngine::Registry g_registry;
@@ -21,6 +23,7 @@ void signal_handler(int signal) {
 }
 
 int main(int argc, char* argv[]) {
+    std::srand(std::time(nullptr));
     std::signal(SIGINT, signal_handler);
 
     try {

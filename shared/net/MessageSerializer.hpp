@@ -58,6 +58,9 @@ class MessageSerializer : public IMessageSerializer {
     Packet serialize_player_join(const PlayerJoinData& data) override {
         Serializer serializer;
         serializer.write(data.player_id);
+        for (int i = 0; i < 17; ++i) {
+            serializer.write(static_cast<uint8_t>(data.player_name[i]));
+        }
         return Packet(static_cast<uint16_t>(MessageType::PlayerJoin), serializer.get_data());
     }
 
@@ -65,19 +68,55 @@ class MessageSerializer : public IMessageSerializer {
         Deserializer deserializer(packet.body);
         PlayerJoinData data;
         data.player_id = deserializer.read<uint32_t>();
+        for (int i = 0; i < 17; ++i) {
+            data.player_name[i] = static_cast<char>(deserializer.read<uint8_t>());
+        }
         return data;
     }
 
     Packet serialize_player_leave(const PlayerLeaveData& data) override {
+        Packet packet;
+        packet.header.message_type = static_cast<uint16_t>(MessageType::PlayerLeave);
+
         Serializer serializer;
         serializer.write(data.player_id);
-        return Packet(static_cast<uint16_t>(MessageType::PlayerLeave), serializer.get_data());
+
+        packet.body = serializer.get_data();
+        packet.header.payload_size = static_cast<uint32_t>(packet.body.size());
+
+        return packet;
     }
 
     PlayerLeaveData deserialize_player_leave(const Packet& packet) override {
-        Deserializer deserializer(packet.body);
         PlayerLeaveData data;
+        Deserializer deserializer(packet.body);
         data.player_id = deserializer.read<uint32_t>();
+        return data;
+    }
+
+    Packet serialize_player_name(const PlayerNameData& data) override {
+        Packet packet;
+        packet.header.message_type = static_cast<uint16_t>(MessageType::PlayerName);
+
+        Serializer serializer;
+        serializer.write(data.player_id);
+        for (int i = 0; i < 17; ++i) {
+            serializer.write(static_cast<uint8_t>(data.player_name[i]));
+        }
+
+        packet.body = serializer.get_data();
+        packet.header.payload_size = static_cast<uint32_t>(packet.body.size());
+
+        return packet;
+    }
+
+    PlayerNameData deserialize_player_name(const Packet& packet) override {
+        PlayerNameData data;
+        Deserializer deserializer(packet.body);
+        data.player_id = deserializer.read<uint32_t>();
+        for (int i = 0; i < 17; ++i) {
+            data.player_name[i] = static_cast<char>(deserializer.read<uint8_t>());
+        }
         return data;
     }
 
@@ -221,6 +260,31 @@ class MessageSerializer : public IMessageSerializer {
         MapResizeData data;
         data.width = deserializer.read<float>();
         data.height = deserializer.read<float>();
+        return data;
+    }
+
+    Packet serialize_chat_message(const ChatMessageData& data) override {
+        Serializer serializer;
+        serializer.write(data.player_id);
+        for (int i = 0; i < 17; ++i) {
+            serializer.write(static_cast<uint8_t>(data.player_name[i]));
+        }
+        for (int i = 0; i < 128; ++i) {
+            serializer.write(static_cast<uint8_t>(data.message[i]));
+        }
+        return Packet(static_cast<uint16_t>(MessageType::ChatMessage), serializer.get_data());
+    }
+
+    ChatMessageData deserialize_chat_message(const Packet& packet) override {
+        Deserializer deserializer(packet.body);
+        ChatMessageData data;
+        data.player_id = deserializer.read<uint32_t>();
+        for (int i = 0; i < 17; ++i) {
+            data.player_name[i] = static_cast<char>(deserializer.read<uint8_t>());
+        }
+        for (int i = 0; i < 128; ++i) {
+            data.message[i] = static_cast<char>(deserializer.read<uint8_t>());
+        }
         return data;
     }
 };

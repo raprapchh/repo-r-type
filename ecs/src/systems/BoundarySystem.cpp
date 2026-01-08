@@ -70,11 +70,17 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
         }
 
         float buffer = 2000.0f;
+        float rightBuffer = 2000.0f;
+
         if (registry.hasComponent<component::Projectile>(static_cast<std::size_t>(entity))) {
             buffer = 20.0f;
+            rightBuffer = 20.0f;
+        } else {
+            // Allow level entities to spawn far to the right
+            rightBuffer = 1000000.0f;
         }
 
-        if (pos.x + width < minX - buffer || pos.x > maxX + buffer || pos.y + height < minY - buffer ||
+        if (pos.x + width < minX - buffer || pos.x > maxX + rightBuffer || pos.y + height < minY - buffer ||
             pos.y > maxY + buffer) {
             entities_to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
         }
