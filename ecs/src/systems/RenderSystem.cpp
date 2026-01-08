@@ -22,8 +22,6 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
         return;
     }
 
-    renderer_->clear();
-
     auto view = registry.view<component::Position, component::Drawable>();
     std::vector<GameEngine::entity_t> explosions_to_destroy;
 
@@ -139,8 +137,6 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
 
         renderer_->draw_sprite(render_data);
     }
-
-    renderer_->display();
 
     // Cleanup finished explosions
     for (auto explosion_entity : explosions_to_destroy) {
