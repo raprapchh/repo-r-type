@@ -13,6 +13,9 @@ void ScoreSystem::update(GameEngine::Registry& registry, double dt) {
         auto& score = view.get<component::Score>(entity);
         const auto& event = view.get<component::ScoreEvent>(entity);
 
+        std::cout << "[ScoreSystem] Adding " << event.points << " points to entity " << static_cast<std::size_t>(entity)
+                  << std::endl;
+
         score.value += event.points;
 
         Logger::instance().info("Score updated for entity " + std::to_string(static_cast<std::size_t>(entity)) + ": " +

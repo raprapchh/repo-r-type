@@ -11,6 +11,7 @@
 #include "../../ecs/include/components/CollisionLayer.hpp"
 #include "../../ecs/include/components/Lives.hpp"
 #include "../../ecs/include/components/Health.hpp"
+#include "../../ecs/include/components/Score.hpp"
 #include "../../ecs/include/components/Tag.hpp"
 #include "../../ecs/include/components/NetworkInterpolation.hpp"
 #include <iostream>
@@ -28,6 +29,9 @@ Client::Client(const std::string& host, uint16_t port, Renderer& renderer)
         [this](const asio::error_code& error, std::size_t bytes_transferred, const std::vector<uint8_t>& data) {
             handle_udp_receive(error, bytes_transferred, data);
         });
+
+    // Load scoreboard from disk
+    scoreboard_manager_.load();
 }
 
 void Client::set_game_start_callback(std::function<void()> callback) {
@@ -164,6 +168,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
                 registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
                 registry_.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
+                registry_.addComponent<rtype::ecs::component::Score>(entity, 0);
                 registry_.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, 100.0f, 100.0f, 0.0f, 0.0f);
                 drawable.animation_sequences["idle"] = {2};
                 drawable.animation_sequences["up"] = {2, 3, 4};
@@ -302,6 +307,12 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                             auto& lives = registry_.getComponent<rtype::ecs::component::Lives>(
                                 static_cast<GameEngine::entity_t>(entity));
                             lives.remaining = game_state_data.lives;
+                        }
+                        if (registry_.hasComponent<rtype::ecs::component::Score>(
+                                static_cast<GameEngine::entity_t>(entity))) {
+                            auto& score = registry_.getComponent<rtype::ecs::component::Score>(
+                                static_cast<GameEngine::entity_t>(entity));
+                            score.value = game_state_data.score;
                         }
                         break;
                     }
@@ -601,6 +612,10 @@ void Client::send_game_start_request() {
 void Client::send_player_name_update(const std::string& name) {
     if (!connected_.load())
         return;
+
+    // Update local player name
+    player_name_ = name;
+
     if (message_serializer_) {
         // Send player name update
         rtype::net::PlayerNameData name_data;

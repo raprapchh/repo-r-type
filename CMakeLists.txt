@@ -51,8 +51,14 @@ target_include_directories(rtype_ecs PUBLIC ${CMAKE_SOURCE_DIR}/ecs/include)
 target_link_libraries(rtype_ecs PUBLIC sfml-graphics sfml-window sfml-system sfml-audio)
 
 # 2. Shared Library
-add_library(rtype_shared INTERFACE)
-target_include_directories(rtype_shared INTERFACE ${CMAKE_SOURCE_DIR}/shared)
+file(GLOB_RECURSE SHARED_SRC ${CMAKE_SOURCE_DIR}/shared/*.cpp)
+if(SHARED_SRC)
+    add_library(rtype_shared ${SHARED_SRC})
+    target_include_directories(rtype_shared PUBLIC ${CMAKE_SOURCE_DIR}/shared)
+else()
+    add_library(rtype_shared INTERFACE)
+    target_include_directories(rtype_shared INTERFACE ${CMAKE_SOURCE_DIR}/shared)
+endif()
 
 # --- EXECUTABLES ---
 

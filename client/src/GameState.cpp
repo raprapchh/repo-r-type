@@ -1,5 +1,6 @@
 #include "../include/GameState.hpp"
 #include "../include/MenuState.hpp"
+#include "../include/SFMLRenderer.hpp"
 #include "../../ecs/include/systems/InputSystem.hpp"
 #include "../../ecs/include/systems/RenderSystem.hpp"
 #include "../../ecs/include/systems/MovementSystem.hpp"
@@ -7,9 +8,11 @@
 #include "../../ecs/include/systems/BoundarySystem.hpp"
 #include "../../ecs/include/components/MapBounds.hpp"
 #include "../../ecs/include/components/NetworkId.hpp"
+#include "../../ecs/include/components/Tag.hpp"
 #include "../../ecs/include/components/Lives.hpp"
 #include "../../ecs/include/components/Health.hpp"
 #include "../../ecs/include/components/Weapon.hpp"
+#include "../../ecs/include/components/Score.hpp"
 #include <thread>
 #include <chrono>
 
@@ -22,11 +25,29 @@ GameState::GameState() {
 void GameState::on_enter(Renderer& renderer, Client& client) {
     (void)renderer;
     client_ = &client;
+    score_saved_ = false;
+    initial_player_count_ = 0;
+    max_score_reached_ = 0;
     if (!client.is_connected()) {
         client.connect();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
     client.send_game_start_request();
+
+    // Wait a bit for players to load and count them
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    GameEngine::Registry& registry = client_->get_registry();
+    std::mutex& registry_mutex = client_->get_registry_mutex();
+    std::lock_guard<std::mutex> lock(registry_mutex);
+    auto view = registry.view<rtype::ecs::component::Tag>();
+    for (auto entity : view) {
+        auto& tag = registry.getComponent<rtype::ecs::component::Tag>(static_cast<GameEngine::entity_t>(entity));
+        if (tag.name == "Player") {
+            initial_player_count_++;
+        }
+    }
+
+    std::cout << "GameState: Counted " << initial_player_count_ << " player(s) in game" << std::endl;
 }
 
 void GameState::on_exit(Renderer& renderer, Client& client) {
@@ -141,6 +162,7 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                     }
                     game_over_ = false;
                     all_players_dead_ = false;
+                    score_saved_ = false;
                     state_manager.change_state(std::make_unique<MenuState>());
                 }
             }
@@ -187,6 +209,13 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
                 registry.getComponent<rtype::ecs::component::NetworkId>(static_cast<GameEngine::entity_t>(entity));
             if (net_id.id == player_id) {
                 player_exists = true;
+                if (registry.hasComponent<rtype::ecs::component::Score>(static_cast<GameEngine::entity_t>(entity))) {
+                    auto& score =
+                        registry.getComponent<rtype::ecs::component::Score>(static_cast<GameEngine::entity_t>(entity));
+                    if (static_cast<uint32_t>(score.value) > max_score_reached_) {
+                        max_score_reached_ = static_cast<uint32_t>(score.value);
+                    }
+                }
                 if (registry.hasComponent<rtype::ecs::component::Lives>(static_cast<GameEngine::entity_t>(entity))) {
                     auto& lives =
                         registry.getComponent<rtype::ecs::component::Lives>(static_cast<GameEngine::entity_t>(entity));
@@ -208,6 +237,27 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
         if (!player_exists || player_dead) {
             if (!game_over_) {
                 game_over_ = true;
+
+                // Save score when player dies (only once)
+                if (!score_saved_) {
+                    score_saved_ = true;
+                    uint32_t final_score = max_score_reached_;
+                    std::string player_name = client.get_player_name();
+                    if (player_name.empty() || player_name == "Player") {
+                        player_name = "Player" + std::to_string(client.get_player_id());
+                    }
+
+                    std::cout << "Saving score: " << final_score << " for player '" << player_name << "' ("
+                              << initial_player_count_ << " player(s) detected)" << std::endl;
+
+                    if (initial_player_count_ <= 1) {
+                        std::cout << "-> Solo mode" << std::endl;
+                        client.get_scoreboard_manager().add_solo_score(player_name, final_score);
+                    } else {
+                        std::cout << "-> Multi mode" << std::endl;
+                        client.get_scoreboard_manager().add_multi_score(player_name, final_score);
+                    }
+                }
 
                 auto player_view = registry.view<rtype::ecs::component::NetworkId>();
                 for (auto entity : player_view) {
@@ -328,8 +378,10 @@ void GameState::render(Renderer& renderer, Client& client) {
         GameEngine::Registry& registry = client.get_registry();
         std::mutex& registry_mutex = client.get_registry_mutex();
         std::lock_guard<std::mutex> lock(registry_mutex);
-        rtype::ecs::RenderSystem render_system(*renderer.get_window(), renderer.get_textures(),
-                                               &renderer.get_accessibility_manager());
+
+        auto sfml_renderer =
+            std::make_shared<rtype::rendering::SFMLRenderer>(*renderer.get_window(), renderer.get_textures());
+        rtype::ecs::RenderSystem render_system(sfml_renderer, &renderer.get_accessibility_manager());
         render_system.update(registry, 0.016f);
 
         if (is_charging_) {

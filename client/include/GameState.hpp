@@ -29,6 +29,9 @@ class GameState : public IState {
     Client* client_ = nullptr;
     bool game_over_ = false;
     bool all_players_dead_ = false;
+    bool score_saved_ = false;
+    int initial_player_count_ = 0;
+    uint32_t max_score_reached_ = 0;
     bool is_charging_ = false;
     std::chrono::steady_clock::time_point charge_start_time_;
 
