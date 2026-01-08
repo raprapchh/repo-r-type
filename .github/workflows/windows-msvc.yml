@@ -1,0 +1,75 @@
+name: Windows MSVC Build
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup vcpkg
+      run: |
+        if (!(Test-Path "vcpkg")) {
+          git clone https://github.com/microsoft/vcpkg.git
+          ./vcpkg/bootstrap-vcpkg.bat
+        }
+      shell: pwsh
+
+    - name: Configure CMake
+      run: |
+        cmake -S . -B build `
+          -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake `
+          -DVCPKG_TARGET_TRIPLET=x64-windows `
+          -DCMAKE_BUILD_TYPE=Release
+      shell: pwsh
+
+    - name: Build
+      run: cmake --build build --config Release
+      shell: pwsh
+
+    - name: Prepare Artifacts
+      run: |
+        mkdir dist
+        cp bin/windows/r-type_client.exe dist/
+        cp bin/windows/r-type_server.exe dist/
+        # Copy assets for the installer/artifact
+        mkdir dist/client
+        cp -r client/assets dist/client/
+        cp -r client/fonts dist/client/
+        cp -r client/sprites dist/client/
+        mkdir dist/server
+        cp -r server/assets dist/server/
+        mkdir dist/config
+        cp -r config/* dist/config/
+      shell: pwsh
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: r-type-windows-binaries
+        path: dist/
+
+    - name: Build Installer (NSIS)
+      run: |
+        makensis /DVERSION=${{ github.ref_name }} installer/installer.nsi
+      shell: pwsh
+
+    - name: Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          R-Type-Installer.exe
+          bin/windows/r-type_client.exe
+          bin/windows/r-type_server.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
