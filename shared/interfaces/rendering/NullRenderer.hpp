@@ -7,11 +7,11 @@ namespace rtype::rendering {
 /**
  * @class NullRenderer
  * @brief No-operation renderer for headless mode
- * 
+ *
  * This renderer is used when the ECS engine runs without any graphics output.
  * It implements all IRenderer methods as no-ops, allowing the core engine to function
  * independently of any rendering backend.
- * 
+ *
  * Useful for:
  * - Server-side physics/logic simulation
  * - Automated testing
@@ -32,12 +32,14 @@ class NullRenderer : public IRenderer {
     /**
      * @brief No-op clear implementation
      */
-    void clear() override {}
+    void clear() override {
+    }
 
     /**
      * @brief No-op display implementation
      */
-    void display() override {}
+    void display() override {
+    }
 
     /**
      * @brief Always returns false to indicate no rendering is available
@@ -49,8 +51,7 @@ class NullRenderer : public IRenderer {
     /**
      * @brief No-op texture size query - always returns false
      */
-    bool get_texture_size(const std::string& texture_name, uint32_t& out_width,
-                         uint32_t& out_height) const override {
+    bool get_texture_size(const std::string& texture_name, uint32_t& out_width, uint32_t& out_height) const override {
         (void)texture_name;
         (void)out_width;
         (void)out_height;

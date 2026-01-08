@@ -11,7 +11,7 @@ namespace rtype::rendering {
 /**
  * @class SFMLRenderer
  * @brief SFML-based implementation of IRenderer
- * 
+ *
  * Encapsulates all SFML-specific rendering logic, isolating it from the core ECS engine.
  * This allows the engine to remain headless-capable while providing concrete SFML rendering.
  */
@@ -23,7 +23,7 @@ class SFMLRenderer : public IRenderer {
      * @param textures Reference to loaded textures map
      */
     SFMLRenderer(sf::RenderWindow& window, std::unordered_map<std::string, sf::Texture>& textures);
-    
+
     ~SFMLRenderer() override = default;
 
     /**
@@ -55,8 +55,7 @@ class SFMLRenderer : public IRenderer {
      * @param out_height Output height
      * @return true if texture exists, false otherwise
      */
-    bool get_texture_size(const std::string& texture_name, uint32_t& out_width, 
-                         uint32_t& out_height) const override;
+    bool get_texture_size(const std::string& texture_name, uint32_t& out_width, uint32_t& out_height) const override;
 
   private:
     /**
@@ -66,8 +65,7 @@ class SFMLRenderer : public IRenderer {
      * @param texture_height Height of the texture
      * @return An SFML IntRect for the texture coordinates
      */
-    sf::IntRect calculate_texture_rect(const RenderData& data, uint32_t texture_width, 
-                                      uint32_t texture_height) const;
+    sf::IntRect calculate_texture_rect(const RenderData& data, uint32_t texture_width, uint32_t texture_height) const;
 
     sf::RenderWindow& window_;
     std::unordered_map<std::string, sf::Texture>& textures_;

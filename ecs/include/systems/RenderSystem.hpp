@@ -28,9 +28,9 @@ class RenderSystem : public ISystem {
      */
     explicit RenderSystem(std::shared_ptr<rtype::rendering::IRenderer> renderer = nullptr,
                           rtype::client::AccessibilityManager* accessibility_mgr = nullptr);
-    
+
     ~RenderSystem() override = default;
-    
+
     /**
      * @brief Update the render system
      * Iterates over entities with Position and Drawable components and renders them.

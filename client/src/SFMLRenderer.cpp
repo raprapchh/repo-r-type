@@ -3,8 +3,7 @@
 
 namespace rtype::rendering {
 
-SFMLRenderer::SFMLRenderer(sf::RenderWindow& window, 
-                          std::unordered_map<std::string, sf::Texture>& textures)
+SFMLRenderer::SFMLRenderer(sf::RenderWindow& window, std::unordered_map<std::string, sf::Texture>& textures)
     : window_(window), textures_(textures) {
 }
 
@@ -18,7 +17,7 @@ void SFMLRenderer::draw_sprite(const RenderData& data) {
     uint32_t texture_height = texture.getSize().y;
 
     sf::IntRect texture_rect = calculate_texture_rect(data, texture_width, texture_height);
-    
+
     sf::Sprite sprite(texture, texture_rect);
     sprite.setPosition(data.x, data.y);
     sprite.setScale(data.scale_x, data.scale_y);
@@ -39,8 +38,7 @@ bool SFMLRenderer::is_open() const {
     return window_.isOpen();
 }
 
-bool SFMLRenderer::get_texture_size(const std::string& texture_name, uint32_t& out_width, 
-                                     uint32_t& out_height) const {
+bool SFMLRenderer::get_texture_size(const std::string& texture_name, uint32_t& out_width, uint32_t& out_height) const {
     auto it = textures_.find(texture_name);
     if (it == textures_.end()) {
         return false;
@@ -79,8 +77,7 @@ sf::IntRect SFMLRenderer::calculate_texture_rect(const RenderData& data, uint32_
             }
         }
 
-        return sf::IntRect(data.rect_x + (data.current_sprite * data.rect_width),
-                          data.rect_y, rect_width, rect_height);
+        return sf::IntRect(data.rect_x + (data.current_sprite * data.rect_width), data.rect_y, rect_width, rect_height);
     }
 
     // Special case for obstacle texture
