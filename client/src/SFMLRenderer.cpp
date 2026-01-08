@@ -52,7 +52,6 @@ bool SFMLRenderer::get_texture_size(const std::string& texture_name, uint32_t& o
 
 sf::IntRect SFMLRenderer::calculate_texture_rect(const RenderData& data, uint32_t texture_width,
                                                  uint32_t texture_height) const {
-    // Handle specific entity types with known layouts
     if (data.texture_name == "player_ships") {
         const uint32_t columns = 5;
         const uint32_t rows = 5;
@@ -63,12 +62,10 @@ sf::IntRect SFMLRenderer::calculate_texture_rect(const RenderData& data, uint32_
         return sf::IntRect(col * sprite_width, row * sprite_height, sprite_width, sprite_height);
     }
 
-    // Handle custom rectangle coordinates
     if (data.rect_width > 0 && data.rect_height > 0) {
         int rect_width = data.rect_width;
         int rect_height = data.rect_height;
 
-        // Handle last frame of explosion sprite sheets
         if (static_cast<int>(data.current_sprite) == static_cast<int>(data.frame_count) - 1) {
             int calculated_pos = data.rect_x + (static_cast<int>(data.current_sprite) * data.rect_width);
             int remaining_width = static_cast<int>(texture_width) - calculated_pos;
@@ -80,16 +77,14 @@ sf::IntRect SFMLRenderer::calculate_texture_rect(const RenderData& data, uint32_
         return sf::IntRect(data.rect_x + (data.current_sprite * data.rect_width), data.rect_y, rect_width, rect_height);
     }
 
-    // Special case for obstacle texture
     if (data.texture_name == "obstacle_1") {
         return sf::IntRect(0, 1, texture_width, texture_height - 1);
     }
 
-    // Default: divide texture horizontally for animation frames
     uint32_t frame_count = (data.frame_count > 0) ? data.frame_count : 1;
     uint32_t sprite_width = texture_width / frame_count;
     uint32_t sprite_height = texture_height;
     return sf::IntRect(data.current_sprite * sprite_width, 0, sprite_width, sprite_height);
 }
 
-} // namespace rtype::rendering
+}

@@ -26,7 +26,7 @@ class NullRenderer : public IRenderer {
      * @brief No-op draw_sprite implementation
      */
     void draw_sprite(const RenderData& data) override {
-        (void)data; // Suppress unused parameter warning
+        (void)data;
     }
 
     /**
@@ -59,4 +59,4 @@ class NullRenderer : public IRenderer {
     }
 };
 
-} // namespace rtype::rendering
+}

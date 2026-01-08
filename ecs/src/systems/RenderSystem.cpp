@@ -17,7 +17,6 @@ RenderSystem::RenderSystem(std::shared_ptr<rtype::rendering::IRenderer> renderer
 }
 
 void RenderSystem::update(GameEngine::Registry& registry, double dt) {
-    // If no renderer is available, system operates in headless mode (no-op)
     if (!renderer_ || !renderer_->is_open()) {
         return;
     }
@@ -30,7 +29,6 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
         auto& pos = registry.getComponent<component::Position>(static_cast<size_t>(entity));
         auto& drawable = registry.getComponent<component::Drawable>(static_cast<size_t>(entity));
 
-        // Check if texture exists
         uint32_t texture_width = 0, texture_height = 0;
         if (!renderer_->get_texture_size(drawable.texture_name, texture_width, texture_height)) {
             continue;
@@ -38,7 +36,6 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
 
         bool is_explosion = registry.hasComponent<component::Explosion>(entity_id);
 
-        // Handle animation state updates
         if (!drawable.current_state.empty() && drawable.animation_sequences.count(drawable.current_state)) {
             const auto& sequence = drawable.animation_sequences.at(drawable.current_state);
             if (!sequence.empty()) {
@@ -93,7 +90,6 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
             }
         }
 
-        // Determine texture rectangle coordinates
         rtype::rendering::RenderData render_data;
         render_data.x = pos.x;
         render_data.y = pos.y;
@@ -109,7 +105,6 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
         render_data.rect_height = drawable.rect_height;
         render_data.visible = true;
 
-        // Handle accessibility color overlay
         if (accessibility_manager_) {
             uint16_t entity_type = rtype::net::EntityType::ENEMY;
 
@@ -138,7 +133,6 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
         renderer_->draw_sprite(render_data);
     }
 
-    // Cleanup finished explosions
     for (auto explosion_entity : explosions_to_destroy) {
         registry.destroyEntity(explosion_entity);
     }
@@ -152,4 +146,4 @@ std::shared_ptr<rtype::rendering::IRenderer> RenderSystem::get_renderer() const 
     return renderer_;
 }
 
-} // namespace rtype::ecs
+}
