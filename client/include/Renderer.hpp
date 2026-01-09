@@ -21,6 +21,7 @@ struct Entity {
     float animation_timer = 0.0f;
     int player_state = 0;
     uint16_t sub_type = 0;
+    float hit_flash_timer = 0.0f; // Timer for hit flash effect
 };
 
 class Renderer {
@@ -118,8 +119,17 @@ class Renderer {
     float charge_particle_timer_ = 0.0f;
     AccessibilityManager accessibility_manager_;
 
+    bool stage_cleared_ = false;
+    uint8_t cleared_stage_number_ = 1;
+    float stage_cleared_timer_ = 0.0f;
+
   public:
     void draw_charge_effect(const sf::Vector2f& position, float delta_time);
+    void show_stage_cleared(uint8_t stage_number);
+    void draw_stage_cleared();
+    bool is_stage_cleared() const {
+        return stage_cleared_;
+    }
 };
 
 } // namespace rtype::client

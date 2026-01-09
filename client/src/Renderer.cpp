@@ -145,6 +145,14 @@ void Renderer::update_animations(float delta_time) {
                 entity.animation_frame = (entity.animation_frame + 1) % 2;
             }
         }
+
+        // Decrement hit flash timer
+        if (entity.hit_flash_timer > 0.0f) {
+            entity.hit_flash_timer -= delta_time;
+            if (entity.hit_flash_timer < 0.0f) {
+                entity.hit_flash_timer = 0.0f;
+            }
+        }
     }
 }
 
@@ -164,9 +172,15 @@ void Renderer::draw_entities() {
         logged = false;
     }
 
-    for (const auto& pair : entities_) {
+    for (auto& pair : entities_) {
         sf::Sprite sprite = create_sprite(pair.second);
         sf::Color color = accessibility_manager_.get_entity_color(pair.second.type);
+
+        // Apply hit flash effect (white overlay when recently damaged)
+        if (pair.second.hit_flash_timer > 0.0f) {
+            color = sf::Color::White;
+        }
+
         sprite.setColor(color);
         window_->draw(sprite);
     }
@@ -457,6 +471,7 @@ void Renderer::render_frame() {
     draw_background();
     draw_entities();
     draw_ui();
+    draw_stage_cleared(); // Victory screen overlay
     display();
 }
 
@@ -576,6 +591,51 @@ void Renderer::handle_resize(uint32_t width, uint32_t height) {
 
 bool Renderer::is_game_over_back_to_menu_clicked(const sf::Vector2f& mouse_pos) const {
     return back_to_menu_button_.getGlobalBounds().contains(mouse_pos);
+}
+
+void Renderer::show_stage_cleared(uint8_t stage_number) {
+    stage_cleared_ = true;
+    cleared_stage_number_ = stage_number;
+    stage_cleared_timer_ = 5.0f; // Display for 5 seconds
+}
+
+void Renderer::draw_stage_cleared() {
+    if (!stage_cleared_)
+        return;
+
+    // Semi-transparent overlay
+    sf::RectangleShape overlay;
+    overlay.setSize(sf::Vector2f(rtype::constants::SCREEN_WIDTH, rtype::constants::SCREEN_HEIGHT));
+    overlay.setPosition(0, 0);
+    overlay.setFillColor(sf::Color(0, 50, 0, 180)); // Green tint
+    window_->draw(overlay);
+
+    // Victory title
+    sf::Text title_text;
+    title_text.setFont(font_);
+    title_text.setCharacterSize(64);
+    title_text.setFillColor(sf::Color::Yellow);
+    title_text.setOutlineColor(sf::Color::Black);
+    title_text.setOutlineThickness(3);
+    title_text.setString("STAGE " + std::to_string(cleared_stage_number_) + " - CLEARED!");
+
+    // Center text
+    sf::FloatRect textBounds = title_text.getLocalBounds();
+    title_text.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
+    title_text.setPosition(rtype::constants::SCREEN_WIDTH / 2.0f, rtype::constants::SCREEN_HEIGHT / 2.0f - 50.0f);
+    window_->draw(title_text);
+
+    // Victory message
+    sf::Text victory_text;
+    victory_text.setFont(font_);
+    victory_text.setCharacterSize(32);
+    victory_text.setFillColor(sf::Color::White);
+    victory_text.setString("CONGRATULATIONS!");
+    sf::FloatRect victoryBounds = victory_text.getLocalBounds();
+    victory_text.setOrigin(victoryBounds.left + victoryBounds.width / 2.0f,
+                           victoryBounds.top + victoryBounds.height / 2.0f);
+    victory_text.setPosition(rtype::constants::SCREEN_WIDTH / 2.0f, rtype::constants::SCREEN_HEIGHT / 2.0f + 50.0f);
+    window_->draw(victory_text);
 }
 
 } // namespace rtype::client

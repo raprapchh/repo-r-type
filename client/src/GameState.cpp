@@ -401,6 +401,9 @@ void GameState::render(Renderer& renderer, Client& client) {
 
     renderer.draw_ui();
 
+    // Stage cleared victory screen
+    renderer.draw_stage_cleared();
+
     if (game_over_) {
         renderer.draw_game_over(all_players_dead_);
     }

@@ -152,6 +152,7 @@ class MessageSerializer : public IMessageSerializer {
         serializer.write(data.position_y);
         serializer.write(data.velocity_x);
         serializer.write(data.velocity_y);
+        serializer.write(data.flags);
         return Packet(static_cast<uint16_t>(MessageType::EntityMove), serializer.get_data());
     }
 
@@ -163,6 +164,7 @@ class MessageSerializer : public IMessageSerializer {
         data.position_y = deserializer.read<float>();
         data.velocity_x = deserializer.read<float>();
         data.velocity_y = deserializer.read<float>();
+        data.flags = deserializer.read<uint8_t>();
         return data;
     }
 

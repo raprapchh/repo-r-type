@@ -47,14 +47,17 @@ Server::Server(GameEngine::Registry& registry, uint16_t port)
     message_serializer_ = std::make_unique<rtype::net::MessageSerializer>();
     broadcast_system_ =
         std::make_unique<BroadcastSystem>(registry_, *udp_server_, *protocol_adapter_, *message_serializer_);
+    system_manager_.addSystem<rtype::ecs::SpawnSystem>();
     system_manager_.addSystem<rtype::ecs::MovementSystem>();
     system_manager_.addSystem<rtype::ecs::MobSystem>();
     system_manager_.addSystem<rtype::ecs::BoundarySystem>();
     system_manager_.addSystem<rtype::ecs::CollisionSystem>();
     system_manager_.addSystem<rtype::ecs::LivesSystem>();
+    system_manager_.addSystem<rtype::ecs::ForcePodSystem>();
     system_manager_.addSystem<rtype::ecs::WeaponSystem>();
     system_manager_.addSystem<rtype::ecs::ProjectileSystem>();
     system_manager_.addSystem<rtype::ecs::ScoreSystem>();
+    system_manager_.addSystem<rtype::ecs::SpawnEffectSystem>();
 }
 
 Server::~Server() {
@@ -245,39 +248,7 @@ void Server::game_loop() {
 
                 if (!game_over_.load()) {
                     std::lock_guard<std::mutex> registry_lock(registry_mutex_);
-
-                    rtype::ecs::SpawnSystem spawn_system;
-                    spawn_system.update(registry_, dt);
-
-                    rtype::ecs::MovementSystem movement_system;
-                    movement_system.update(registry_, dt);
-
-                    rtype::ecs::MobSystem mob_system;
-                    mob_system.update(registry_, dt);
-
-                    rtype::ecs::BoundarySystem boundary_system;
-                    boundary_system.update(registry_, dt);
-
-                    rtype::ecs::CollisionSystem collision_system;
-                    collision_system.update(registry_, dt);
-
-                    rtype::ecs::LivesSystem lives_system;
-                    lives_system.update(registry_, dt);
-
-                    rtype::ecs::ForcePodSystem forcepod_system;
-                    forcepod_system.update(registry_, dt);
-
-                    rtype::ecs::WeaponSystem weapon_system;
-                    weapon_system.update(registry_, dt);
-
-                    rtype::ecs::ProjectileSystem projectile_system;
-                    projectile_system.update(registry_, dt);
-
-                    rtype::ecs::ScoreSystem score_system;
-                    score_system.update(registry_, dt);
-
-                    rtype::ecs::SpawnEffectSystem spawneffect_system;
-                    spawneffect_system.update(registry_, dt);
+                    system_manager_.update(registry_, dt);
                 }
             }
 
