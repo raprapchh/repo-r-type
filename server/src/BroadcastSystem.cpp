@@ -113,6 +113,10 @@ void BroadcastSystem::broadcast_spawns(const std::map<std::string, ClientInfo>& 
                         sub_type = 4;
                     else if (tag.name == "Boss_1")
                         sub_type = 100;
+                    else if (tag.name == "Monster_Wave_2_Left")
+                        sub_type = 5;
+                    else if (tag.name == "Monster_Wave_2_Right")
+                        sub_type = 6;
                 } else if (type == rtype::net::EntityType::PROJECTILE) {
                     if (tag.name == "Monster_0_Ball")
                         sub_type = 1;
@@ -335,6 +339,12 @@ void BroadcastSystem::send_initial_state(const std::string& ip, uint16_t port) {
             } else if (tag.name == "Boss_1") {
                 type = rtype::net::EntityType::ENEMY;
                 sub_type = 100;
+            } else if (tag.name == "Monster_Wave_2_Left") {
+                type = rtype::net::EntityType::ENEMY;
+                sub_type = 5;
+            } else if (tag.name == "Monster_Wave_2_Right") {
+                type = rtype::net::EntityType::ENEMY;
+                sub_type = 6;
             } else if (tag.name == "Boss_1_Bayblade") {
                 type = rtype::net::EntityType::PROJECTILE;
                 sub_type = 20;
