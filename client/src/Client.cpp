@@ -59,13 +59,10 @@ Client::~Client() {
 
 void Client::connect() {
     asio::ip::udp::resolver resolver(*io_context_);
-    rtype::net::MessageSerializer serializer;
-    rtype::net::PlayerJoinData join_data(0, player_name_);
-    rtype::net::Packet join_packet = serializer.serialize_player_join(join_data);
-    std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(join_packet);
-
-    udp_client_->send(packet_data);
-    std::cout << "Connection request sent to " << host_ << ":" << port_ << std::endl;
+    
+    // Just start receiving - don't send PlayerJoin yet
+    // PlayerJoin will be sent when create_room() or join_room() is called
+    std::cout << "UDP connection initialized to " << host_ << ":" << port_ << std::endl;
 
     udp_client_->start_receive();
     run();
@@ -150,6 +147,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
         try {
             auto join_data = serializer.deserialize_player_join(packet);
             if (!connected_.load()) {
+                session_id_ = join_data.session_id;
                 player_id_ = join_data.player_id;
                 network_system_.set_player_id(player_id_);
                 std::lock_guard<std::mutex> lock(registry_mutex_);
@@ -185,7 +183,8 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 drawable.animation_frame = 0;
 
                 connected_ = true;
-                std::cout << "Successfully connected to server. My Player ID is " << player_id_ << std::endl;
+                std::cout << "Successfully connected to server. Room " << session_id_
+                          << " - My Player ID is " << player_id_ << std::endl;
             } else {
                 std::cout << "Player " << join_data.player_id << " has joined the game." << std::endl;
 
@@ -538,6 +537,19 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
         }
         break;
     }
+    case rtype::net::MessageType::RoomInfo: {
+        try {
+            auto room_data = serializer.deserialize_room_info(packet);
+            std::string room_name(room_data.room_name);
+            if (room_list_callback_) {
+                room_list_callback_(room_data.session_id, room_data.player_count, room_data.max_players,
+                                   room_data.status, room_name);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error deserializing RoomInfo packet: " << e.what() << std::endl;
+        }
+        break;
+    }
     case rtype::net::MessageType::StageCleared: {
         try {
             if (packet.body.size() >= sizeof(rtype::net::StageClearedData)) {
@@ -616,7 +628,7 @@ void Client::send_game_start_request() {
         return;
     rtype::net::MessageSerializer serializer;
     rtype::net::GameStartData start_data;
-    start_data.session_id = 1;
+    start_data.session_id = session_id_;
     start_data.level_id = 1;
     start_data.player_count = 0;
     start_data.difficulty = 1;
@@ -665,6 +677,45 @@ void Client::set_chat_message_callback(std::function<void(uint32_t, const std::s
     chat_message_callback_ = callback;
 }
 
+void Client::set_room_list_callback(std::function<void(uint32_t, uint8_t, uint8_t, uint8_t, const std::string&)> callback) {
+    room_list_callback_ = callback;
+}
+
+void Client::request_room_list() {
+    rtype::net::MessageSerializer serializer;
+    rtype::net::ListRoomsData list_data;
+    rtype::net::Packet list_packet = serializer.serialize_list_rooms(list_data);
+    std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(list_packet);
+    udp_client_->send(packet_data);
+}
+
+void Client::create_room(const std::string& room_name, uint8_t max_players) {
+    rtype::net::MessageSerializer serializer;
+    rtype::net::CreateRoomData create_data(room_name, max_players);
+    rtype::net::Packet create_packet = serializer.serialize_create_room(create_data);
+    std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(create_packet);
+    udp_client_->send(packet_data);
+    
+    // NOW send PlayerJoin after creating the room
+    rtype::net::PlayerJoinData join_data(session_id_, 0, player_name_);
+    rtype::net::Packet join_packet = serializer.serialize_player_join(join_data);
+    std::vector<uint8_t> join_packet_data = rtype::net::ProtocolAdapter().serialize(join_packet);
+    udp_client_->send(join_packet_data);
+    std::cout << "Create room and join request sent: " << room_name << std::endl;
+}
+
+void Client::join_room(uint32_t session_id) {
+    session_id_ = session_id;
+    
+    // Send PlayerJoin with the correct session_id
+    rtype::net::MessageSerializer serializer;
+    rtype::net::PlayerJoinData join_data(session_id_, 0, player_name_);
+    rtype::net::Packet join_packet = serializer.serialize_player_join(join_data);
+    std::vector<uint8_t> join_packet_data = rtype::net::ProtocolAdapter().serialize(join_packet);
+    udp_client_->send(join_packet_data);
+    std::cout << "Join room " << session_id << " request sent" << std::endl;
+}
+
 void Client::send_chat_message(const std::string& message) {
     if (!connected_.load() || message.empty())
         return;
@@ -673,6 +724,24 @@ void Client::send_chat_message(const std::string& message) {
     rtype::net::Packet chat_packet = serializer.serialize_chat_message(chat_data);
     std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(chat_packet);
     udp_client_->send(packet_data);
+}
+
+void Client::leave_room() {
+    if (!connected_.load())
+        return;
+
+    // Send PlayerLeave message
+    rtype::net::MessageSerializer serializer;
+    rtype::net::PlayerLeaveData leave_data(player_id_);
+    rtype::net::Packet leave_packet = serializer.serialize_player_leave(leave_data);
+    std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(leave_packet);
+    udp_client_->send(packet_data);
+    
+    // Reset session but stay connected to server
+    session_id_ = 0;
+    player_id_ = 0;
+    
+    std::cout << "Left current room" << std::endl;
 }
 
 void Client::send_heartbeat() {
