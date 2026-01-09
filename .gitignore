@@ -45,4 +45,5 @@ external/
 .cache/
 documentation/doxygen/
 
-saves/scoreboard.txt
+# Scoreboard
+client/saves/scoreboard.txt
