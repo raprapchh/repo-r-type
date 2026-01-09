@@ -48,11 +48,20 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
     }
 
     std::cout << "GameState: Counted " << initial_player_count_ << " player(s) in game" << std::endl;
+
+    // Start background music
+    client.get_audio_system().startBackgroundMusic();
 }
 
 void GameState::on_exit(Renderer& renderer, Client& client) {
     (void)renderer;
     (void)client;
+
+    // Stop background music
+    if (client_) {
+        client_->get_audio_system().stopBackgroundMusic();
+    }
+
     client_ = nullptr;
 }
 

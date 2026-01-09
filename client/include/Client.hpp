@@ -64,6 +64,10 @@ class Client {
         return scoreboard_manager_;
     }
 
+    rtype::ecs::AudioSystem& get_audio_system() {
+        return audio_system_;
+    }
+
   private:
     void receive_loop();
     void handle_udp_receive(const asio::error_code& error, std::size_t bytes_transferred,

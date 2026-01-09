@@ -10,6 +10,7 @@
 #include "../../ecs/include/components/Weapon.hpp"
 #include "../../ecs/include/components/Tag.hpp"
 #include "../../ecs/include/components/NetworkInterpolation.hpp"
+#include "../../ecs/include/components/AudioEvent.hpp"
 #include "../../ecs/include/components/HitFlash.hpp"
 #include <chrono>
 
@@ -387,6 +388,10 @@ void NetworkSystem::handle_destroy(GameEngine::Registry& registry, const rtype::
                         explosion_drawable.animation_sequences["explosion"] = {5, 4, 3, 2, 1, 0};
                         explosion_drawable.current_state = "explosion";
                         explosion_drawable.animation_frame = 5;
+
+                        // Add audio event for explosion
+                        registry.addComponent<rtype::ecs::component::AudioEvent>(
+                            explosion_entity, rtype::ecs::component::AudioEventType::EXPLOSION);
                     }
                     registry.destroyEntity(entity_id_ecs);
                     return;

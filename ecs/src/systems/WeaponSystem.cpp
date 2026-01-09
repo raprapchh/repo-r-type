@@ -8,6 +8,7 @@
 #include "../../include/components/Tag.hpp"
 #include "../../include/components/CollisionLayer.hpp"
 #include "../../include/components/ScreenMode.hpp"
+#include "../../include/components/AudioEvent.hpp"
 #include "../../shared/utils/GameConfig.hpp"
 #include <vector>
 #include "../../../shared/utils/Logger.hpp"
@@ -142,6 +143,15 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
         if (req.patternType != component::MovementPatternType::None) {
             registry.addComponent<component::MovementPattern>(projectile, req.patternType, 0.0f, req.patternAmplitude,
                                                               req.patternFrequency);
+        }
+
+        // Add audio event for shooting
+        bool is_player =
+            (req.layer == component::CollisionLayer::PlayerProjectile || req.tag.find("shot") != std::string::npos);
+        if (is_player) {
+            registry.addComponent<component::AudioEvent>(projectile, component::AudioEventType::PLAYER_SHOOT);
+        } else {
+            registry.addComponent<component::AudioEvent>(projectile, component::AudioEventType::ENEMY_SHOOT);
         }
     }
 }

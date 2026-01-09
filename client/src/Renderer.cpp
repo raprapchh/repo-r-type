@@ -285,8 +285,8 @@ void Renderer::draw_ui() {
     window_->draw(score_text_);
     window_->draw(lives_text_);
 
-    int level = game_state_.wave_number / 100;
-    int wave = game_state_.wave_number % 100;
+    // int level = game_state_.wave_number / 100;
+    // int wave = game_state_.wave_number % 100;
     // wave_text_.setString("Level " + std::to_string(level + 1) + " - Wave " + std::to_string(wave));
     // window_->draw(wave_text_);
 
