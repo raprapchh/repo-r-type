@@ -56,7 +56,7 @@ Client::~Client() {
 
 void Client::connect() {
     asio::ip::udp::resolver resolver(*io_context_);
-    
+
     std::cout << "UDP connection initialized to " << host_ << ":" << port_ << std::endl;
 
     udp_client_->start_receive();
@@ -178,8 +178,8 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 drawable.animation_frame = 0;
 
                 connected_ = true;
-                std::cout << "Successfully connected to server. Room " << session_id_
-                          << " - My Player ID is " << player_id_ << std::endl;
+                std::cout << "Successfully connected to server. Room " << session_id_ << " - My Player ID is "
+                          << player_id_ << std::endl;
             } else {
                 std::cout << "Player " << join_data.player_id << " has joined the game." << std::endl;
 
@@ -542,7 +542,7 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             }
             if (room_list_callback_) {
                 room_list_callback_(room_data.session_id, room_data.player_count, room_data.max_players,
-                                   room_data.status, room_name);
+                                    room_data.status, room_name);
             }
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing RoomInfo packet: " << e.what() << std::endl;
@@ -676,7 +676,8 @@ void Client::set_chat_message_callback(std::function<void(uint32_t, const std::s
     chat_message_callback_ = callback;
 }
 
-void Client::set_room_list_callback(std::function<void(uint32_t, uint8_t, uint8_t, uint8_t, const std::string&)> callback) {
+void Client::set_room_list_callback(
+    std::function<void(uint32_t, uint8_t, uint8_t, uint8_t, const std::string&)> callback) {
     room_list_callback_ = callback;
 }
 
@@ -701,7 +702,7 @@ void Client::create_room(const std::string& room_name, uint8_t max_players) {
 
 void Client::join_room(uint32_t session_id) {
     session_id_ = session_id;
-    
+
     // Send PlayerJoin with the correct session_id
     rtype::net::MessageSerializer serializer;
     rtype::net::PlayerJoinData join_data(session_id_, 0, player_name_);

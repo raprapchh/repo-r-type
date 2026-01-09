@@ -52,7 +52,7 @@ class Client {
     void set_game_start_callback(std::function<void()> callback);
 
     void set_session_id(uint32_t session_id) {
-      session_id_ = session_id;
+        session_id_ = session_id;
     }
 
     void send_game_start_request();
@@ -60,9 +60,9 @@ class Client {
     void send_chat_message(const std::string& message);
     void leave_room();
     void set_offline_ids(uint32_t session_id, uint32_t player_id) {
-      session_id_ = session_id;
-      player_id_ = player_id;
-      network_system_.set_player_id(player_id_);
+        session_id_ = session_id;
+        player_id_ = player_id;
+        network_system_.set_player_id(player_id_);
     }
 
     void set_chat_message_callback(std::function<void(uint32_t, const std::string&, const std::string&)> callback);

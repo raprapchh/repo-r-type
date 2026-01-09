@@ -256,7 +256,8 @@ struct RoomInfoData {
 
 struct ListRoomsData {
     uint8_t dummy; // Empty request
-    ListRoomsData() : dummy(0) {}
+    ListRoomsData() : dummy(0) {
+    }
 };
 
 struct CreateRoomData {
@@ -276,8 +277,10 @@ struct CreateRoomData {
 struct JoinRoomData {
     uint32_t session_id;
 
-    JoinRoomData() : session_id(0) {}
-    explicit JoinRoomData(uint32_t id) : session_id(id) {}
+    JoinRoomData() : session_id(0) {
+    }
+    explicit JoinRoomData(uint32_t id) : session_id(id) {
+    }
 };
 
 } // namespace rtype::net

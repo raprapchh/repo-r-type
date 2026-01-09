@@ -78,7 +78,8 @@ GameSession::GameSession(uint32_t session_id, UdpServer& udp_server, rtype::net:
     : session_id_(session_id), udp_server_(udp_server), protocol_adapter_(protocol_adapter),
       message_serializer_(message_serializer), next_player_id_(1), running_(false), game_started_(false),
       game_over_(false) {
-    broadcast_system_ = std::make_unique<BroadcastSystem>(registry_, udp_server_, protocol_adapter_, message_serializer_);
+    broadcast_system_ =
+        std::make_unique<BroadcastSystem>(registry_, udp_server_, protocol_adapter_, message_serializer_);
     system_manager_.addSystem<rtype::ecs::SpawnSystem>();
     system_manager_.addSystem<rtype::ecs::MovementSystem>();
     system_manager_.addSystem<rtype::ecs::MobSystem>();
@@ -163,8 +164,8 @@ bool GameSession::handle_player_join(const std::string& client_ip, uint16_t clie
         if (connected_count >= rtype::constants::MAX_PLAYERS) {
             Logger::instance().warn("Session full, rejecting " + client_ip + ":" + std::to_string(client_port));
             udp_server_.send(client_ip, client_port,
-                             protocol_adapter_.serialize(
-                                 message_serializer_.serialize_player_join(rtype::net::PlayerJoinData(session_id_, 0, ""))));
+                             protocol_adapter_.serialize(message_serializer_.serialize_player_join(
+                                 rtype::net::PlayerJoinData(session_id_, 0, ""))));
             return false;
         }
     }
@@ -176,13 +177,13 @@ bool GameSession::handle_player_join(const std::string& client_ip, uint16_t clie
         std::lock_guard<std::mutex> clients_lock(clients_mutex_);
         player_id = next_player_id_++;
         entity = create_player_entity(player_id, player_name);
-        clients_[client_key] = {client_ip, client_port, player_id, player_name, true, entity,
-                                std::chrono::steady_clock::now()};
+        clients_[client_key] = {
+            client_ip, client_port, player_id, player_name, true, entity, std::chrono::steady_clock::now()};
     }
 
     last_activity_ = std::chrono::steady_clock::now();
-    Logger::instance().info("Session " + std::to_string(session_id_) + " - player " + std::to_string(player_id) +
-                            " (" + player_name + ") joined from " + client_ip + ":" + std::to_string(client_port));
+    Logger::instance().info("Session " + std::to_string(session_id_) + " - player " + std::to_string(player_id) + " (" +
+                            player_name + ") joined from " + client_ip + ":" + std::to_string(client_port));
 
     auto response_data = protocol_adapter_.serialize(
         message_serializer_.serialize_player_join(rtype::net::PlayerJoinData(session_id_, player_id, player_name)));
@@ -231,9 +232,9 @@ void GameSession::handle_packet(const std::string& client_ip, uint16_t client_po
         break;
     case rtype::net::MessageType::Ping: {
         auto ping = message_serializer_.deserialize_ping_pong(packet);
-        udp_server_.send(client_ip, client_port,
-                         protocol_adapter_.serialize(
-                             message_serializer_.serialize_pong(rtype::net::PingPongData(ping.timestamp))));
+        udp_server_.send(
+            client_ip, client_port,
+            protocol_adapter_.serialize(message_serializer_.serialize_pong(rtype::net::PingPongData(ping.timestamp))));
     } break;
     case rtype::net::MessageType::GameStart:
         handle_game_start(client_ip, client_port, packet);
@@ -283,7 +284,7 @@ void GameSession::game_loop() {
             if (clients_.empty()) {
                 if (current_time - empty_since_ >= EMPTY_TIMEOUT_DURATION) {
                     Logger::instance().info("Session " + std::to_string(session_id_) +
-                                             " empty timeout reached, stopping session");
+                                            " empty timeout reached, stopping session");
                     running_ = false;
                 }
             } else {
@@ -312,7 +313,8 @@ void GameSession::game_loop() {
                             has_players = true;
                             if (registry_.isValid(client.entity_id)) {
                                 if (registry_.hasComponent<rtype::ecs::component::Lives>(client.entity_id)) {
-                                    auto& lives = registry_.getComponent<rtype::ecs::component::Lives>(client.entity_id);
+                                    auto& lives =
+                                        registry_.getComponent<rtype::ecs::component::Lives>(client.entity_id);
                                     if (lives.remaining > 0) {
                                         all_players_dead = false;
                                         break;
@@ -342,7 +344,8 @@ void GameSession::game_loop() {
                             if (registry_.hasComponent<rtype::ecs::component::MapBounds>(static_cast<size_t>(entity))) {
                                 should_destroy = false;
                             }
-                            if (registry_.hasComponent<rtype::ecs::component::EnemySpawner>(static_cast<size_t>(entity))) {
+                            if (registry_.hasComponent<rtype::ecs::component::EnemySpawner>(
+                                    static_cast<size_t>(entity))) {
                                 should_destroy = false;
                             }
                             if (registry_.hasComponent<rtype::ecs::component::Tag>(static_cast<size_t>(entity))) {
@@ -402,10 +405,11 @@ void GameSession::game_loop() {
                         if (registry_.hasComponent<rtype::ecs::component::Score>(client.entity_id))
                             state.score = registry_.getComponent<rtype::ecs::component::Score>(client.entity_id).value;
                         if (registry_.hasComponent<rtype::ecs::component::Lives>(client.entity_id))
-                            state.lives = registry_.getComponent<rtype::ecs::component::Lives>(client.entity_id).remaining;
+                            state.lives =
+                                registry_.getComponent<rtype::ecs::component::Lives>(client.entity_id).remaining;
                     }
                     udp_server_.send(client.ip, client.port,
-                                      protocol_adapter_.serialize(message_serializer_.serialize_game_state(state)));
+                                     protocol_adapter_.serialize(message_serializer_.serialize_game_state(state)));
                 }
             }
             last_tick = current_time;
@@ -584,8 +588,8 @@ void GameSession::broadcast_to_all_clients(const std::vector<uint8_t>& data) {
 }
 
 void GameSession::broadcast_entity_destroy(uint32_t entity_id, uint8_t reason) {
-    broadcast_to_all_clients(protocol_adapter_.serialize(
-        message_serializer_.serialize_entity_destroy({entity_id, reason})));
+    broadcast_to_all_clients(
+        protocol_adapter_.serialize(message_serializer_.serialize_entity_destroy({entity_id, reason})));
 }
 
 void GameSession::broadcast_projectile_spawns() {
@@ -618,8 +622,8 @@ void GameSession::broadcast_projectile_spawns() {
     }
     for (const auto& [net_id, data] : spawns) {
         broadcast_to_all_clients(data);
-        Logger::instance().info("Session " + std::to_string(session_id_) +
-                                " spawned projectile " + std::to_string(net_id));
+        Logger::instance().info("Session " + std::to_string(session_id_) + " spawned projectile " +
+                                std::to_string(net_id));
     }
 }
 

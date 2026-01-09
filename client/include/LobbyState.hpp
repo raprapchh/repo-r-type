@@ -8,10 +8,10 @@
 namespace rtype::client {
 
 enum class LobbyMode {
-    MAIN_MENU,      // Choix: Créer ou Rejoindre
-    CREATE_ROOM,    // Formulaire de création de room
-    BROWSE_ROOMS,   // Liste des rooms disponibles
-    IN_ROOM         // Dans une room, attente des joueurs
+    MAIN_MENU,    // Choix: Créer ou Rejoindre
+    CREATE_ROOM,  // Formulaire de création de room
+    BROWSE_ROOMS, // Liste des rooms disponibles
+    IN_ROOM       // Dans une room, attente des joueurs
 };
 
 class LobbyState : public IState {
@@ -61,7 +61,7 @@ class LobbyState : public IState {
     std::atomic<bool> game_started_;
     Renderer* renderer_ref_;
     uint32_t local_player_id_;
-    
+
     LobbyMode current_mode_;
     sf::RectangleShape create_button_;
     sf::Text create_button_text_;
@@ -122,7 +122,8 @@ class LobbyState : public IState {
     void update_chat_display();
     void process_pending_events();
     void update_room_list_display();
-    void add_room(uint32_t session_id, uint8_t player_count, uint8_t max_players, uint8_t status, const std::string& room_name);
+    void add_room(uint32_t session_id, uint8_t player_count, uint8_t max_players, uint8_t status,
+                  const std::string& room_name);
 };
 
 } // namespace rtype::client

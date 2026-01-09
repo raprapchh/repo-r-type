@@ -41,9 +41,9 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
         client.send_game_start_request();
     } else {
         uint32_t offline_session_id = static_cast<uint32_t>(
-            (std::chrono::duration_cast<std::chrono::seconds>(
-                 std::chrono::system_clock::now().time_since_epoch())
-                 .count() & 0x7FFFFFFF));
+            (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
+                 .count() &
+             0x7FFFFFFF));
         client.set_offline_ids(offline_session_id, 1);
 
         GameEngine::Registry& registry = client.get_registry();
@@ -65,8 +65,8 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
             registry.addComponent<rtype::ecs::component::HitBox>(
                 entity, rtype::constants::PLAYER_WIDTH * rtype::constants::PLAYER_SCALE,
                 rtype::constants::PLAYER_HEIGHT * rtype::constants::PLAYER_SCALE);
-            registry.addComponent<rtype::ecs::component::Collidable>(
-                entity, rtype::ecs::component::CollisionLayer::Player);
+            registry.addComponent<rtype::ecs::component::Collidable>(entity,
+                                                                     rtype::ecs::component::CollisionLayer::Player);
             registry.addComponent<rtype::ecs::component::Tag>(entity, "Player");
             registry.addComponent<rtype::ecs::component::Lives>(entity, 3);
             registry.addComponent<rtype::ecs::component::Health>(entity, 100, 100);

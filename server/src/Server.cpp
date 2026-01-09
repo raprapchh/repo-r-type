@@ -201,13 +201,13 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
                     if (it != session_names_.end() && !it->second.empty())
                         room_name = it->second;
                     rooms.emplace_back(id, static_cast<uint8_t>(session->client_count()), 4,
-                                      session->is_running() ? 0 : 1, room_name);
+                                       session->is_running() ? 0 : 1, room_name);
                 }
             }
         }
         for (const auto& room : rooms) {
             udp_server_->send(client_ip, client_port,
-                             protocol_adapter_->serialize(message_serializer_->serialize_room_info(room)));
+                              protocol_adapter_->serialize(message_serializer_->serialize_room_info(room)));
         }
         return;
     }
@@ -224,7 +224,7 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
         }
         rtype::net::RoomInfoData room_info(new_session_id, 0, create_data.max_players, 0, room_name);
         udp_server_->send(client_ip, client_port,
-                         protocol_adapter_->serialize(message_serializer_->serialize_room_info(room_info)));
+                          protocol_adapter_->serialize(message_serializer_->serialize_room_info(room_info)));
         Logger::instance().info("Created room '" + room_name + "' with id " + std::to_string(new_session_id));
         return;
     }
