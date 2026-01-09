@@ -55,6 +55,7 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
 
 void GameState::on_exit(Renderer& renderer, Client& client) {
     (void)renderer;
+    (void)client;
 
     // Stop background music
     if (client_) {

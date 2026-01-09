@@ -238,6 +238,7 @@ void BroadcastSystem::broadcast_moves(const std::map<std::string, ClientInfo>& c
 }
 
 void BroadcastSystem::broadcast_game_state(const std::map<std::string, ClientInfo>& clients, double elapsed_time) {
+    (void)elapsed_time;
     rtype::net::GameStateData game_state_data;
 
     game_state_data.game_time = 0;
