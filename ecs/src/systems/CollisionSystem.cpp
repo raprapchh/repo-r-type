@@ -237,12 +237,7 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
                         }
 
                         if (podCount < 2) {
-                            Logger::instance().info("Spawning ForcePod Item. Player " + std::to_string(scorer_id) +
-                                                    " has " + std::to_string(podCount) + " pods.");
                             spawnForcePodItem(registry, enemyPos.x, enemyPos.y);
-                        } else {
-                            Logger::instance().info("Max pods reached (" + std::to_string(podCount) + ") for Player " +
-                                                    std::to_string(scorer_id) + ". No drop.");
                         }
                     }
                 }
@@ -316,7 +311,6 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
 
     if ((layer1 == CL::Companion && layer2 == CL::Enemy) || (layer1 == CL::Enemy && layer2 == CL::Companion)) {
         auto enemy_entity = (layer1 == CL::Enemy) ? entity1 : entity2;
-        // NOTE: We do not destroy the companion (Force Pod). It is invulnerable to body collisions.
 
         if (registry.hasComponent<component::Health>(enemy_entity)) {
             auto& health = registry.getComponent<component::Health>(enemy_entity);
@@ -400,7 +394,6 @@ void spawnForcePodItem(GameEngine::Registry& registry, float x, float y) {
     registry.addComponent<component::HitBox>(item, 64.0f, 64.0f);
     registry.addComponent<component::Tag>(item, "ForcePodItem");
     registry.addComponent<component::SpawnEffect>(item);
-    // NOTE: Do NOT add NetworkId here - let BroadcastSystem assign it
 }
 
 void spawnForcePodCompanion(GameEngine::Registry& registry, GameEngine::entity_t playerId) {
@@ -443,7 +436,20 @@ void spawnForcePodCompanion(GameEngine::Registry& registry, GameEngine::entity_t
     registry.addComponent<component::Collidable>(pod, component::CollisionLayer::Companion);
     registry.addComponent<component::HitBox>(pod, 64.0f, 64.0f);
     registry.addComponent<component::Tag>(pod, "ForcePod");
-    // NOTE: Do NOT add NetworkId here - let BroadcastSystem assign it
+
+    if (podCount == 1) {
+        auto itemView = registry.view<component::Tag>();
+        std::vector<GameEngine::entity_t> itemsToRemove;
+        for (auto entity : itemView) {
+            const auto& tag = itemView.get<component::Tag>(entity);
+            if (tag.name == "ForcePodItem") {
+                itemsToRemove.push_back(entity);
+            }
+        }
+        for (auto entity : itemsToRemove) {
+            registry.destroyEntity(entity);
+        }
+    }
 }
 
 } // namespace rtype::ecs
