@@ -27,6 +27,7 @@ class BroadcastSystem {
     void broadcast_moves(const std::map<std::string, ClientInfo>& clients);
     void broadcast_game_state(const std::map<std::string, ClientInfo>& clients, double elapsed_time);
     void broadcast_deaths(const std::map<std::string, ClientInfo>& clients);
+    void broadcast_stage_cleared(const std::map<std::string, ClientInfo>& clients);
 
     void broadcast_packet(const std::vector<uint8_t>& data, const std::map<std::string, ClientInfo>& clients);
     void send_to_client(const std::vector<uint8_t>& data, const std::string& ip, uint16_t port);

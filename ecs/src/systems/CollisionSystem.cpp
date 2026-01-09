@@ -1,5 +1,6 @@
 #include "../../include/systems/CollisionSystem.hpp"
 #include <vector>
+#include <iostream>
 #include <cstdlib>
 #include "../../include/components/Position.hpp"
 #include "../../include/components/HitBox.hpp"
@@ -16,6 +17,8 @@
 #include "../../include/components/Weapon.hpp"
 #include "../../include/components/NetworkId.hpp"
 #include "../../include/components/Velocity.hpp"
+#include "../../include/components/HitFlash.hpp"
+#include "../../include/components/StageCleared.hpp"
 
 namespace rtype::ecs {
 
@@ -178,16 +181,39 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
             auto& health = registry.getComponent<component::Health>(enemy_entity);
             health.hp -= 25;
 
+            // Trigger hit flash effect
+            if (registry.hasComponent<component::HitFlash>(enemy_entity)) {
+                auto& flash = registry.getComponent<component::HitFlash>(enemy_entity);
+                flash.active = true;
+                flash.timer = flash.duration;
+            } else {
+                registry.addComponent<component::HitFlash>(enemy_entity, 0.3f, 0.3f, true);
+            }
+
             if (health.hp <= 0) {
-                if (scorer_id != 0) {
-                    auto scorer_entity = static_cast<GameEngine::entity_t>(scorer_id);
-                    if (registry.isValid(scorer_entity) && registry.hasComponent<component::Score>(scorer_entity)) {
-                        registry.addComponent<component::ScoreEvent>(scorer_entity, 100);
+                // Check if this is the Boss_1 - trigger stage cleared!
+                bool is_boss = false;
+                if (registry.hasComponent<component::Tag>(enemy_entity)) {
+                    const auto& enemyTag = registry.getComponent<component::Tag>(enemy_entity);
+                    if (enemyTag.name == "Boss_1") {
+                        is_boss = true;
+                        // Create StageCleared event - find or create a world entity
+                        // Use entity 0 as the signal entity for stage cleared
+                        auto world_entity = registry.createEntity();
+                        registry.addComponent<component::StageCleared>(world_entity, 1);
+                        std::cout << "[STAGE CLEARED] Boss_1 defeated!" << std::endl;
                     }
                 }
 
-                // 30% chance to drop FORCE_POD item
-                if (registry.hasComponent<component::Position>(enemy_entity)) {
+                if (scorer_id != 0) {
+                    auto scorer_entity = static_cast<GameEngine::entity_t>(scorer_id);
+                    if (registry.isValid(scorer_entity) && registry.hasComponent<component::Score>(scorer_entity)) {
+                        registry.addComponent<component::ScoreEvent>(scorer_entity, is_boss ? 1000 : 100);
+                    }
+                }
+
+                // 30% chance to drop FORCE_POD item (not for boss)
+                if (!is_boss && registry.hasComponent<component::Position>(enemy_entity)) {
                     auto& enemyPos = registry.getComponent<component::Position>(enemy_entity);
                     if (rand() % 100 < 30) {
                         // Check if scorer (player) already has max Force Pods (2)
