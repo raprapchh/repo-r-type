@@ -59,6 +59,11 @@ class Client {
     void send_player_name_update(const std::string& name);
     void send_chat_message(const std::string& message);
     void leave_room();
+    void set_offline_ids(uint32_t session_id, uint32_t player_id) {
+      session_id_ = session_id;
+      player_id_ = player_id;
+      network_system_.set_player_id(player_id_);
+    }
 
     void set_chat_message_callback(std::function<void(uint32_t, const std::string&, const std::string&)> callback);
 
@@ -101,7 +106,6 @@ class Client {
     std::function<void(uint32_t, const std::string&, const std::string&)> chat_message_callback_;
     std::function<void(uint32_t, uint8_t, uint8_t, uint8_t, const std::string&)> room_list_callback_;
 
-    // Store pending players (ID, Name)
     std::vector<std::pair<uint32_t, std::string>> pending_players_;
     GameEngine::Registry registry_;
     NetworkSystem network_system_;
@@ -112,6 +116,8 @@ class Client {
 
     std::string host_;
     uint16_t port_;
+
+    std::string pending_create_room_name_;
 
     std::chrono::steady_clock::time_point last_ping_time_;
     static constexpr std::chrono::seconds HEARTBEAT_INTERVAL = std::chrono::seconds(3);

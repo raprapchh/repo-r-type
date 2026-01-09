@@ -32,7 +32,6 @@
 #include "../../shared/utils/Logger.hpp"
 #include "../../shared/utils/GameConfig.hpp"
 #include <unordered_set>
-////////////////////////////////////////////////////////////////
 #include "Server.hpp"
 
 #include "../shared/net/Protocol.hpp"
@@ -191,7 +190,6 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
     std::string client_key = client_ip + ":" + std::to_string(client_port);
     auto msg_type = static_cast<rtype::net::MessageType>(packet.header.message_type);
 
-    // Handle lobby messages
     if (msg_type == rtype::net::MessageType::ListRooms) {
         std::vector<rtype::net::RoomInfoData> rooms;
         {

@@ -216,7 +216,6 @@ void BroadcastSystem::broadcast_moves(const std::map<std::string, ClientInfo>& c
         auto& pos = registry_.getComponent<rtype::ecs::component::Position>(static_cast<size_t>(entity));
         auto& vel = registry_.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
 
-        // Check if entity has active HitFlash and set flag
         uint8_t flags = 0;
         if (registry_.hasComponent<rtype::ecs::component::HitFlash>(static_cast<size_t>(entity))) {
             auto& flash = registry_.getComponent<rtype::ecs::component::HitFlash>(static_cast<size_t>(entity));
@@ -367,7 +366,6 @@ void BroadcastSystem::broadcast_stage_cleared(const std::map<std::string, Client
     if (clients.empty())
         return;
 
-    // Find any StageCleared components and broadcast them
     auto view = registry_.view<rtype::ecs::component::StageCleared>();
     std::vector<GameEngine::entity_t> entities_to_destroy;
 
@@ -375,7 +373,6 @@ void BroadcastSystem::broadcast_stage_cleared(const std::map<std::string, Client
         auto& stage_cleared = registry_.getComponent<rtype::ecs::component::StageCleared>(static_cast<size_t>(entity));
 
         if (!stage_cleared.broadcasted) {
-            // Create and send StageCleared message
             rtype::net::StageClearedData data(stage_cleared.stage_number);
             rtype::net::Packet packet;
             packet.header.message_type = static_cast<uint16_t>(rtype::net::MessageType::StageCleared);
@@ -389,12 +386,10 @@ void BroadcastSystem::broadcast_stage_cleared(const std::map<std::string, Client
             Logger::instance().info("StageCleared broadcasted: stage=" + std::to_string(stage_cleared.stage_number));
             stage_cleared.broadcasted = true;
 
-            // Mark for destruction after broadcast
             entities_to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
         }
     }
 
-    // Destroy signal entities
     for (auto entity : entities_to_destroy) {
         registry_.destroyEntity(entity);
     }

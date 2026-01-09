@@ -62,7 +62,6 @@ class LobbyState : public IState {
     Renderer* renderer_ref_;
     uint32_t local_player_id_;
     
-    // Navigation
     LobbyMode current_mode_;
     sf::RectangleShape create_button_;
     sf::Text create_button_text_;
@@ -73,7 +72,6 @@ class LobbyState : public IState {
     sf::RectangleShape leave_room_button_;
     sf::Text leave_room_button_text_;
 
-    // Room browser UI
     struct RoomEntry {
         uint32_t session_id;
         uint8_t player_count;
@@ -83,6 +81,7 @@ class LobbyState : public IState {
     };
     std::vector<RoomEntry> available_rooms_;
     std::mutex rooms_mutex_;
+    std::atomic<bool> room_list_needs_update_;
     sf::Text rooms_title_text_;
     sf::Text create_room_button_text_;
     sf::RectangleShape create_room_button_;
@@ -100,13 +99,11 @@ class LobbyState : public IState {
     float room_backspace_timer_;
     float room_backspace_delay_;
 
-    // Thread-safe pending queues for callbacks (network thread -> main thread)
     std::mutex pending_mutex_;
     std::vector<std::pair<uint32_t, std::string>> pending_player_joins_;
     std::vector<std::pair<uint32_t, std::string>> pending_name_updates_;
     std::vector<std::pair<std::string, std::string>> pending_chat_messages_;
 
-    // Chat UI
     sf::RectangleShape chat_background_;
     sf::RectangleShape chat_input_background_;
     sf::Text chat_input_label_;

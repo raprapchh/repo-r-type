@@ -37,7 +37,6 @@ class GameSession {
         return running_.load();
     }
 
-    // Returns true if join accepted
     bool handle_player_join(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
     void handle_packet(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
 
