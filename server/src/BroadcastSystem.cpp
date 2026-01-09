@@ -10,6 +10,8 @@
 #include "../../ecs/include/components/Score.hpp"
 #include "../../ecs/include/components/Lives.hpp"
 #include "../../ecs/include/components/MapBounds.hpp"
+#include "../../ecs/include/components/HitFlash.hpp"
+#include "../../ecs/include/components/StageCleared.hpp"
 #include "../../shared/net/MessageData.hpp"
 #include "../../shared/utils/Logger.hpp"
 
@@ -30,6 +32,7 @@ void BroadcastSystem::update(double dt, const std::map<std::string, ClientInfo>&
     broadcast_spawns(clients);
     broadcast_deaths(clients);
     broadcast_moves(clients);
+    broadcast_stage_cleared(clients);
     broadcast_game_state(clients, dt);
 
     last_known_entities_.clear();
@@ -213,7 +216,18 @@ void BroadcastSystem::broadcast_moves(const std::map<std::string, ClientInfo>& c
         auto& pos = registry_.getComponent<rtype::ecs::component::Position>(static_cast<size_t>(entity));
         auto& vel = registry_.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
 
-        rtype::net::EntityMoveData move_data(net_id.id, pos.x, pos.y, vel.vx, vel.vy);
+        // Check if entity has active HitFlash and set flag
+        uint8_t flags = 0;
+        if (registry_.hasComponent<rtype::ecs::component::HitFlash>(static_cast<size_t>(entity))) {
+            auto& flash = registry_.getComponent<rtype::ecs::component::HitFlash>(static_cast<size_t>(entity));
+            if (flash.active) {
+                flags |= 0x01;        // Bit 0: is_hit
+                flash.active = false; // Reset after sending
+                Logger::instance().info("HitFlash sent for entity net_id=" + std::to_string(net_id.id));
+            }
+        }
+
+        rtype::net::EntityMoveData move_data(net_id.id, pos.x, pos.y, vel.vx, vel.vy, flags);
         rtype::net::Packet move_packet = message_serializer_.serialize_entity_move(move_data);
         entity_moves.push_back(protocol_adapter_.serialize(move_packet));
     }
@@ -345,6 +359,43 @@ void BroadcastSystem::send_initial_state(const std::string& ip, uint16_t port) {
         rtype::net::EntitySpawnData spawn_data(net_id.id, type, sub_type, pos.x, pos.y, vx, vy);
         rtype::net::Packet spawn_packet = message_serializer_.serialize_entity_spawn(spawn_data);
         send_to_client(protocol_adapter_.serialize(spawn_packet), ip, port);
+    }
+}
+
+void BroadcastSystem::broadcast_stage_cleared(const std::map<std::string, ClientInfo>& clients) {
+    if (clients.empty())
+        return;
+
+    // Find any StageCleared components and broadcast them
+    auto view = registry_.view<rtype::ecs::component::StageCleared>();
+    std::vector<GameEngine::entity_t> entities_to_destroy;
+
+    for (auto entity : view) {
+        auto& stage_cleared = registry_.getComponent<rtype::ecs::component::StageCleared>(static_cast<size_t>(entity));
+
+        if (!stage_cleared.broadcasted) {
+            // Create and send StageCleared message
+            rtype::net::StageClearedData data(stage_cleared.stage_number);
+            rtype::net::Packet packet;
+            packet.header.message_type = static_cast<uint16_t>(rtype::net::MessageType::StageCleared);
+            packet.body.resize(sizeof(rtype::net::StageClearedData));
+            std::memcpy(packet.body.data(), &data, sizeof(rtype::net::StageClearedData));
+            packet.header.payload_size = static_cast<uint16_t>(packet.body.size());
+
+            auto serialized = protocol_adapter_.serialize(packet);
+            broadcast_packet(serialized, clients);
+
+            Logger::instance().info("StageCleared broadcasted: stage=" + std::to_string(stage_cleared.stage_number));
+            stage_cleared.broadcasted = true;
+
+            // Mark for destruction after broadcast
+            entities_to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
+        }
+    }
+
+    // Destroy signal entities
+    for (auto entity : entities_to_destroy) {
+        registry_.destroyEntity(entity);
     }
 }
 

@@ -17,6 +17,7 @@
 #include <iostream>
 #include <chrono>
 #include <algorithm>
+#include <cstring>
 
 namespace rtype::client {
 
@@ -534,6 +535,20 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             }
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing ChatMessage packet: " << e.what() << std::endl;
+        }
+        break;
+    }
+    case rtype::net::MessageType::StageCleared: {
+        try {
+            if (packet.body.size() >= sizeof(rtype::net::StageClearedData)) {
+                rtype::net::StageClearedData stage_data;
+                std::memcpy(&stage_data, packet.body.data(), sizeof(rtype::net::StageClearedData));
+                std::cout << "[VICTORY] Stage " << static_cast<int>(stage_data.stage_number) << " Cleared!"
+                          << std::endl;
+                renderer_.show_stage_cleared(stage_data.stage_number);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error deserializing StageCleared packet: " << e.what() << std::endl;
         }
         break;
     }

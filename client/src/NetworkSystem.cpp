@@ -11,6 +11,7 @@
 #include "../../ecs/include/components/Tag.hpp"
 #include "../../ecs/include/components/NetworkInterpolation.hpp"
 #include "../../ecs/include/components/AudioEvent.hpp"
+#include "../../ecs/include/components/HitFlash.hpp"
 #include <chrono>
 
 namespace rtype::client {
@@ -260,6 +261,27 @@ void NetworkSystem::handle_move(GameEngine::Registry& registry, const rtype::net
             y = data.position_y;
             vx = data.velocity_x;
             vy = data.velocity_y;
+
+            // Check if entity was hit (bit 0 of flags)
+            if (data.flags & 0x01) {
+                // Find entity and add HitFlash component
+                auto view = registry.view<rtype::ecs::component::NetworkId>();
+                for (auto entity : view) {
+                    GameEngine::entity_t ecs_entity = static_cast<GameEngine::entity_t>(entity);
+                    auto& net_id = registry.getComponent<rtype::ecs::component::NetworkId>(ecs_entity);
+                    if (net_id.id == entity_id) {
+                        if (registry.hasComponent<rtype::ecs::component::HitFlash>(ecs_entity)) {
+                            auto& flash = registry.getComponent<rtype::ecs::component::HitFlash>(ecs_entity);
+                            flash.active = true;
+                            flash.timer = flash.duration;
+                        } else {
+                            registry.addComponent<rtype::ecs::component::HitFlash>(ecs_entity, 0.3f, 0.3f, true);
+                        }
+                        std::cout << "[HitFlash] Received for entity " << entity_id << std::endl;
+                        break;
+                    }
+                }
+            }
         }
 
         auto view = registry.view<rtype::ecs::component::NetworkId>();
