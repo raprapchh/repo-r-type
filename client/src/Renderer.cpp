@@ -108,11 +108,19 @@ void Renderer::update_animations(float delta_time) {
                 }
             }
         }
-        if (entity.type == rtype::net::EntityType::ENEMY && entity.sub_type == 100) { // Boss
-            entity.animation_timer += delta_time;
-            if (entity.animation_timer >= 0.1f) {
-                entity.animation_timer = 0.0f;
-                entity.animation_frame = (entity.animation_frame + 1) % 4;
+        if (entity.type == rtype::net::EntityType::ENEMY) {
+            if (entity.sub_type == 100) { // Boss
+                entity.animation_timer += delta_time;
+                if (entity.animation_timer >= 0.1f) {
+                    entity.animation_timer = 0.0f;
+                    entity.animation_frame = (entity.animation_frame + 1) % 4;
+                }
+            } else if (entity.sub_type == 5 || entity.sub_type == 6) {
+                entity.animation_timer += delta_time;
+                if (entity.animation_timer >= 0.1f) {
+                    entity.animation_timer = 0.0f;
+                    entity.animation_frame = (entity.animation_frame + 1) % 8;
+                }
             }
         }
         if (entity.type == rtype::net::EntityType::PLAYER) {
@@ -198,6 +206,12 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
         if (entity.sub_type == 100) {
             texture_name = "boss_1";
             sprite.setScale(4.0f, 4.0f); // Adjust scale as needed
+        } else if (entity.sub_type == 5) {
+            texture_name = "monster-wave-2-left";
+            sprite.setScale(3.0f, 3.0f);
+        } else if (entity.sub_type == 6) {
+            texture_name = "monster-wave-2-right";
+            sprite.setScale(3.0f, 3.0f);
         } else {
             texture_name = "enemy_basic";
             sprite.setScale(6.0f, 6.0f);
@@ -251,8 +265,12 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
         } else {
             texture_name = "shot";
         }
-    } else if (entity.type == rtype::net::EntityType::ENEMY && entity.sub_type == 100) { // Boss
-        sprite.setTextureRect(sf::IntRect(entity.animation_frame * 100, 0, 100, 100));
+    } else if (entity.type == rtype::net::EntityType::ENEMY) {
+        if (entity.sub_type == 100) { // Boss
+            sprite.setTextureRect(sf::IntRect(entity.animation_frame * 100, 0, 100, 100));
+        } else if (entity.sub_type == 5 || entity.sub_type == 6) {
+            sprite.setTextureRect(sf::IntRect(entity.animation_frame * 33, 0, 33, 36));
+        }
     } else if (entity.type == rtype::net::EntityType::PLAYER) {
         if (textures_.count("player_ships")) {
             sf::Vector2u texture_size = textures_["player_ships"].getSize();
@@ -508,6 +526,8 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/boss_1-ezgif.com-crop.gif", "boss_1");
     load_texture("client/sprites/boss_1-attack.gif", "boss_1_attack");
     load_texture("client/sprites/boss_1-bayblade.gif", "boss_1_bayblade");
+    load_texture("client/sprites/monster-wave-2-left.gif", "monster-wave-2-left");
+    load_texture("client/sprites/monster-wave-2-right.gif", "monster-wave-2-right");
     // Force Pod animation frames (13 frames)
     for (int i = 0; i < 13; i++) {
         std::string path =

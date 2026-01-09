@@ -104,7 +104,19 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 sprite_name = "monster_0-left";
             else if (data.sub_type == 4)
                 sprite_name = "monster_0-right";
-            else if (data.sub_type == 100) {
+            else if (data.sub_type == 5) {
+                sprite_name = "monster-wave-2-left";
+                frameW = 33;
+                frameH = 36;
+                scale = 3.0f;
+                frameCount = 8;
+            } else if (data.sub_type == 6) {
+                sprite_name = "monster-wave-2-right";
+                frameW = 33;
+                frameH = 36;
+                scale = 3.0f;
+                frameCount = 8;
+            } else if (data.sub_type == 100) {
                 sprite_name = "boss_1";
                 frameW = 161;
                 frameH = 219;
