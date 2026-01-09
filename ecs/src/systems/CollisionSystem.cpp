@@ -16,6 +16,7 @@
 #include "../../include/components/Weapon.hpp"
 #include "../../include/components/NetworkId.hpp"
 #include "../../include/components/Velocity.hpp"
+#include "../../include/components/AudioEvent.hpp"
 
 namespace rtype::ecs {
 
@@ -209,7 +210,14 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
                     }
                 }
 
+                // Create temporary entity for death audio event
+                auto audio_entity = registry.createEntity();
+                registry.addComponent<component::AudioEvent>(audio_entity, component::AudioEventType::ENEMY_DEATH);
+
                 registry.destroyEntity(enemy_entity);
+            } else {
+                // Enemy hit but not killed - play collision hit sound
+                registry.addComponent<component::AudioEvent>(enemy_entity, component::AudioEventType::COLLISION_HIT);
             }
         }
     }
@@ -227,6 +235,9 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
                 return;
             }
             health.hp -= 20;
+
+            // Add audio event for player taking damage
+            registry.addComponent<component::AudioEvent>(player_entity, component::AudioEventType::PLAYER_DAMAGE);
 
             if (health.hp <= 0) {
                 if (!registry.hasComponent<component::Lives>(player_entity)) {
@@ -258,6 +269,10 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
                 health.hp = health.max_hp;
             }
         }
+
+        // Create temporary entity for power-up audio event
+        auto audio_entity = registry.createEntity();
+        registry.addComponent<component::AudioEvent>(audio_entity, component::AudioEventType::POWERUP_COLLECT);
 
         registry.destroyEntity(powerup_entity);
     }

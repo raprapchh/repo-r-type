@@ -32,6 +32,9 @@ Client::Client(const std::string& host, uint16_t port, Renderer& renderer)
 
     // Load scoreboard from disk
     scoreboard_manager_.load();
+
+    // Initialize audio assets
+    audio_system_.initializeAudioAssets();
 }
 
 void Client::set_game_start_callback(std::function<void()> callback) {

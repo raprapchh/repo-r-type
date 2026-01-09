@@ -1,0 +1,7 @@
+# R-Type Scoreboard Save File
+# Format: PlayerName:Score:Timestamp
+
+[SOLO]
+Player1:700:1767924834
+
+[MULTI]

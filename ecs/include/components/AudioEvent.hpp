@@ -1,0 +1,22 @@
+#pragma once
+
+namespace rtype::ecs::component {
+
+enum class AudioEventType {
+    PLAYER_SHOOT,
+    ENEMY_SHOOT,
+    EXPLOSION,
+    COLLISION_HIT,
+    POWERUP_COLLECT,
+    ENEMY_DEATH,
+    PLAYER_DAMAGE
+};
+
+struct AudioEvent {
+    AudioEventType type;
+
+    AudioEvent() : type(AudioEventType::PLAYER_SHOOT) {}
+    explicit AudioEvent(AudioEventType t) : type(t) {}
+};
+
+} // namespace rtype::ecs::component
