@@ -15,8 +15,10 @@ enum class AudioEventType {
 struct AudioEvent {
     AudioEventType type;
 
-    AudioEvent() : type(AudioEventType::PLAYER_SHOOT) {}
-    explicit AudioEvent(AudioEventType t) : type(t) {}
+    AudioEvent() : type(AudioEventType::PLAYER_SHOOT) {
+    }
+    explicit AudioEvent(AudioEventType t) : type(t) {
+    }
 };
 
 } // namespace rtype::ecs::component

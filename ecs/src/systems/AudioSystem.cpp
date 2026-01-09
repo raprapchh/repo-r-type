@@ -41,7 +41,8 @@ void AudioSystem::update(GameEngine::Registry& registry, double) {
 
         // Process each entity
         for (auto entity : entities_to_process) {
-            if (!registry.isValid(entity)) continue;
+            if (!registry.isValid(entity))
+                continue;
 
             auto& audio_event = registry.getComponent<component::AudioEvent>(entity);
 
@@ -55,11 +56,10 @@ void AudioSystem::update(GameEngine::Registry& registry, double) {
 
             // If the entity only had AudioEvent component (temporary audio entity), destroy it
             // Check by trying to get common components - if none exist, it's a temp entity
-            bool has_other_components =
-                registry.hasComponent<component::Position>(entity) ||
-                registry.hasComponent<component::Velocity>(entity) ||
-                registry.hasComponent<component::Drawable>(entity) ||
-                registry.hasComponent<component::Tag>(entity);
+            bool has_other_components = registry.hasComponent<component::Position>(entity) ||
+                                        registry.hasComponent<component::Velocity>(entity) ||
+                                        registry.hasComponent<component::Drawable>(entity) ||
+                                        registry.hasComponent<component::Tag>(entity);
 
             if (!has_other_components) {
                 registry.destroyEntity(entity);
@@ -123,34 +123,34 @@ void AudioSystem::stopMusic(const std::string& id) {
 
 std::string AudioSystem::mapEventToSoundId(component::AudioEventType type) {
     switch (type) {
-        case component::AudioEventType::PLAYER_SHOOT:
-            return "player_shoot";
-        case component::AudioEventType::ENEMY_SHOOT:
-            return "enemy_shoot";
-        case component::AudioEventType::EXPLOSION:
-            return "explosion";
-        case component::AudioEventType::COLLISION_HIT:
-            return "hit";
-        case component::AudioEventType::POWERUP_COLLECT:
-            return "powerup";
-        case component::AudioEventType::ENEMY_DEATH:
-            return "enemy_death";
-        case component::AudioEventType::PLAYER_DAMAGE:
-            return "player_damage";
-        default:
-            return "";
+    case component::AudioEventType::PLAYER_SHOOT:
+        return "player_shoot";
+    case component::AudioEventType::ENEMY_SHOOT:
+        return "enemy_shoot";
+    case component::AudioEventType::EXPLOSION:
+        return "explosion";
+    case component::AudioEventType::COLLISION_HIT:
+        return "hit";
+    case component::AudioEventType::POWERUP_COLLECT:
+        return "powerup";
+    case component::AudioEventType::ENEMY_DEATH:
+        return "enemy_death";
+    case component::AudioEventType::PLAYER_DAMAGE:
+        return "player_damage";
+    default:
+        return "";
     }
 }
 
 void AudioSystem::initializeAudioAssets() {
     // Load sound effects (using available audio files)
-    loadSoundBuffer("player_shoot", "client/assets/audio/shoot.wav");     // Player shooting
-    loadSoundBuffer("enemy_shoot", "client/assets/audio/shoot.wav");      // Enemy shooting
-    loadSoundBuffer("explosion", "client/assets/audio/explosion.wav");    // Explosion sound
-    loadSoundBuffer("hit", "client/assets/audio/impact.wav");             // Impact/hit sound
-    loadSoundBuffer("powerup", "client/assets/audio/power-up.wav");       // Power-up collection
-    loadSoundBuffer("enemy_death", "client/assets/audio/explosion.wav");  // Reuse explosion for death
-    loadSoundBuffer("player_damage", "client/assets/audio/impact.wav");   // Player damage sound
+    loadSoundBuffer("player_shoot", "client/assets/audio/shoot.wav");    // Player shooting
+    loadSoundBuffer("enemy_shoot", "client/assets/audio/shoot.wav");     // Enemy shooting
+    loadSoundBuffer("explosion", "client/assets/audio/explosion.wav");   // Explosion sound
+    loadSoundBuffer("hit", "client/assets/audio/impact.wav");            // Impact/hit sound
+    loadSoundBuffer("powerup", "client/assets/audio/power-up.wav");      // Power-up collection
+    loadSoundBuffer("enemy_death", "client/assets/audio/explosion.wav"); // Reuse explosion for death
+    loadSoundBuffer("player_damage", "client/assets/audio/impact.wav");  // Player damage sound
 
     // Load background music (WAV format - will work but OGG recommended for size)
     loadMusic("gameplay", "client/assets/audio/music.wav");

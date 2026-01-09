@@ -146,8 +146,8 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
         }
 
         // Add audio event for shooting
-        bool is_player = (req.layer == component::CollisionLayer::PlayerProjectile ||
-                          req.tag.find("shot") != std::string::npos);
+        bool is_player =
+            (req.layer == component::CollisionLayer::PlayerProjectile || req.tag.find("shot") != std::string::npos);
         if (is_player) {
             registry.addComponent<component::AudioEvent>(projectile, component::AudioEventType::PLAYER_SHOOT);
         } else {

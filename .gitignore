@@ -44,3 +44,5 @@ subject/
 external/
 .cache/
 documentation/doxygen/
+
+saves/scoreboard.txt
