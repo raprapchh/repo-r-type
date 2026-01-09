@@ -125,12 +125,13 @@ struct EntityMoveData {
     float position_y;
     float velocity_x;
     float velocity_y;
+    uint8_t flags; // Bit 0: is_hit (for flash effect)
 
-    EntityMoveData() : entity_id(0), position_x(0.0f), position_y(0.0f), velocity_x(0.0f), velocity_y(0.0f) {
+    EntityMoveData() : entity_id(0), position_x(0.0f), position_y(0.0f), velocity_x(0.0f), velocity_y(0.0f), flags(0) {
     }
 
-    EntityMoveData(uint32_t id, float x, float y, float vx, float vy)
-        : entity_id(id), position_x(x), position_y(y), velocity_x(vx), velocity_y(vy) {
+    EntityMoveData(uint32_t id, float x, float y, float vx, float vy, uint8_t f = 0)
+        : entity_id(id), position_x(x), position_y(y), velocity_x(vx), velocity_y(vy), flags(f) {
     }
 };
 
@@ -222,6 +223,16 @@ constexpr uint8_t PLAYING = 1;
 constexpr uint8_t PAUSED = 2;
 constexpr uint8_t GAME_OVER = 3;
 constexpr uint8_t BOSS_WARNING = 4;
+constexpr uint8_t STAGE_CLEARED = 5;
 } // namespace GameState
+
+struct StageClearedData {
+    uint8_t stage_number;
+
+    StageClearedData() : stage_number(1) {
+    }
+    explicit StageClearedData(uint8_t stage) : stage_number(stage) {
+    }
+};
 
 } // namespace rtype::net
