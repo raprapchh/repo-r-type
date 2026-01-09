@@ -3,6 +3,7 @@
 #include "../include/SFMLRenderer.hpp"
 #include "../../ecs/include/systems/InputSystem.hpp"
 #include "../../ecs/include/systems/RenderSystem.hpp"
+#include "../../ecs/include/systems/TextureAnimationSystem.hpp"
 #include "../../ecs/include/systems/MovementSystem.hpp"
 #include "../../ecs/include/systems/CollisionSystem.hpp"
 #include "../../ecs/include/systems/BoundarySystem.hpp"
@@ -390,6 +391,10 @@ void GameState::render(Renderer& renderer, Client& client) {
 
         auto sfml_renderer =
             std::make_shared<rtype::rendering::SFMLRenderer>(*renderer.get_window(), renderer.get_textures());
+
+        rtype::ecs::TextureAnimationSystem texture_anim_system;
+        texture_anim_system.update(registry, 0.016f);
+
         rtype::ecs::RenderSystem render_system(sfml_renderer, &renderer.get_accessibility_manager());
         render_system.update(registry, 0.016f);
 
