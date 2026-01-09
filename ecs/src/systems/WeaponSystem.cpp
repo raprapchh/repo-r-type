@@ -40,6 +40,39 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
         if (weapon.isShooting) {
         }
 
+        if (registry.hasComponent<component::Tag>(static_cast<std::size_t>(entity))) {
+            const auto& tag = registry.getComponent<component::Tag>(static_cast<std::size_t>(entity));
+
+            if (tag.name == "Monster_Wave_2_Left" || tag.name == "Monster_Wave_2_Right") {
+                if (registry.hasComponent<component::Velocity>(static_cast<std::size_t>(entity))) {
+                    const auto& vel = registry.getComponent<component::Velocity>(static_cast<std::size_t>(entity));
+                    if (std::abs(vel.vy) < 20.0f && weapon.timeSinceLastFire >= 1.0f) {
+                        float spawnX = pos.x + weapon.spawnOffsetX;
+                        float spawnY = pos.y + weapon.spawnOffsetY;
+                        float baseVx = (tag.name == "Monster_Wave_2_Left") ? 400.0f : -400.0f;
+
+                        requests.push_back({spawnX, spawnY, baseVx, 0.0f, 10.0f, 3.0f, "PodProjectileRed", 36.0f, 13.0f,
+                                            component::CollisionLayer::EnemyProjectile,
+                                            static_cast<std::size_t>(entity), component::MovementPatternType::None,
+                                            0.0f, 0.0f});
+
+                        requests.push_back({spawnX, spawnY, baseVx * 0.9f, -150.0f, 10.0f, 3.0f, "PodProjectileRed",
+                                            36.0f, 13.0f, component::CollisionLayer::EnemyProjectile,
+                                            static_cast<std::size_t>(entity), component::MovementPatternType::None,
+                                            0.0f, 0.0f});
+
+                        requests.push_back({spawnX, spawnY, baseVx * 0.9f, 150.0f, 10.0f, 3.0f, "PodProjectileRed",
+                                            36.0f, 13.0f, component::CollisionLayer::EnemyProjectile,
+                                            static_cast<std::size_t>(entity), component::MovementPatternType::None,
+                                            0.0f, 0.0f});
+
+                        weapon.timeSinceLastFire = 0.0f;
+                    }
+                }
+                return;
+            }
+        }
+
         if ((weapon.isShooting || weapon.autoFire) && weapon.timeSinceLastFire >= weapon.fireRate) {
             float spawnX = pos.x + weapon.spawnOffsetX;
             float spawnY = pos.y + weapon.spawnOffsetY;

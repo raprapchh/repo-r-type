@@ -250,14 +250,14 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
     }
 
     if (entity.type == rtype::net::EntityType::PROJECTILE) {
-        if (entity.sub_type == 20) { // Bayblade
+        if (entity.sub_type == 20) {
             sprite.setTextureRect(sf::IntRect(entity.animation_frame * 34, 0, 34, 34));
-        } else if (entity.sub_type == 21) { // Attack
+        } else if (entity.sub_type == 21) {
             sprite.setTextureRect(sf::IntRect(entity.animation_frame * 64, 0, 64, 64));
-        } else if (entity.sub_type == 30 || entity.sub_type == 31) { // Pod Projectile
+        } else if (entity.sub_type == 30 || entity.sub_type == 31) {
             if (entity.sub_type == 31) {
                 texture_name = "pod_projectile_red_" + std::to_string(entity.animation_frame % 2);
-                sprite.setTextureRect(sf::IntRect(0, 0, 36, 13));
+                sprite.setTextureRect(sf::IntRect(entity.animation_frame % 2 * 36, 0, 36, 13));
             } else {
                 texture_name = "pod_projectile_" + std::to_string(entity.animation_frame % 2);
                 sprite.setTextureRect(sf::IntRect(0, 0, 34, 19));
@@ -266,7 +266,7 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
             texture_name = "shot";
         }
     } else if (entity.type == rtype::net::EntityType::ENEMY) {
-        if (entity.sub_type == 100) { // Boss
+        if (entity.sub_type == 100) {
             sprite.setTextureRect(sf::IntRect(entity.animation_frame * 100, 0, 100, 100));
         } else if (entity.sub_type == 5 || entity.sub_type == 6) {
             sprite.setTextureRect(sf::IntRect(entity.animation_frame * 33, 0, 33, 36));
@@ -302,11 +302,6 @@ void Renderer::draw_ui() {
     window_->draw(score_text_);
     window_->draw(score_text_);
     window_->draw(lives_text_);
-
-    // int level = game_state_.wave_number / 100;
-    // int wave = game_state_.wave_number % 100;
-    // wave_text_.setString("Level " + std::to_string(level + 1) + " - Wave " + std::to_string(wave));
-    // window_->draw(wave_text_);
 
     if (charge_percentage_ > 0.0f) {
         sf::RectangleShape charge_bar_bg(sf::Vector2f(200.0f, 20.0f));
