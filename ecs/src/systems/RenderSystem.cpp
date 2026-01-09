@@ -98,8 +98,8 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
         render_data.scale_y = drawable.scale_y;
         render_data.texture_name = drawable.texture_name;
         render_data.current_sprite = drawable.current_sprite;
-        render_data.sprite_index = drawable.sprite_index;
         render_data.frame_count = drawable.frame_count;
+        render_data.sprite_index = drawable.sprite_index;
         render_data.rect_x = drawable.rect_x;
         render_data.rect_y = drawable.rect_y;
         render_data.rect_width = drawable.rect_width;
