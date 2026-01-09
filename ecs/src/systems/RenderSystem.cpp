@@ -4,6 +4,7 @@
 #include "../../include/components/Explosion.hpp"
 #include "../../include/components/HitBox.hpp"
 #include "../../include/components/NetworkId.hpp"
+#include "../../include/components/HitFlash.hpp"
 #include "../../../client/include/AccessibilityManager.hpp"
 #include "../../../shared/net/MessageData.hpp"
 #include <algorithm>
@@ -128,6 +129,24 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
             render_data.color_g = 255;
             render_data.color_b = 255;
             render_data.color_a = 255;
+        }
+
+        // Apply hit flash effect (override to red/pink tint when recently damaged)
+        if (registry.hasComponent<component::HitFlash>(entity_id)) {
+            auto& flash = registry.getComponent<component::HitFlash>(entity_id);
+            if (flash.active) {
+                // Use red tint instead of white (white = original color in SFML)
+                render_data.color_r = 255;
+                render_data.color_g = 100;
+                render_data.color_b = 100;
+                render_data.color_a = 255;
+                // Decrement timer
+                flash.timer -= static_cast<float>(dt);
+                if (flash.timer <= 0.0f) {
+                    flash.active = false;
+                    flash.timer = 0.0f;
+                }
+            }
         }
 
         renderer_->draw_sprite(render_data);
