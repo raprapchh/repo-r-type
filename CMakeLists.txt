@@ -38,7 +38,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
 # Dependencies (vcpkg)
 # ─────────────────────────────
 find_package(asio CONFIG REQUIRED)
-find_package(SFML 2.6 COMPONENTS graphics window system audio REQUIRED)
+find_package(SFML COMPONENTS graphics window system audio REQUIRED)
 find_package(EnTT CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Threads REQUIRED)
@@ -60,10 +60,10 @@ file(GLOB_RECURSE ECS_SRC CONFIGURE_DEPENDS ecs/src/*.cpp)
 add_library(rtype_ecs ${ECS_SRC})
 target_include_directories(rtype_ecs PUBLIC ecs/include)
 target_link_libraries(rtype_ecs PUBLIC
-    sfml-graphics
-    sfml-window
-    sfml-system
-    sfml-audio
+    SFML::graphics
+    SFML::window
+    SFML::system
+    SFML::audio
     EnTT::EnTT
     nlohmann_json::nlohmann_json
 )
