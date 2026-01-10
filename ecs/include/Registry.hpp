@@ -67,7 +67,6 @@ class Registry : public IEntityRegistry {
     template <typename... Components> class View {
       public:
         View(Registry& registry) : _registry(registry) {
-            // Collect all valid entities that have ALL required components
             for (entity_t entity : _registry._validEntities) {
                 if (_registry.hasAllComponents<Components...>(entity)) {
                     _entities.push_back(entity);

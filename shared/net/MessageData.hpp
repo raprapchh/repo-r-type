@@ -40,18 +40,19 @@ struct PlayerShootData {
 };
 
 struct PlayerJoinData {
+    uint32_t session_id;
     uint32_t player_id;
     char player_name[17];
 
-    PlayerJoinData() : player_id(0) {
+    PlayerJoinData() : session_id(0), player_id(0) {
         memset(player_name, 0, sizeof(player_name));
     }
 
-    explicit PlayerJoinData(uint32_t id) : player_id(id) {
+    PlayerJoinData(uint32_t session, uint32_t id) : session_id(session), player_id(id) {
         memset(player_name, 0, sizeof(player_name));
     }
 
-    PlayerJoinData(uint32_t id, const std::string& name) : player_id(id) {
+    PlayerJoinData(uint32_t session, uint32_t id, const std::string& name) : session_id(session), player_id(id) {
         memset(player_name, 0, sizeof(player_name));
         strncpy(player_name, name.c_str(), 16);
     }
@@ -232,6 +233,53 @@ struct StageClearedData {
     StageClearedData() : stage_number(1) {
     }
     explicit StageClearedData(uint8_t stage) : stage_number(stage) {
+    }
+};
+
+struct RoomInfoData {
+    uint32_t session_id;
+    uint8_t player_count;
+    uint8_t max_players;
+    uint8_t status; // 0=lobby, 1=playing
+    char room_name[32];
+
+    RoomInfoData() : session_id(0), player_count(0), max_players(4), status(0) {
+        memset(room_name, 0, sizeof(room_name));
+    }
+
+    RoomInfoData(uint32_t id, uint8_t count, uint8_t max, uint8_t stat, const std::string& name)
+        : session_id(id), player_count(count), max_players(max), status(stat) {
+        memset(room_name, 0, sizeof(room_name));
+        strncpy(room_name, name.c_str(), 31);
+    }
+};
+
+struct ListRoomsData {
+    uint8_t dummy; // Empty request
+    ListRoomsData() : dummy(0) {
+    }
+};
+
+struct CreateRoomData {
+    char room_name[32];
+    uint8_t max_players;
+
+    CreateRoomData() : max_players(4) {
+        memset(room_name, 0, sizeof(room_name));
+    }
+
+    CreateRoomData(const std::string& name, uint8_t max) : max_players(max) {
+        memset(room_name, 0, sizeof(room_name));
+        strncpy(room_name, name.c_str(), 31);
+    }
+};
+
+struct JoinRoomData {
+    uint32_t session_id;
+
+    JoinRoomData() : session_id(0) {
+    }
+    explicit JoinRoomData(uint32_t id) : session_id(id) {
     }
 };
 

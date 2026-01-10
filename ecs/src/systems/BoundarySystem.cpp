@@ -76,7 +76,6 @@ void BoundarySystem::update(GameEngine::Registry& registry, double dt) {
             buffer = 20.0f;
             rightBuffer = 20.0f;
         } else {
-            // Allow level entities to spawn far to the right
             rightBuffer = 1000000.0f;
         }
 
