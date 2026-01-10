@@ -14,6 +14,8 @@
 #include "../../ecs/include/components/Score.hpp"
 #include "../../ecs/include/components/Tag.hpp"
 #include "../../ecs/include/components/NetworkInterpolation.hpp"
+#include "../../ecs/include/systems/MovementSystem.hpp"
+#include "../../ecs/include/systems/TextureAnimationSystem.hpp"
 #include <iostream>
 #include <chrono>
 #include <algorithm>
@@ -34,6 +36,10 @@ Client::Client(const std::string& host, uint16_t port, Renderer& renderer)
     scoreboard_manager_.load();
 
     audio_system_.initializeAudioAssets();
+
+    // Initialize systems
+    system_manager_.addSystem<rtype::ecs::MovementSystem>();
+    system_manager_.addSystem<rtype::ecs::TextureAnimationSystem>();
 }
 
 void Client::set_game_start_callback(std::function<void()> callback) {
@@ -772,6 +778,12 @@ void Client::update(double dt) {
     send_heartbeat();
     audio_system_.update(registry_, dt);
     network_system_.update(registry_, registry_mutex_);
+
+    // Update ECS systems
+    {
+        std::lock_guard<std::mutex> lock(registry_mutex_);
+        system_manager_.update(registry_, dt);
+    }
 
     {
         std::lock_guard<std::mutex> lock(registry_mutex_);

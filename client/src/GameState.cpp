@@ -4,6 +4,7 @@
 #include "../../shared/GameConstants.hpp"
 #include "../../ecs/include/systems/InputSystem.hpp"
 #include "../../ecs/include/systems/RenderSystem.hpp"
+#include "../../ecs/include/systems/TextureAnimationSystem.hpp"
 #include "../../ecs/include/systems/MovementSystem.hpp"
 #include "../../ecs/include/systems/CollisionSystem.hpp"
 #include "../../ecs/include/systems/BoundarySystem.hpp"
@@ -380,8 +381,9 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
             }
 
             {
-                rtype::ecs::MovementSystem movement_system;
-                movement_system.update(registry, delta_time);
+                rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(),
+                                                     renderer.is_moving_left(), renderer.is_moving_right(), 400.0f);
+                input_system.update(registry, delta_time);
             }
 
             // Client-side player boundary clamping (visual only)
@@ -440,6 +442,7 @@ void GameState::render(Renderer& renderer, Client& client) {
 
         auto sfml_renderer =
             std::make_shared<rtype::rendering::SFMLRenderer>(*renderer.get_window(), renderer.get_textures());
+
         rtype::ecs::RenderSystem render_system(sfml_renderer, &renderer.get_accessibility_manager());
         render_system.update(registry, 0.016f);
 

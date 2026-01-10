@@ -17,6 +17,7 @@
 #include "Renderer.hpp"
 #include "ScoreboardManager.hpp"
 #include "../../ecs/include/systems/AudioSystem.hpp"
+#include "../../ecs/include/SystemManager.hpp"
 
 namespace rtype::client {
 
@@ -40,6 +41,10 @@ class Client {
 
     GameEngine::Registry& get_registry() {
         return registry_;
+    }
+
+    GameEngine::SystemManager& get_system_manager() {
+        return system_manager_;
     }
 
     std::mutex& get_registry_mutex() {
@@ -108,6 +113,7 @@ class Client {
 
     std::vector<std::pair<uint32_t, std::string>> pending_players_;
     GameEngine::Registry registry_;
+    GameEngine::SystemManager system_manager_;
     NetworkSystem network_system_;
     rtype::ecs::AudioSystem audio_system_;
     ScoreboardManager scoreboard_manager_;
