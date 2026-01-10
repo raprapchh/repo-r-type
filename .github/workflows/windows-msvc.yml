@@ -12,45 +12,27 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
 
-    # Install CMake
-    - name: Install CMake
-      uses: lukka/get-cmake@latest
-
-    # Install PowerShell 7 (required for vcpkg)
-    - name: Install PowerShell 7
-      uses: PowerShell/PowerShell-For-GitHub-Actions@v1.2.3
-
-    # Bootstrap vcpkg
-    - name: Bootstrap vcpkg
-      run: |
-        vcpkg\bootstrap-vcpkg.bat
-      shell: pwsh
-
-    # Configure CMake
     - name: Configure CMake
       run: |
         cmake -S . -B build `
-          -DCMAKE_TOOLCHAIN_FILE="vcpkg/scripts/buildsystems/vcpkg.cmake" `
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
           -DVCPKG_TARGET_TRIPLET=x64-windows `
           -DCMAKE_BUILD_TYPE=Release
       shell: pwsh
 
-    # Build
     - name: Build
       run: cmake --build build --config Release
       shell: pwsh
 
-    # Prepare Artifacts
     - name: Prepare Artifacts
       run: |
         mkdir dist
-        cp build/Release/r-type_client.exe dist/
-        cp build/Release/r-type_server.exe dist/
+        cp bin/windows/r-type_client.exe dist/
+        cp bin/windows/r-type_server.exe dist/
 
         mkdir dist/client
         cp -r client/assets dist/client/
@@ -70,20 +52,17 @@ jobs:
         name: r-type-windows-binaries
         path: dist/
 
-    # Build NSIS installer
     - name: Build Installer (NSIS)
-      run: |
-        makensis /DVERSION=${{ github.ref_name }} installer/installer.nsi
+      run: makensis /DVERSION=${{ github.ref_name }} installer/installer.nsi
       shell: pwsh
 
-    # Publish Release
     - name: Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1
       with:
         files: |
           R-Type-Installer.exe
-          build/Release/r-type_client.exe
-          build/Release/r-type_server.exe
+          bin/windows/r-type_client.exe
+          bin/windows/r-type_server.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
