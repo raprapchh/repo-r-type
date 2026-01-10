@@ -16,18 +16,10 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Setup vcpkg
-      run: |
-        if (!(Test-Path "vcpkg")) {
-          git clone https://github.com/microsoft/vcpkg.git
-          ./vcpkg/bootstrap-vcpkg.bat
-        }
-      shell: pwsh
-
     - name: Configure CMake
       run: |
         cmake -S . -B build `
-          -DCMAKE_TOOLCHAIN_FILE=vcpkg/scripts/buildsystems/vcpkg.cmake `
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
           -DVCPKG_TARGET_TRIPLET=x64-windows `
           -DCMAKE_BUILD_TYPE=Release
       shell: pwsh
