@@ -11,11 +11,10 @@ namespace rtype::client {
 LobbyState::LobbyState()
     : is_typing_name_(false), backspace_timer_(0.0f), backspace_delay_(INITIAL_BACKSPACE_DELAY),
       was_backspace_pressed_(false), font_loaded_(false), player_count_(0), game_started_(false),
-      renderer_ref_(nullptr), local_player_id_(0), current_mode_(LobbyMode::MAIN_MENU), selected_room_index_(-1),
-      is_typing_room_name_(false), was_room_backspace_pressed_(false), room_backspace_timer_(0.0f),
-      room_backspace_delay_(INITIAL_BACKSPACE_DELAY), is_typing_chat_(false), chat_backspace_timer_(0.0f),
-      chat_backspace_delay_(INITIAL_BACKSPACE_DELAY), was_chat_backspace_pressed_(false),
-      room_list_needs_update_(false) {
+      renderer_ref_(nullptr), local_player_id_(0), current_mode_(LobbyMode::MAIN_MENU), room_list_needs_update_(false),
+      selected_room_index_(-1), is_typing_room_name_(false), was_room_backspace_pressed_(false),
+      room_backspace_timer_(0.0f), room_backspace_delay_(INITIAL_BACKSPACE_DELAY), is_typing_chat_(false),
+      chat_backspace_timer_(0.0f), chat_backspace_delay_(INITIAL_BACKSPACE_DELAY), was_chat_backspace_pressed_(false) {
     setup_ui();
 }
 
