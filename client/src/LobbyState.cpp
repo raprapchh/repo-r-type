@@ -57,8 +57,7 @@ void LobbyState::setup_ui() {
 
     start_button_text_.setFont(font_);
     start_button_text_.setString("START GAME");
-    start_button_text_.setString("START GAME");
-    start_button_text_.setCharacterSize(30);
+    start_button_text_.setCharacterSize(24);
     start_button_text_.setFillColor(sf::Color::White);
 
     // Name Input UI
@@ -155,7 +154,7 @@ void LobbyState::setup_ui() {
     create_button_.setOutlineThickness(3);
 
     create_button_text_.setFont(font_);
-    create_button_text_.setString("CREER UNE ROOM");
+    create_button_text_.setString("CREATE ROOM");
     create_button_text_.setCharacterSize(30);
     create_button_text_.setFillColor(sf::Color::White);
 
@@ -165,7 +164,7 @@ void LobbyState::setup_ui() {
     join_button_.setOutlineThickness(3);
 
     join_button_text_.setFont(font_);
-    join_button_text_.setString("REJOINDRE UNE ROOM");
+    join_button_text_.setString("JOIN ROOM");
     join_button_text_.setCharacterSize(30);
     join_button_text_.setFillColor(sf::Color::White);
 
@@ -175,7 +174,7 @@ void LobbyState::setup_ui() {
     back_button_.setOutlineThickness(2);
 
     back_button_text_.setFont(font_);
-    back_button_text_.setString("RETOUR");
+    back_button_text_.setString("BACK");
     back_button_text_.setCharacterSize(20);
     back_button_text_.setFillColor(sf::Color::White);
 
@@ -185,7 +184,7 @@ void LobbyState::setup_ui() {
     leave_room_button_.setOutlineThickness(2);
 
     leave_room_button_text_.setFont(font_);
-    leave_room_button_text_.setString("QUITTER LA ROOM");
+    leave_room_button_text_.setString("LEAVE ROOM");
     leave_room_button_text_.setCharacterSize(18);
     leave_room_button_text_.setFillColor(sf::Color::White);
 }
