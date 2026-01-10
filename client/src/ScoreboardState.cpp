@@ -19,13 +19,11 @@ void ScoreboardState::setup_ui() {
     }
     font_loaded_ = true;
 
-    // Title
     title_text_.setFont(font_);
     title_text_.setString("SCOREBOARD");
     title_text_.setCharacterSize(60);
     title_text_.setFillColor(sf::Color::White);
 
-    // Tab buttons
     solo_tab_.setSize(sf::Vector2f(250, 50));
     solo_tab_.setFillColor(sf::Color(100, 150, 200));
     solo_tab_.setOutlineColor(sf::Color::White);
@@ -46,7 +44,6 @@ void ScoreboardState::setup_ui() {
     multi_tab_text_.setCharacterSize(25);
     multi_tab_text_.setFillColor(sf::Color::White);
 
-    // Section titles
     solo_title_text_.setFont(font_);
     solo_title_text_.setString("Best Personal Scores");
     solo_title_text_.setCharacterSize(30);
@@ -57,7 +54,6 @@ void ScoreboardState::setup_ui() {
     multi_title_text_.setCharacterSize(30);
     multi_title_text_.setFillColor(sf::Color::Yellow);
 
-    // Back button
     back_button_.setSize(sf::Vector2f(200, 50));
     back_button_.setFillColor(sf::Color(200, 100, 100));
     back_button_.setOutlineColor(sf::Color::White);
@@ -87,7 +83,6 @@ void ScoreboardState::update_score_display() {
 
     const auto& data = scoreboard_manager_.get_data();
 
-    // Create solo score texts
     int rank = 1;
     for (const auto& entry : data.solo_scores) {
         sf::Text text;
@@ -104,7 +99,6 @@ void ScoreboardState::update_score_display() {
         rank++;
     }
 
-    // Create multi score texts
     rank = 1;
     for (const auto& entry : data.multi_scores) {
         sf::Text text;
@@ -126,10 +120,8 @@ void ScoreboardState::update_positions(const sf::Vector2u& window_size) {
     float center_x = window_size.x / 2.0f;
     float top_margin = 50.0f;
 
-    // Title
     title_text_.setPosition(center_x - title_text_.getGlobalBounds().width / 2.0f, top_margin);
 
-    // Tabs
     float tab_y = top_margin + 100.0f;
     solo_tab_.setPosition(center_x - 260.0f, tab_y);
     multi_tab_.setPosition(center_x + 10.0f, tab_y);
@@ -142,7 +134,6 @@ void ScoreboardState::update_positions(const sf::Vector2u& window_size) {
                                     (multi_tab_.getSize().x - multi_tab_text_.getGlobalBounds().width) / 2.0f,
                                 multi_tab_.getPosition().y + 10.0f);
 
-    // Section title
     float content_y = tab_y + 80.0f;
     if (current_tab_ == TabMode::Solo) {
         solo_title_text_.setPosition(center_x - solo_title_text_.getGlobalBounds().width / 2.0f, content_y);
@@ -150,7 +141,6 @@ void ScoreboardState::update_positions(const sf::Vector2u& window_size) {
         multi_title_text_.setPosition(center_x - multi_title_text_.getGlobalBounds().width / 2.0f, content_y);
     }
 
-    // Scores
     float score_y = content_y + 60.0f;
     float score_spacing = 40.0f;
 
@@ -160,7 +150,6 @@ void ScoreboardState::update_positions(const sf::Vector2u& window_size) {
         score_y += score_spacing;
     }
 
-    // Back button
     back_button_.setPosition(center_x - back_button_.getSize().x / 2.0f, window_size.y - 100.0f);
     back_button_text_.setPosition(back_button_.getPosition().x +
                                       (back_button_.getSize().x - back_button_text_.getGlobalBounds().width) / 2.0f,
@@ -179,12 +168,10 @@ void ScoreboardState::handle_input(Renderer& renderer, StateManager& state_manag
             if (event.mouseButton.button == sf::Mouse::Left) {
                 sf::Vector2f mouse_pos = renderer.get_mouse_position();
 
-                // Check back button
                 if (back_button_.getGlobalBounds().contains(mouse_pos)) {
                     state_manager.change_state(std::make_unique<MenuState>());
                 }
 
-                // Check solo tab
                 if (solo_tab_.getGlobalBounds().contains(mouse_pos)) {
                     current_tab_ = TabMode::Solo;
                     solo_tab_.setFillColor(sf::Color(100, 150, 200));
@@ -192,7 +179,6 @@ void ScoreboardState::handle_input(Renderer& renderer, StateManager& state_manag
                     update_positions(renderer.get_window_size());
                 }
 
-                // Check multi tab
                 if (multi_tab_.getGlobalBounds().contains(mouse_pos)) {
                     current_tab_ = TabMode::Multi;
                     multi_tab_.setFillColor(sf::Color(100, 150, 200));
@@ -204,7 +190,6 @@ void ScoreboardState::handle_input(Renderer& renderer, StateManager& state_manag
             if (event.key.code == sf::Keyboard::Escape) {
                 state_manager.change_state(std::make_unique<MenuState>());
             } else if (event.key.code == sf::Keyboard::Tab) {
-                // Switch tabs with Tab key
                 if (current_tab_ == TabMode::Solo) {
                     current_tab_ = TabMode::Multi;
                     multi_tab_.setFillColor(sf::Color(100, 150, 200));
@@ -236,13 +221,11 @@ void ScoreboardState::render(Renderer& renderer, Client& client) {
 
     renderer.draw_text(title_text_);
 
-    // Draw tabs
     renderer.draw_rectangle(solo_tab_);
     renderer.draw_rectangle(multi_tab_);
     renderer.draw_text(solo_tab_text_);
     renderer.draw_text(multi_tab_text_);
 
-    // Draw section title and scores
     if (current_tab_ == TabMode::Solo) {
         renderer.draw_text(solo_title_text_);
         for (auto& text : solo_score_texts_) {
@@ -255,7 +238,6 @@ void ScoreboardState::render(Renderer& renderer, Client& client) {
         }
     }
 
-    // Draw back button
     renderer.draw_rectangle(back_button_);
     renderer.draw_text(back_button_text_);
 }

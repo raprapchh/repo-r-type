@@ -23,7 +23,6 @@
 
 namespace rtype::ecs {
 
-// Forward declarations for factory functions
 void spawnForcePodItem(GameEngine::Registry& registry, float x, float y);
 void spawnForcePodCompanion(GameEngine::Registry& registry, GameEngine::entity_t playerId);
 
@@ -182,7 +181,6 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
             auto& health = registry.getComponent<component::Health>(enemy_entity);
             health.hp -= 25;
 
-            // Trigger hit flash effect
             if (registry.hasComponent<component::HitFlash>(enemy_entity)) {
                 auto& flash = registry.getComponent<component::HitFlash>(enemy_entity);
                 flash.active = true;
@@ -192,14 +190,11 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
             }
 
             if (health.hp <= 0) {
-                // Check if this is the Boss_1 - trigger stage cleared!
                 bool is_boss = false;
                 if (registry.hasComponent<component::Tag>(enemy_entity)) {
                     const auto& enemyTag = registry.getComponent<component::Tag>(enemy_entity);
                     if (enemyTag.name == "Boss_1") {
                         is_boss = true;
-                        // Create StageCleared event - find or create a world entity
-                        // Use entity 0 as the signal entity for stage cleared
                         auto world_entity = registry.createEntity();
                         registry.addComponent<component::StageCleared>(world_entity, 1);
                         std::cout << "[STAGE CLEARED] Boss_1 defeated!" << std::endl;
@@ -213,11 +208,9 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
                     }
                 }
 
-                // 30% chance to drop FORCE_POD item (not for boss)
                 if (!is_boss && registry.hasComponent<component::Position>(enemy_entity)) {
                     auto& enemyPos = registry.getComponent<component::Position>(enemy_entity);
                     if (rand() % 100 < 30) {
-                        // Check if scorer (player) already has max Force Pods (2)
                         int podCount = 0;
                         if (scorer_id != 0) {
                             auto view = registry.view<component::Tag, component::Parent>();
@@ -236,13 +229,11 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
                     }
                 }
 
-                // Create temporary entity for death audio event
                 auto audio_entity = registry.createEntity();
                 registry.addComponent<component::AudioEvent>(audio_entity, component::AudioEventType::ENEMY_DEATH);
 
                 registry.destroyEntity(enemy_entity);
             } else {
-                // Enemy hit but not killed - play collision hit sound
                 registry.addComponent<component::AudioEvent>(enemy_entity, component::AudioEventType::COLLISION_HIT);
             }
         }
@@ -262,7 +253,6 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
             }
             health.hp -= 20;
 
-            // Add audio event for player taking damage
             registry.addComponent<component::AudioEvent>(player_entity, component::AudioEventType::PLAYER_DAMAGE);
 
             if (health.hp <= 0) {
@@ -277,7 +267,6 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
         auto powerup_entity = (layer1 == CL::PowerUp) ? entity1 : entity2;
         auto player_entity = (layer1 == CL::Player) ? entity1 : entity2;
 
-        // Check if this is a FORCE_POD power-up
         if (registry.hasComponent<component::PowerUpType>(powerup_entity)) {
             auto& type = registry.getComponent<component::PowerUpType>(powerup_entity);
             if (type.type == component::PowerUpTypeEnum::FORCE_POD) {
@@ -287,7 +276,6 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
             }
         }
 
-        // Default: HEALTH power-up behavior
         if (registry.hasComponent<component::Health>(player_entity)) {
             auto& health = registry.getComponent<component::Health>(player_entity);
             health.hp += 30;
@@ -296,7 +284,6 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
             }
         }
 
-        // Create temporary entity for power-up audio event
         auto audio_entity = registry.createEntity();
         registry.addComponent<component::AudioEvent>(audio_entity, component::AudioEventType::POWERUP_COLLECT);
 
@@ -305,11 +292,9 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
 
     if ((layer1 == CL::Companion && layer2 == CL::Enemy) || (layer1 == CL::Enemy && layer2 == CL::Companion)) {
         auto enemy_entity = (layer1 == CL::Enemy) ? entity1 : entity2;
-        // NOTE: We do not destroy the companion (Force Pod). It is invulnerable to body collisions.
 
         if (registry.hasComponent<component::Health>(enemy_entity)) {
             auto& health = registry.getComponent<component::Health>(enemy_entity);
-            // Inflict massive damage to ensure instant kill per frame
             health.hp -= 100000;
 
             if (health.hp <= 0) {
@@ -385,13 +370,11 @@ void spawnForcePodItem(GameEngine::Registry& registry, float x, float y) {
     registry.addComponent<component::HitBox>(item, 64.0f, 64.0f);
     registry.addComponent<component::Tag>(item, "ForcePodItem");
     registry.addComponent<component::SpawnEffect>(item);
-    // NOTE: Do NOT add NetworkId here - let BroadcastSystem assign it
 }
 
 void spawnForcePodCompanion(GameEngine::Registry& registry, GameEngine::entity_t playerId) {
     auto pod = registry.createEntity();
     auto& playerPos = registry.getComponent<component::Position>(playerId);
-    // Dynamic positioning based on existing pod count
     int podCount = 0;
     auto view = registry.view<component::Tag, component::Parent>();
     for (auto entity : view) {
@@ -424,7 +407,6 @@ void spawnForcePodCompanion(GameEngine::Registry& registry, GameEngine::entity_t
     registry.addComponent<component::Collidable>(pod, component::CollisionLayer::Companion);
     registry.addComponent<component::HitBox>(pod, 64.0f, 64.0f);
     registry.addComponent<component::Tag>(pod, "ForcePod");
-    // NOTE: Do NOT add NetworkId here - let BroadcastSystem assign it
 }
 
 } // namespace rtype::ecs

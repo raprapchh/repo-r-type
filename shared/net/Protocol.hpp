@@ -19,8 +19,12 @@ enum class MessageType : uint16_t {
     Pong = 11,         ///< Latency response
     MapResize = 12,    ///< Viewport resize notification
     PlayerName = 13,
-    ChatMessage = 14, ///< Lobby chat message
-    StageCleared = 15 ///< Stage victory notification
+    ChatMessage = 14,  ///< Lobby chat message
+    StageCleared = 15, ///< Stage victory notification
+    ListRooms = 16,    ///< Request list of available rooms
+    RoomInfo = 17,     ///< Information about a room
+    CreateRoom = 18,   ///< Create a new room
+    JoinRoom = 19      ///< Join an existing room
 };
 
 } // namespace rtype::net

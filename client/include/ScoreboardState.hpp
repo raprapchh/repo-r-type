@@ -31,7 +31,6 @@ class ScoreboardState : public IState {
     sf::Font font_;
     bool font_loaded_;
 
-    // UI Elements
     sf::Text title_text_;
     sf::Text solo_title_text_;
     sf::Text multi_title_text_;

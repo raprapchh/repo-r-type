@@ -47,7 +47,6 @@ bool ScoreboardManager::load() {
             continue;
         }
 
-        // Parse score line: "PlayerName:12345:1234567890"
         std::istringstream iss(line);
         std::string name;
         uint32_t score;
@@ -71,7 +70,6 @@ bool ScoreboardManager::load() {
 }
 
 bool ScoreboardManager::save() {
-    // Create directory if it doesn't exist
     std::filesystem::create_directories(get_save_directory());
 
     std::ofstream file(save_file_path_);

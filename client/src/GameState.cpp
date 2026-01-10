@@ -1,6 +1,7 @@
 #include "../include/GameState.hpp"
 #include "../include/MenuState.hpp"
 #include "../include/SFMLRenderer.hpp"
+#include "../../shared/GameConstants.hpp"
 #include "../../ecs/include/systems/InputSystem.hpp"
 #include "../../ecs/include/systems/RenderSystem.hpp"
 #include "../../ecs/include/systems/MovementSystem.hpp"
@@ -8,9 +9,13 @@
 #include "../../ecs/include/systems/BoundarySystem.hpp"
 #include "../../ecs/include/components/MapBounds.hpp"
 #include "../../ecs/include/components/NetworkId.hpp"
+#include "../../ecs/include/components/NetworkInterpolation.hpp"
 #include "../../ecs/include/components/Tag.hpp"
 #include "../../ecs/include/components/Lives.hpp"
 #include "../../ecs/include/components/Health.hpp"
+#include "../../ecs/include/components/HitBox.hpp"
+#include "../../ecs/include/components/CollisionLayer.hpp"
+#include "../../ecs/include/components/Controllable.hpp"
 #include "../../ecs/include/components/Weapon.hpp"
 #include "../../ecs/include/components/Score.hpp"
 #include <thread>
@@ -18,7 +23,7 @@
 
 namespace rtype::client {
 
-GameState::GameState() {
+GameState::GameState(bool multiplayer) : multiplayer_(multiplayer) {
     setup_pause_ui();
 }
 
@@ -28,11 +33,56 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
     score_saved_ = false;
     initial_player_count_ = 0;
     max_score_reached_ = 0;
-    if (!client.is_connected()) {
-        client.connect();
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    if (multiplayer_) {
+        if (!client.is_connected()) {
+            client.connect();
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+        client.send_game_start_request();
+    } else {
+        uint32_t offline_session_id = static_cast<uint32_t>(
+            (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
+                 .count() &
+             0x7FFFFFFF));
+        client.set_offline_ids(offline_session_id, 1);
+
+        GameEngine::Registry& registry = client.get_registry();
+        std::mutex& registry_mutex = client.get_registry_mutex();
+        {
+            std::lock_guard<std::mutex> lock(registry_mutex);
+            auto entity = registry.createEntity();
+            uint32_t local_id = 1;
+            registry.addComponent<rtype::ecs::component::NetworkId>(entity, local_id);
+            registry.addComponent<rtype::ecs::component::Position>(entity, 100.0f, 100.0f);
+            registry.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
+            uint32_t sprite_index = 0;
+            registry.addComponent<rtype::ecs::component::Drawable>(
+                entity, "player_ships", 0, 0, static_cast<uint32_t>(rtype::constants::PLAYER_WIDTH),
+                static_cast<uint32_t>(rtype::constants::PLAYER_HEIGHT), rtype::constants::PLAYER_SCALE,
+                rtype::constants::PLAYER_SCALE, 0, 0.1f, false, sprite_index, static_cast<uint32_t>(2));
+            registry.addComponent<rtype::ecs::component::Controllable>(entity, true);
+            auto& drawable = registry.getComponent<rtype::ecs::component::Drawable>(entity);
+            registry.addComponent<rtype::ecs::component::HitBox>(
+                entity, rtype::constants::PLAYER_WIDTH * rtype::constants::PLAYER_SCALE,
+                rtype::constants::PLAYER_HEIGHT * rtype::constants::PLAYER_SCALE);
+            registry.addComponent<rtype::ecs::component::Collidable>(entity,
+                                                                     rtype::ecs::component::CollisionLayer::Player);
+            registry.addComponent<rtype::ecs::component::Tag>(entity, "Player");
+            registry.addComponent<rtype::ecs::component::Lives>(entity, 3);
+            registry.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
+            registry.addComponent<rtype::ecs::component::Score>(entity, 0);
+            registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, 100.0f, 100.0f, 0.0f, 0.0f);
+            drawable.animation_sequences["idle"] = {2};
+            drawable.animation_sequences["up"] = {2, 3, 4};
+            drawable.animation_sequences["down"] = {2, 1, 0};
+            drawable.current_state = "idle";
+            drawable.last_state = "idle";
+            drawable.animation_timer = 0.0f;
+            drawable.animation_speed = 0.1f;
+            drawable.current_sprite = 2;
+            drawable.animation_frame = 0;
+        }
     }
-    client.send_game_start_request();
 
     // Wait a bit for players to load and count them
     std::this_thread::sleep_for(std::chrono::milliseconds(300));

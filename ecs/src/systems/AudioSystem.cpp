@@ -15,7 +15,6 @@ AudioSystem::AudioSystem() : current_music_id_("") {
 void AudioSystem::update(GameEngine::Registry& registry, double) {
     active_sounds_.remove_if([](const sf::Sound& sound) { return sound.getStatus() == sf::Sound::Stopped; });
 
-    // Process existing Sound components (backward compatibility)
     try {
         auto view = registry.view<Sound>();
         for (auto entity : view) {
@@ -29,17 +28,14 @@ void AudioSystem::update(GameEngine::Registry& registry, double) {
         std::cerr << "AudioSystem error processing Sound: " << e.what() << std::endl;
     }
 
-    // Process AudioEvent components
     try {
         auto event_view = registry.view<component::AudioEvent>();
         std::vector<GameEngine::entity_t> entities_to_process;
 
-        // Collect entities first
         for (auto entity : event_view) {
             entities_to_process.push_back(static_cast<GameEngine::entity_t>(entity));
         }
 
-        // Process each entity
         for (auto entity : entities_to_process) {
             if (!registry.isValid(entity))
                 continue;
@@ -51,11 +47,8 @@ void AudioSystem::update(GameEngine::Registry& registry, double) {
                 playSound(sound_id);
             }
 
-            // Remove the component
             registry.removeComponent<component::AudioEvent>(entity);
 
-            // If the entity only had AudioEvent component (temporary audio entity), destroy it
-            // Check by trying to get common components - if none exist, it's a temp entity
             bool has_other_components = registry.hasComponent<component::Position>(entity) ||
                                         registry.hasComponent<component::Velocity>(entity) ||
                                         registry.hasComponent<component::Drawable>(entity) ||

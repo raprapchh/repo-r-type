@@ -7,7 +7,7 @@ namespace rtype::client {
 
 class GameState : public IState {
   public:
-    GameState();
+    explicit GameState(bool multiplayer = true);
     ~GameState() override = default;
 
     void handle_input(Renderer& renderer, StateManager& state_manager) override;
@@ -46,6 +46,8 @@ class GameState : public IState {
 
     sf::RectangleShape accessibility_cycle_button_;
     sf::Text accessibility_cycle_text_;
+
+    bool multiplayer_ = true;
 };
 
 } // namespace rtype::client
