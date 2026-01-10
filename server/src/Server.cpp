@@ -140,7 +140,10 @@ GameSession* Server::get_or_create_session(uint32_t session_id) {
 
     auto session = std::make_unique<GameSession>(session_id, *udp_server_, *protocol_adapter_, *message_serializer_);
     session->set_client_unmap_callback([this](const std::string& key) { unmap_client(key); });
-    session->set_session_empty_callback([this](uint32_t id) { remove_session(id); });
+    session->set_session_empty_callback([this](uint32_t id) {
+        if (io_context_)
+            asio::post(*io_context_, [this, id]() { remove_session(id); });
+    });
     session->start();
     auto* raw_ptr = session.get();
     sessions_.emplace(session_id, std::move(session));

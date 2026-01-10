@@ -5,6 +5,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <mutex>
 
 namespace rtype::server {
 
@@ -39,6 +40,7 @@ class UdpServer {
     std::array<uint8_t, 1024> recv_buffer_;
     message_callback handler_;
     bool running_;
+    mutable std::mutex send_mutex_;
 };
 
 } // namespace rtype::server

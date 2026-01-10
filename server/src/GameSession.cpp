@@ -122,11 +122,16 @@ void GameSession::start() {
 }
 
 void GameSession::stop() {
-    if (!running_.load())
-        return;
     running_ = false;
-    if (game_thread_.joinable())
-        game_thread_.join();
+    if (game_thread_.joinable()) {
+        if (std::this_thread::get_id() != game_thread_.get_id()) {
+            game_thread_.join();
+        } else {
+            game_thread_.detach();
+            Logger::instance().warn("Session " + std::to_string(session_id_) +
+                                    " stopped from within game thread (detached)");
+        }
+    }
     Logger::instance().info("Session " + std::to_string(session_id_) + " stopped");
 }
 
