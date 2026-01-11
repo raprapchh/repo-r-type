@@ -42,11 +42,11 @@ find_package(EnTT CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 
-# Defensive SFML search
 message(STATUS "Searching for SFML...")
-find_package(SFML CONFIG)
+# vcpkg's SFMLConfig expects components to be requested; call with components
+find_package(SFML CONFIG COMPONENTS graphics window system audio QUIET)
 if(NOT SFML_FOUND)
-    message(STATUS "SFML CONFIG not found, trying without CONFIG...")
+    message(STATUS "SFML CONFIG not found or incomplete, falling back to non-CONFIG search...")
     find_package(SFML COMPONENTS graphics window system audio REQUIRED)
 else()
     message(STATUS "SFML CONFIG found version ${SFML_VERSION}")
