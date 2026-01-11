@@ -31,8 +31,8 @@ jobs:
     - name: Prepare Artifacts
       run: |
         mkdir dist
-        cp bin/windows/r-type_client.exe dist/
-        cp bin/windows/r-type_server.exe dist/
+        cp build/Release/r-type_client.exe dist/
+        cp build/Release/r-type_server.exe dist/
 
         mkdir dist/client
         cp -r client/assets dist/client/
@@ -57,7 +57,7 @@ jobs:
       shell: pwsh
 
     - name: Build Installer (NSIS)
-      run: makensis /DVERSION=${{ github.ref_name }} installer/installer.nsi
+      run: '"C:\Program Files (x86)\NSIS\makensis.exe" /DVERSION=${{ github.ref_name }} installer/installer.nsi'
       shell: pwsh
 
     - name: Release
