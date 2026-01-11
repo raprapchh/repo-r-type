@@ -10,6 +10,7 @@
 #include "../../ecs/include/systems/BoundarySystem.hpp"
 #include "../../ecs/include/systems/SpawnEffectSystem.hpp"
 #include "../../ecs/include/systems/ProjectileSystem.hpp"
+#include "../../ecs/include/systems/ForcePodSystem.hpp"
 #include "../../ecs/include/components/MapBounds.hpp"
 #include "../../ecs/include/components/NetworkId.hpp"
 #include "../../ecs/include/components/NetworkInterpolation.hpp"
@@ -64,6 +65,7 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
         system_manager.addSystem<rtype::ecs::CollisionSystem>();
         system_manager.addSystem<rtype::ecs::BoundarySystem>();
         system_manager.addSystem<rtype::ecs::ProjectileSystem>();
+        system_manager.addSystem<rtype::ecs::ForcePodSystem>();
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
