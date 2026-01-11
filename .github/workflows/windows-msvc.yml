@@ -56,6 +56,15 @@ jobs:
       run: makensis /DVERSION=${{ github.ref_name }} installer/installer.nsi
       shell: pwsh
 
+    - name: Install NSIS
+      if: failure() == false
+      run: choco install nsis -y
+      shell: pwsh
+
+    - name: Build Installer (NSIS)
+      run: makensis /DVERSION=${{ github.ref_name }} installer/installer.nsi
+      shell: pwsh
+
     - name: Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1
