@@ -4,13 +4,18 @@
   "builtin-baseline": "2b6a882f61eaa764ec3cf816e2265fe804a44cd0",
   "dependencies": [
     "asio",
-    "catch2",
-    "entt",
-    "nlohmann-json",
     {
       "name": "sfml",
-      "version>=": "2.5.1"
-    }
+      "version>=": "2.5.1",
+      "features": [
+        "graphics",
+        "window",
+        "audio"
+      ]
+    },
+    "entt",
+    "catch2",
+    "nlohmann-json"
   ],
   "overrides": [
     {
