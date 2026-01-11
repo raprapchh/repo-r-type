@@ -8,6 +8,8 @@
 #include "../../ecs/include/systems/MovementSystem.hpp"
 #include "../../ecs/include/systems/CollisionSystem.hpp"
 #include "../../ecs/include/systems/BoundarySystem.hpp"
+#include "../../ecs/include/systems/SpawnEffectSystem.hpp"
+#include "../../ecs/include/systems/ProjectileSystem.hpp"
 #include "../../ecs/include/components/MapBounds.hpp"
 #include "../../ecs/include/components/NetworkId.hpp"
 #include "../../ecs/include/components/NetworkInterpolation.hpp"
@@ -19,6 +21,7 @@
 #include "../../ecs/include/components/Controllable.hpp"
 #include "../../ecs/include/components/Weapon.hpp"
 #include "../../ecs/include/components/Score.hpp"
+#include "../../ecs/include/components/Projectile.hpp"
 #include <thread>
 #include <chrono>
 
@@ -34,58 +37,28 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
     score_saved_ = false;
     initial_player_count_ = 0;
     max_score_reached_ = 0;
-    if (multiplayer_) {
-        if (!client.is_connected()) {
-            client.connect();
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        }
-        client.send_game_start_request();
-    } else {
-        uint32_t offline_session_id = static_cast<uint32_t>(
-            (std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
-                 .count() &
-             0x7FFFFFFF));
-        client.set_offline_ids(offline_session_id, 1);
-
-        GameEngine::Registry& registry = client.get_registry();
-        std::mutex& registry_mutex = client.get_registry_mutex();
-        {
-            std::lock_guard<std::mutex> lock(registry_mutex);
-            auto entity = registry.createEntity();
-            uint32_t local_id = 1;
-            registry.addComponent<rtype::ecs::component::NetworkId>(entity, local_id);
-            registry.addComponent<rtype::ecs::component::Position>(entity, 100.0f, 100.0f);
-            registry.addComponent<rtype::ecs::component::Velocity>(entity, 0.0f, 0.0f);
-            uint32_t sprite_index = 0;
-            registry.addComponent<rtype::ecs::component::Drawable>(
-                entity, "player_ships", 0, 0, static_cast<uint32_t>(rtype::constants::PLAYER_WIDTH),
-                static_cast<uint32_t>(rtype::constants::PLAYER_HEIGHT), rtype::constants::PLAYER_SCALE,
-                rtype::constants::PLAYER_SCALE, 0, 0.1f, false, sprite_index, static_cast<uint32_t>(2));
-            registry.addComponent<rtype::ecs::component::Controllable>(entity, true);
-            auto& drawable = registry.getComponent<rtype::ecs::component::Drawable>(entity);
-            registry.addComponent<rtype::ecs::component::HitBox>(
-                entity, rtype::constants::PLAYER_WIDTH * rtype::constants::PLAYER_SCALE,
-                rtype::constants::PLAYER_HEIGHT * rtype::constants::PLAYER_SCALE);
-            registry.addComponent<rtype::ecs::component::Collidable>(entity,
-                                                                     rtype::ecs::component::CollisionLayer::Player);
-            registry.addComponent<rtype::ecs::component::Tag>(entity, "Player");
-            registry.addComponent<rtype::ecs::component::Lives>(entity, 3);
-            registry.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
-            registry.addComponent<rtype::ecs::component::Score>(entity, 0);
-            registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, 100.0f, 100.0f, 0.0f, 0.0f);
-            drawable.animation_sequences["idle"] = {2};
-            drawable.animation_sequences["up"] = {2, 3, 4};
-            drawable.animation_sequences["down"] = {2, 1, 0};
-            drawable.current_state = "idle";
-            drawable.last_state = "idle";
-            drawable.animation_timer = 0.0f;
-            drawable.animation_speed = 0.1f;
-            drawable.current_sprite = 2;
-            drawable.animation_frame = 0;
-        }
+    // Always connect to server, even in solo
+    if (!client.is_connected()) {
+        client.connect();
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
+    {
+        auto now_ms =
+            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+                .count();
+        client.create_room("SOLO-" + std::to_string(now_ms));
+    }
+    game_start_sent_ = false;
 
-    // Wait a bit for players to load and count them
+    GameEngine::SystemManager& system_manager = client.get_system_manager();
+    system_manager.clear();
+    system_manager.addSystem<rtype::ecs::MovementSystem>();
+    system_manager.addSystem<rtype::ecs::TextureAnimationSystem>();
+    system_manager.addSystem<rtype::ecs::SpawnEffectSystem>();
+    system_manager.addSystem<rtype::ecs::CollisionSystem>();
+    system_manager.addSystem<rtype::ecs::BoundarySystem>();
+    system_manager.addSystem<rtype::ecs::ProjectileSystem>();
+
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
     GameEngine::Registry& registry = client_->get_registry();
     std::mutex& registry_mutex = client_->get_registry_mutex();
@@ -100,7 +73,6 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
 
     std::cout << "GameState: Counted " << initial_player_count_ << " player(s) in game" << std::endl;
 
-    // Start background music
     client.get_audio_system().startBackgroundMusic();
 }
 
@@ -108,7 +80,6 @@ void GameState::on_exit(Renderer& renderer, Client& client) {
     (void)renderer;
     (void)client;
 
-    // Stop background music
     if (client_) {
         client_->get_audio_system().stopBackgroundMusic();
     }
@@ -124,8 +95,6 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
         } else if (event.type == sf::Event::Resized) {
             renderer.handle_resize(event.size.width, event.size.height);
             if (client_) {
-                // client_->send_map_resize(static_cast<float>(event.size.width),
-                // static_cast<float>(event.size.height));
 
                 GameEngine::Registry& registry = client_->get_registry();
                 std::mutex& registry_mutex = client_->get_registry_mutex();
@@ -255,8 +224,7 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
     {
         std::lock_guard<std::mutex> lock(registry_mutex);
 
-        if (!client.is_connected()) {
-            return;
+        if (!multiplayer_) {
         }
 
         uint32_t player_id = client.get_player_id();
@@ -294,11 +262,10 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
             }
         }
 
-        if (!player_exists || player_dead) {
+        if (client.is_connected() && player_id != 0 && (!player_exists || player_dead)) {
             if (!game_over_) {
                 game_over_ = true;
 
-                // Save score when player dies (only once)
                 if (!score_saved_) {
                     score_saved_ = true;
                     uint32_t final_score = max_score_reached_;
@@ -367,13 +334,13 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
             return;
         }
 
-        if (game_over_ && all_players_dead_) {
-            return;
-        }
-
         bool window_has_focus = renderer.get_window() && renderer.get_window()->hasFocus();
 
         if (window_has_focus && !game_over_) {
+            if (!game_start_sent_ && client.is_connected()) {
+                client.send_game_start_request();
+                game_start_sent_ = true;
+            }
             {
                 rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(),
                                                      renderer.is_moving_left(), renderer.is_moving_right(), 400.0f);
@@ -386,20 +353,18 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
                 input_system.update(registry, delta_time);
             }
 
-            // Client-side player boundary clamping (visual only)
             {
                 auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Position>();
                 for (auto entity : view) {
                     auto& pos = registry.getComponent<rtype::ecs::component::Position>(static_cast<size_t>(entity));
-                    // Hardcoded map bounds for client visual clamping
                     if (pos.x < 0)
                         pos.x = 0;
                     if (pos.x > 1920 - 100)
-                        pos.x = 1920 - 100; // Assuming player width
+                        pos.x = 1920 - 100;
                     if (pos.y < 0)
                         pos.y = 0;
                     if (pos.y > 1080 - 100)
-                        pos.y = 1080 - 100; // Assuming player height
+                        pos.y = 1080 - 100;
                 }
             }
 
@@ -407,12 +372,16 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
                 auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
                 for (auto entity : view) {
                     auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
-                    client.send_move(vel.vx, vel.vy);
+                    if (client.is_connected()) {
+                        client.send_move(vel.vx, vel.vy);
+                    }
                 }
             }
 
             if (shoot_requested_) {
-                client.send_shoot(0, 0);
+                if (client.is_connected()) {
+                    client.send_shoot(0, 0);
+                }
                 shoot_requested_ = false;
             }
         } else {
@@ -578,6 +547,62 @@ void GameState::render_pause_overlay(Renderer& renderer) {
         renderer.draw_rectangle(settings_button_);
         renderer.draw_text(settings_button_text_);
     }
+}
+
+void GameState::spawn_enemy_solo(GameEngine::Registry& registry) {
+    auto entity = registry.createEntity();
+    float x = 1400.0f + (rand() % 400);
+    float y = 100.0f + (rand() % 800);
+
+    registry.addComponent<rtype::ecs::component::NetworkId>(entity, next_enemy_id_++);
+    registry.addComponent<rtype::ecs::component::Position>(entity, x, y);
+    registry.addComponent<rtype::ecs::component::Velocity>(entity, -200.0f, 0.0f);
+
+    int sub_type = 1 + (rand() % 4);
+    std::string sprite_name;
+    if (sub_type == 1)
+        sprite_name = "monster_0-top";
+    else if (sub_type == 2)
+        sprite_name = "monster_0-bot";
+    else if (sub_type == 3)
+        sprite_name = "monster_0-left";
+    else
+        sprite_name = "monster_0-right";
+
+    registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 0, 0, 4.0f, 4.0f, 1, 0.1f, true);
+
+    registry.addComponent<rtype::ecs::component::Health>(entity, 100.0f, 100.0f);
+    registry.addComponent<rtype::ecs::component::HitBox>(entity, 100.0f, 100.0f);
+    registry.addComponent<rtype::ecs::component::Collidable>(entity, rtype::ecs::component::CollisionLayer::Enemy);
+    registry.addComponent<rtype::ecs::component::Tag>(entity, "EnemyMonster");
+    registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, x, y, -200.0f, 0.0f);
+}
+
+void GameState::spawn_player_projectile(GameEngine::Registry& registry, GameEngine::entity_t player_entity) {
+    if (!registry.hasComponent<rtype::ecs::component::Position>(player_entity) ||
+        !registry.hasComponent<rtype::ecs::component::Weapon>(player_entity)) {
+        return;
+    }
+
+    auto& pos = registry.getComponent<rtype::ecs::component::Position>(player_entity);
+    auto& weapon = registry.getComponent<rtype::ecs::component::Weapon>(player_entity);
+
+    auto projectile = registry.createEntity();
+    registry.addComponent<rtype::ecs::component::NetworkId>(projectile, next_projectile_id_++);
+    float spawn_x = pos.x + weapon.spawnOffsetX;
+    float spawn_y = pos.y + weapon.spawnOffsetY;
+    registry.addComponent<rtype::ecs::component::Position>(projectile, spawn_x, spawn_y);
+    registry.addComponent<rtype::ecs::component::Velocity>(projectile, weapon.projectileSpeed, 0.0f);
+    registry.addComponent<rtype::ecs::component::Projectile>(projectile, weapon.damage, weapon.projectileLifetime,
+                                                             static_cast<std::size_t>(player_entity));
+    registry.addComponent<rtype::ecs::component::HitBox>(projectile, 32.0f, 32.0f);
+    registry.addComponent<rtype::ecs::component::Collidable>(projectile,
+                                                             rtype::ecs::component::CollisionLayer::PlayerProjectile);
+    registry.addComponent<rtype::ecs::component::Tag>(projectile, "PlayerProjectile");
+    registry.addComponent<rtype::ecs::component::Drawable>(projectile, "shot", 0, 0, 29, 33, 3.0f, 3.0f, 4, 0.05f,
+                                                           true);
+    registry.addComponent<rtype::ecs::component::NetworkInterpolation>(projectile, spawn_x, spawn_y,
+                                                                       weapon.projectileSpeed, 0.0f);
 }
 
 } // namespace rtype::client
