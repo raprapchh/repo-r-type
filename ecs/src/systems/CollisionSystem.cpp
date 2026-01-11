@@ -404,7 +404,15 @@ void spawnForcePodCompanion(GameEngine::Registry& registry, GameEngine::entity_t
     registry.addComponent<component::Position>(pod, playerPos.x + offsetX, playerPos.y + offsetY);
     registry.addComponent<component::Velocity>(pod, 0.0f, 0.0f);
     registry.addComponent<component::Parent>(pod, static_cast<std::size_t>(playerId), offsetX, offsetY);
-    registry.addComponent<component::Drawable>(pod, "force_pod_0", 0, 0, 32, 32, 2.5f, 2.5f);
+
+    auto& drawable = registry.addComponent<component::Drawable>(pod, "force_pod_0", 0, 0, 32, 32, 2.5f, 2.5f);
+    drawable.current_sprite = 0;
+    drawable.sprite_index = 0;
+
+    if (drawable.texture_name.empty()) {
+        std::cerr << "[WARNING] Force Pod spawned with invalid Sprite ID/Name!" << std::endl;
+    }
+
     std::vector<std::string> podFrames;
     for (int i = 0; i < 13; ++i)
         podFrames.push_back("force_pod_" + std::to_string(i));
@@ -415,8 +423,7 @@ void spawnForcePodCompanion(GameEngine::Registry& registry, GameEngine::entity_t
     weapon.fireRate = 0.3f;
     weapon.projectileSpeed = 1000.0f;
     weapon.damage = 15.0f;
-    weapon.spawnOffsetX =
-        16.0f; // Center of pod (32 width * 2.5 scale / 2 ? No, offset is in world coords usually relative to pos)
+    weapon.spawnOffsetX = 16.0f;
     weapon.spawnOffsetY = 0.0f;
     registry.addComponent<component::Collidable>(pod, component::CollisionLayer::Companion);
     registry.addComponent<component::HitBox>(pod, 64.0f, 64.0f);

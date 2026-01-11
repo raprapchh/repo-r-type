@@ -12,9 +12,10 @@ LobbyState::LobbyState()
     : is_typing_name_(false), backspace_timer_(0.0f), backspace_delay_(INITIAL_BACKSPACE_DELAY),
       was_backspace_pressed_(false), font_loaded_(false), player_count_(0), game_started_(false),
       renderer_ref_(nullptr), local_player_id_(0), current_mode_(LobbyMode::MAIN_MENU), room_list_needs_update_(false),
-      selected_room_index_(-1), is_typing_room_name_(false), was_room_backspace_pressed_(false),
-      room_backspace_timer_(0.0f), room_backspace_delay_(INITIAL_BACKSPACE_DELAY), is_typing_chat_(false),
-      chat_backspace_timer_(0.0f), chat_backspace_delay_(INITIAL_BACKSPACE_DELAY), was_chat_backspace_pressed_(false) {
+      lobby_update_pending_(false), pending_player_count_(0), pending_your_player_id_(-1), selected_room_index_(-1),
+      is_typing_room_name_(false), was_room_backspace_pressed_(false), room_backspace_timer_(0.0f),
+      room_backspace_delay_(INITIAL_BACKSPACE_DELAY), is_typing_chat_(false), chat_backspace_timer_(0.0f),
+      chat_backspace_delay_(INITIAL_BACKSPACE_DELAY), was_chat_backspace_pressed_(false) {
     setup_ui();
 }
 
@@ -230,6 +231,12 @@ void LobbyState::on_enter(Renderer& renderer, Client& client) {
         [this](uint32_t session_id, uint8_t player_count, uint8_t max_players, uint8_t status,
                const std::string& room_name) { add_room(session_id, player_count, max_players, status, room_name); });
 
+    client.set_lobby_update_callback([this](int8_t playerCount, int8_t yourPlayerId) {
+        pending_player_count_.store(playerCount);
+        pending_your_player_id_.store(yourPlayerId);
+        lobby_update_pending_.store(true);
+    });
+
     // Start at main menu
     current_mode_ = LobbyMode::MAIN_MENU;
     available_rooms_.clear();
@@ -256,13 +263,12 @@ void LobbyState::on_enter(Renderer& renderer, Client& client) {
 void LobbyState::on_exit(Renderer& renderer, Client& client) {
     (void)renderer;
 
-    // CRITICAL: Clear all callbacks to prevent dangling pointer crashes
-    // These callbacks capture 'this' and will be called from network thread
     client.set_player_join_callback(nullptr);
     client.set_player_name_callback(nullptr);
     client.set_game_start_callback(nullptr);
     client.set_chat_message_callback(nullptr);
     client.set_room_list_callback(nullptr);
+    client.set_lobby_update_callback(nullptr);
 
     // Clear chat data
     chat_messages_.clear();
@@ -621,6 +627,18 @@ void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_
     // Process pending network events on main thread
     process_pending_events();
 
+    // Process pending lobby update (player count from server)
+    if (lobby_update_pending_.load()) {
+        int8_t count = pending_player_count_.load();
+        int8_t playerId = pending_your_player_id_.load();
+        player_count_ = static_cast<uint8_t>(count);
+        if (playerId > 0 && local_player_id_ == 0) {
+            local_player_id_ = static_cast<uint32_t>(playerId);
+        }
+        update_player_display();
+        lobby_update_pending_.store(false);
+    }
+
     // Update room list display if in browse mode and rooms were updated
     if (current_mode_ == LobbyMode::BROWSE_ROOMS && room_list_needs_update_.load()) {
         update_room_list_display();
@@ -936,8 +954,10 @@ void LobbyState::process_pending_events() {
     std::lock_guard<std::mutex> lock(pending_mutex_);
 
     // Process player joins
+    bool players_updated = false;
     for (const auto& player : pending_player_joins_) {
         add_player(player.first, player.second);
+        players_updated = true;
     }
     pending_player_joins_.clear();
 
@@ -948,16 +968,19 @@ void LobbyState::process_pending_events() {
 
         if (connected_players_.find(player_id) != connected_players_.end()) {
             std::string final_name = name;
-            // Robust check for default names
             if (final_name.empty() || final_name == "Player" || final_name == "PLAYER" || final_name == "player" ||
                 final_name == "Player 0" || final_name == "PLAYER 0") {
                 final_name = "Player " + std::to_string(player_id);
             }
             connected_players_[player_id] = final_name;
-            update_player_display();
+            players_updated = true;
         }
     }
     pending_name_updates_.clear();
+
+    if (players_updated) {
+        update_player_display();
+    }
 
     // Process chat messages
     for (const auto& msg : pending_chat_messages_) {

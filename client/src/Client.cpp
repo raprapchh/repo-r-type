@@ -569,6 +569,17 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
         }
         break;
     }
+    case rtype::net::MessageType::LobbyUpdate: {
+        try {
+            auto lobby_data = serializer.deserialize_lobby_update(packet);
+            if (lobby_update_callback_) {
+                lobby_update_callback_(lobby_data.playerCount, lobby_data.yourPlayerId);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "Error deserializing LobbyUpdate packet: " << e.what() << std::endl;
+        }
+        break;
+    }
     default:
         std::cerr << "Warning: Unknown message type received: " << static_cast<int>(packet.header.message_type)
                   << std::endl;
@@ -685,6 +696,10 @@ void Client::set_chat_message_callback(std::function<void(uint32_t, const std::s
 void Client::set_room_list_callback(
     std::function<void(uint32_t, uint8_t, uint8_t, uint8_t, const std::string&)> callback) {
     room_list_callback_ = callback;
+}
+
+void Client::set_lobby_update_callback(std::function<void(int8_t, int8_t)> callback) {
+    lobby_update_callback_ = callback;
 }
 
 void Client::request_room_list() {

@@ -74,6 +74,8 @@ class Client {
 
     void set_room_list_callback(std::function<void(uint32_t, uint8_t, uint8_t, uint8_t, const std::string&)> callback);
 
+    void set_lobby_update_callback(std::function<void(int8_t, int8_t)> callback);
+
     void request_room_list();
     void create_room(const std::string& room_name, uint8_t max_players = 4);
     void join_room(uint32_t session_id);
@@ -110,6 +112,7 @@ class Client {
     std::function<void()> game_start_callback_;
     std::function<void(uint32_t, const std::string&, const std::string&)> chat_message_callback_;
     std::function<void(uint32_t, uint8_t, uint8_t, uint8_t, const std::string&)> room_list_callback_;
+    std::function<void(int8_t, int8_t)> lobby_update_callback_;
 
     std::vector<std::pair<uint32_t, std::string>> pending_players_;
     GameEngine::Registry registry_;
