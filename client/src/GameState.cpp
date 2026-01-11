@@ -37,27 +37,34 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
     score_saved_ = false;
     initial_player_count_ = 0;
     max_score_reached_ = 0;
-    // Always connect to server, even in solo
-    if (!client.is_connected()) {
-        client.connect();
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    }
-    {
-        auto now_ms =
-            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
-                .count();
-        client.create_room("SOLO-" + std::to_string(now_ms));
-    }
-    game_start_sent_ = false;
+    if (multiplayer_) {
+        if (!client.is_connected()) {
+            client.connect();
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+        client.send_game_start_request();
+    } else {
+        if (!client.is_connected()) {
+            client.connect();
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        }
+        {
+            auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                              std::chrono::system_clock::now().time_since_epoch())
+                              .count();
+            client.create_room("SOLO-" + std::to_string(now_ms));
+        }
+        game_start_sent_ = false;
 
-    GameEngine::SystemManager& system_manager = client.get_system_manager();
-    system_manager.clear();
-    system_manager.addSystem<rtype::ecs::MovementSystem>();
-    system_manager.addSystem<rtype::ecs::TextureAnimationSystem>();
-    system_manager.addSystem<rtype::ecs::SpawnEffectSystem>();
-    system_manager.addSystem<rtype::ecs::CollisionSystem>();
-    system_manager.addSystem<rtype::ecs::BoundarySystem>();
-    system_manager.addSystem<rtype::ecs::ProjectileSystem>();
+        GameEngine::SystemManager& system_manager = client.get_system_manager();
+        system_manager.clear();
+        system_manager.addSystem<rtype::ecs::MovementSystem>();
+        system_manager.addSystem<rtype::ecs::TextureAnimationSystem>();
+        system_manager.addSystem<rtype::ecs::SpawnEffectSystem>();
+        system_manager.addSystem<rtype::ecs::CollisionSystem>();
+        system_manager.addSystem<rtype::ecs::BoundarySystem>();
+        system_manager.addSystem<rtype::ecs::ProjectileSystem>();
+    }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
     GameEngine::Registry& registry = client_->get_registry();
@@ -337,7 +344,7 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
         bool window_has_focus = renderer.get_window() && renderer.get_window()->hasFocus();
 
         if (window_has_focus && !game_over_) {
-            if (!game_start_sent_ && client.is_connected()) {
+            if (!multiplayer_ && !game_start_sent_ && client.is_connected()) {
                 client.send_game_start_request();
                 game_start_sent_ = true;
             }
