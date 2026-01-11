@@ -283,4 +283,14 @@ struct JoinRoomData {
     }
 };
 
+struct LobbyUpdateData {
+    int8_t playerCount;
+    int8_t yourPlayerId;
+
+    LobbyUpdateData() : playerCount(0), yourPlayerId(-1) {
+    }
+    LobbyUpdateData(int8_t count, int8_t playerId) : playerCount(count), yourPlayerId(playerId) {
+    }
+};
+
 } // namespace rtype::net

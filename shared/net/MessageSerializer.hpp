@@ -361,6 +361,21 @@ class MessageSerializer : public IMessageSerializer {
         data.session_id = deserializer.read<uint32_t>();
         return data;
     }
+
+    Packet serialize_lobby_update(const LobbyUpdateData& data) override {
+        Serializer serializer;
+        serializer.write(data.playerCount);
+        serializer.write(data.yourPlayerId);
+        return Packet(static_cast<uint16_t>(MessageType::LobbyUpdate), serializer.get_data());
+    }
+
+    LobbyUpdateData deserialize_lobby_update(const Packet& packet) override {
+        Deserializer deserializer(packet.body);
+        LobbyUpdateData data;
+        data.playerCount = deserializer.read<int8_t>();
+        data.yourPlayerId = deserializer.read<int8_t>();
+        return data;
+    }
 };
 
 } // namespace rtype::net

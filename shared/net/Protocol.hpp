@@ -24,7 +24,8 @@ enum class MessageType : uint16_t {
     ListRooms = 16,    ///< Request list of available rooms
     RoomInfo = 17,     ///< Information about a room
     CreateRoom = 18,   ///< Create a new room
-    JoinRoom = 19      ///< Join an existing room
+    JoinRoom = 19,     ///< Join an existing room
+    LobbyUpdate = 20   ///< Lobby state update (player count, player ID)
 };
 
 } // namespace rtype::net

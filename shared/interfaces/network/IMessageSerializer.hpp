@@ -60,6 +60,9 @@ class IMessageSerializer {
 
     virtual Packet serialize_join_room(const JoinRoomData& data) = 0;
     virtual JoinRoomData deserialize_join_room(const Packet& packet) = 0;
+
+    virtual Packet serialize_lobby_update(const LobbyUpdateData& data) = 0;
+    virtual LobbyUpdateData deserialize_lobby_update(const Packet& packet) = 0;
 };
 
 } // namespace rtype::net
