@@ -82,6 +82,9 @@ class LobbyState : public IState {
     std::vector<RoomEntry> available_rooms_;
     std::mutex rooms_mutex_;
     std::atomic<bool> room_list_needs_update_;
+    std::atomic<bool> lobby_update_pending_;
+    std::atomic<int8_t> pending_player_count_;
+    std::atomic<int8_t> pending_your_player_id_;
     sf::Text rooms_title_text_;
     sf::Text create_room_button_text_;
     sf::RectangleShape create_room_button_;
