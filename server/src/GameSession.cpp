@@ -213,6 +213,24 @@ bool GameSession::handle_player_join(const std::string& client_ip, uint16_t clie
         }
     }
 
+    // Broadcast lobby update to ALL clients with current player count
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        size_t connected_count = 0;
+        for (const auto& [key, c] : clients_)
+            if (c.is_connected)
+                connected_count++;
+
+        for (const auto& [key, c] : clients_) {
+            if (!c.is_connected)
+                continue;
+            rtype::net::LobbyUpdateData lobby_data(static_cast<int8_t>(connected_count),
+                                                   static_cast<int8_t>(c.player_id));
+            udp_server_.send(c.ip, c.port,
+                             protocol_adapter_.serialize(message_serializer_.serialize_lobby_update(lobby_data)));
+        }
+    }
+
     return true;
 }
 
@@ -574,6 +592,24 @@ void GameSession::disconnect_client(const std::string& client_key, const ClientI
     {
         std::lock_guard<std::mutex> lock(clients_mutex_);
         clients_.erase(client_key);
+    }
+
+    // Broadcast updated lobby state to remaining clients
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        size_t connected_count = 0;
+        for (const auto& [key, c] : clients_)
+            if (c.is_connected)
+                connected_count++;
+
+        for (const auto& [key, c] : clients_) {
+            if (!c.is_connected)
+                continue;
+            rtype::net::LobbyUpdateData lobby_data(static_cast<int8_t>(connected_count),
+                                                   static_cast<int8_t>(c.player_id));
+            udp_server_.send(c.ip, c.port,
+                             protocol_adapter_.serialize(message_serializer_.serialize_lobby_update(lobby_data)));
+        }
     }
 
     if (on_client_unmapped_)
