@@ -34,6 +34,17 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
 
+# For multi-configuration generators (Visual Studio) ensure all configs output
+# to the same `bin/${PLATFORM_NAME}` directory so CI copy-step finds the exe
+if (CMAKE_CONFIGURATION_TYPES)
+    foreach(OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES})
+        string(TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG_UP)
+        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG_UP} ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
+        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG_UP} ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
+        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG_UP} ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
+    endforeach()
+endif()
+
 # ─────────────────────────────
 # Dependencies (vcpkg)
 # ─────────────────────────────
