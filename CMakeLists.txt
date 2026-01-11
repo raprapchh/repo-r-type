@@ -60,10 +60,10 @@ file(GLOB_RECURSE ECS_SRC CONFIGURE_DEPENDS ecs/src/*.cpp)
 add_library(rtype_ecs ${ECS_SRC})
 target_include_directories(rtype_ecs PUBLIC ecs/include)
 target_link_libraries(rtype_ecs PUBLIC
-    SFML::graphics
-    SFML::window
-    SFML::system
-    SFML::audio
+    SFML::Graphics
+    SFML::Window
+    SFML::System
+    SFML::Audio
     EnTT::EnTT
     nlohmann_json::nlohmann_json
 )
@@ -83,10 +83,10 @@ target_link_libraries(r-type_client PRIVATE
     rtype_shared
     asio::asio
     Threads::Threads
-    SFML::graphics
-    SFML::window
-    SFML::system
-    SFML::audio
+    SFML::Graphics
+    SFML::Window
+    SFML::System
+    SFML::Audio
 )
 
 # ─────────────────────────────
