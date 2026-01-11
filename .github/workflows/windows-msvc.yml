@@ -56,8 +56,13 @@ jobs:
       run: choco install nsis -y
       shell: pwsh
 
+    - name: Reload environment
+      run: refreshenv
+      shell: pwsh
+
     - name: Build Installer (NSIS)
-      run: '"C:\Program Files (x86)\NSIS\makensis.exe" /DVERSION=${{ github.ref_name }} installer/installer.nsi'
+      run: |
+        & 'C:\Program Files (x86)\NSIS\makensis.exe' "/DVERSION=${{ github.ref_name }}" 'installer/installer.nsi'
       shell: pwsh
 
     - name: Release
