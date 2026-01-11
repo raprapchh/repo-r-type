@@ -43,8 +43,9 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
     {
-        auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count();
+        auto now_ms =
+            std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+                .count();
         client.create_room("SOLO-" + std::to_string(now_ms));
     }
     game_start_sent_ = false;
@@ -552,25 +553,27 @@ void GameState::spawn_enemy_solo(GameEngine::Registry& registry) {
     auto entity = registry.createEntity();
     float x = 1400.0f + (rand() % 400);
     float y = 100.0f + (rand() % 800);
-    
+
     registry.addComponent<rtype::ecs::component::NetworkId>(entity, next_enemy_id_++);
     registry.addComponent<rtype::ecs::component::Position>(entity, x, y);
     registry.addComponent<rtype::ecs::component::Velocity>(entity, -200.0f, 0.0f);
-    
+
     int sub_type = 1 + (rand() % 4);
     std::string sprite_name;
-    if (sub_type == 1) sprite_name = "monster_0-top";
-    else if (sub_type == 2) sprite_name = "monster_0-bot";
-    else if (sub_type == 3) sprite_name = "monster_0-left";
-    else sprite_name = "monster_0-right";
-    
-    registry.addComponent<rtype::ecs::component::Drawable>(
-        entity, sprite_name, 0, 0, 0, 0, 4.0f, 4.0f, 1, 0.1f, true);
-    
+    if (sub_type == 1)
+        sprite_name = "monster_0-top";
+    else if (sub_type == 2)
+        sprite_name = "monster_0-bot";
+    else if (sub_type == 3)
+        sprite_name = "monster_0-left";
+    else
+        sprite_name = "monster_0-right";
+
+    registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 0, 0, 4.0f, 4.0f, 1, 0.1f, true);
+
     registry.addComponent<rtype::ecs::component::Health>(entity, 100.0f, 100.0f);
     registry.addComponent<rtype::ecs::component::HitBox>(entity, 100.0f, 100.0f);
-    registry.addComponent<rtype::ecs::component::Collidable>(entity,
-                                                             rtype::ecs::component::CollisionLayer::Enemy);
+    registry.addComponent<rtype::ecs::component::Collidable>(entity, rtype::ecs::component::CollisionLayer::Enemy);
     registry.addComponent<rtype::ecs::component::Tag>(entity, "EnemyMonster");
     registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, x, y, -200.0f, 0.0f);
 }
@@ -603,5 +606,3 @@ void GameState::spawn_player_projectile(GameEngine::Registry& registry, GameEngi
 }
 
 } // namespace rtype::client
-
-
