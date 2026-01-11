@@ -38,7 +38,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
 # Dependencies (vcpkg)
 # ─────────────────────────────
 find_package(asio CONFIG REQUIRED)
-find_package(SFML 2.5 COMPONENTS graphics window system audio REQUIRED)
+find_package(SFML 2.5 CONFIG COMPONENTS graphics window system audio REQUIRED)
 find_package(EnTT CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Threads REQUIRED)
@@ -83,10 +83,10 @@ target_link_libraries(r-type_client PRIVATE
     rtype_shared
     asio::asio
     Threads::Threads
-    sfml-graphics
-    sfml-window
-    sfml-system
-    sfml-audio
+    SFML::graphics
+    SFML::window
+    SFML::system
+    SFML::audio
 )
 
 # ─────────────────────────────
