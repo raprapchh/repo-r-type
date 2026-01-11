@@ -31,8 +31,8 @@ jobs:
     - name: Prepare Artifacts
       run: |
         mkdir dist
-        cp build/Release/r-type_client.exe dist/
-        cp build/Release/r-type_server.exe dist/
+        cp bin/windows/r-type_client.exe dist/
+        cp bin/windows/r-type_server.exe dist/
 
         mkdir dist/client
         cp -r client/assets dist/client/
