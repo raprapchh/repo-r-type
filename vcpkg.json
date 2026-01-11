@@ -9,7 +9,13 @@
     "nlohmann-json",
     {
       "name": "sfml",
-      "version>=": "2.5.0"
+      "version>=": "2.5.1"
+    }
+  ],
+  "overrides": [
+    {
+      "name": "sfml",
+      "version": "2.5.1"
     }
   ]
 }
