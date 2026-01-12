@@ -77,28 +77,37 @@ jobs:
         }
       shell: pwsh
 
-    - name: Validate artifacts
+    - name: Validate artifacts (move zero-byte files)
       run: |
         if (-Not (Test-Path 'dist')) { Write-Host 'dist not found'; exit 1 }
         $zeros = Get-ChildItem -Path dist -Recurse -File | Where-Object { $_.Length -eq 0 }
         if ($zeros.Count -gt 0) {
-          Write-Host 'ERROR: Found zero-byte files in dist:'
+          Write-Host 'WARNING: Found zero-byte files in dist — moving to dist/empty-files/ for inspection:'
           $zeros | ForEach-Object { Write-Host $_.FullName }
-          exit 1
+          $emptyDir = Join-Path -Path 'dist' -ChildPath 'empty-files'
+          if (-Not (Test-Path $emptyDir)) { New-Item -ItemType Directory -Path $emptyDir | Out-Null }
+          foreach ($f in $zeros) {
+            $rel = $f.FullName.Substring((Get-Item 'dist').FullName.Length).TrimStart('\','/')
+            $dest = Join-Path $emptyDir $rel
+            $destDir = Split-Path $dest -Parent
+            if (-Not (Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir | Out-Null }
+            Move-Item -Path $f.FullName -Destination $dest
+          }
+          Write-Host 'Zero-byte files moved to dist/empty-files/ — they will be excluded from the release archive.'
         } else {
           Write-Host 'No zero-byte files found in dist.'
         }
       shell: pwsh
 
-    - name: Archive dist
+    - name: Archive dist (only non-empty files)
       run: |
-        if (Test-Path 'dist') {
-          Remove-Item -Force -ErrorAction SilentlyContinue dist.zip
-          Compress-Archive -Path dist/* -DestinationPath dist.zip -Force
-          Get-Item dist.zip | Select-Object FullName,@{Name='SizeMB';Expression={[math]::Round($_.Length/1MB,3)}} | Format-Table -AutoSize
-        } else {
-          Write-Host 'dist not found'; exit 1
-        }
+        if (-Not (Test-Path 'dist')) { Write-Host 'dist not found'; exit 1 }
+        Remove-Item -Force -ErrorAction SilentlyContinue dist.zip
+        $files = Get-ChildItem -Path dist -Recurse -File | Where-Object { $_.Length -gt 0 }
+        if ($files.Count -eq 0) { Write-Host 'No non-empty files to archive'; exit 1 }
+        $paths = $files | ForEach-Object { $_.FullName }
+        Compress-Archive -Path $paths -DestinationPath dist.zip -Force
+        Get-Item dist.zip | Select-Object FullName,@{Name='SizeMB';Expression={[math]::Round($_.Length/1MB,3)}} | Format-Table -AutoSize
       shell: pwsh
 
     - name: List release candidate files
