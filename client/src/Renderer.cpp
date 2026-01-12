@@ -624,11 +624,17 @@ bool Renderer::is_game_over_back_to_menu_clicked(const sf::Vector2f& mouse_pos) 
 void Renderer::show_stage_cleared(uint8_t stage_number) {
     stage_cleared_ = true;
     cleared_stage_number_ = stage_number;
-    stage_cleared_timer_ = 5.0f; // Display for 5 seconds
+    if (stage_number == 2) {
+        game_finished_ = true;
+        stage_cleared_timer_ = 999999.0f;
+    } else {
+        game_finished_ = false;
+        stage_cleared_timer_ = 5.0f;
+    }
 }
 
 void Renderer::update(float delta_time) {
-    if (stage_cleared_) {
+    if (stage_cleared_ && !game_finished_) {
         stage_cleared_timer_ -= delta_time;
         if (stage_cleared_timer_ <= 0.0f) {
             stage_cleared_ = false;
@@ -650,12 +656,14 @@ void Renderer::draw_stage_cleared() {
     float alpha = 255.0f;
     float y_offset = 0.0f;
 
-    if (stage_cleared_timer_ > 4.5f) {
-        float progress = (5.0f - stage_cleared_timer_) / 0.5f;
-        y_offset = -100.0f * (1.0f - progress);
-    } else if (stage_cleared_timer_ < 0.5f) {
-        float progress = stage_cleared_timer_ / 0.5f;
-        alpha = 255.0f * progress;
+    if (!game_finished_) {
+        if (stage_cleared_timer_ > 4.5f) {
+            float progress = (5.0f - stage_cleared_timer_) / 0.5f;
+            y_offset = -100.0f * (1.0f - progress);
+        } else if (stage_cleared_timer_ < 0.5f) {
+            float progress = stage_cleared_timer_ / 0.5f;
+            alpha = 255.0f * progress;
+        }
     }
 
     sf::Text title_text;
@@ -664,7 +672,12 @@ void Renderer::draw_stage_cleared() {
     title_text.setFillColor(sf::Color(255, 255, 0, static_cast<uint8_t>(alpha)));
     title_text.setOutlineColor(sf::Color(0, 0, 0, static_cast<uint8_t>(alpha)));
     title_text.setOutlineThickness(3);
-    title_text.setString("STAGE " + std::to_string(cleared_stage_number_) + " - CLEARED!");
+
+    if (game_finished_) {
+        title_text.setString("GAME COMPLETED!");
+    } else {
+        title_text.setString("STAGE " + std::to_string(cleared_stage_number_) + " - CLEARED!");
+    }
 
     sf::FloatRect textBounds = title_text.getLocalBounds();
     title_text.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
@@ -683,6 +696,40 @@ void Renderer::draw_stage_cleared() {
     victory_text.setPosition(rtype::constants::SCREEN_WIDTH / 2.0f,
                              rtype::constants::SCREEN_HEIGHT / 2.0f + 50.0f + y_offset);
     window_->draw(victory_text);
+
+    if (game_finished_) {
+        sf::Color button_color = sf::Color(70, 130, 180);
+
+        back_to_menu_button_.setSize(sf::Vector2f(280.0f, 65.0f));
+        back_to_menu_button_.setFillColor(button_color);
+        back_to_menu_button_.setOutlineThickness(2);
+        back_to_menu_button_.setOutlineColor(sf::Color::White);
+
+        sf::FloatRect button_bounds = back_to_menu_button_.getLocalBounds();
+        back_to_menu_button_.setOrigin(button_bounds.width / 2.0f, button_bounds.height / 2.0f);
+        back_to_menu_button_.setPosition(rtype::constants::SCREEN_WIDTH / 2.0f,
+                                         rtype::constants::SCREEN_HEIGHT / 2.0f + 150.0f);
+
+        back_to_menu_text_.setFont(font_);
+        back_to_menu_text_.setString("BACK TO MENU");
+        back_to_menu_text_.setCharacterSize(23);
+        back_to_menu_text_.setFillColor(sf::Color::White);
+
+        sf::FloatRect text_bounds_btn = back_to_menu_text_.getLocalBounds();
+        back_to_menu_text_.setOrigin(text_bounds_btn.left + text_bounds_btn.width / 2.0f,
+                                     text_bounds_btn.top + text_bounds_btn.height / 2.0f);
+        back_to_menu_text_.setPosition(rtype::constants::SCREEN_WIDTH / 2.0f,
+                                       rtype::constants::SCREEN_HEIGHT / 2.0f + 150.0f);
+
+        window_->draw(back_to_menu_button_);
+        window_->draw(back_to_menu_text_);
+    }
+}
+
+bool Renderer::is_victory_back_to_menu_clicked(const sf::Vector2f& mouse_pos) const {
+    if (!game_finished_)
+        return false;
+    return back_to_menu_button_.getGlobalBounds().contains(mouse_pos);
 }
 
 } // namespace rtype::client
