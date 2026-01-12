@@ -95,6 +95,24 @@ int main() {
     sf::FloatRect textRect = lose_text.getLocalBounds();
     lose_text.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
 
+    sf::Text title_text("Doodle Jump", font, 60);
+    title_text.setFillColor(sf::Color::Blue);
+    sf::FloatRect titleRect = title_text.getLocalBounds();
+    title_text.setOrigin(titleRect.left + titleRect.width / 2.0f, titleRect.top + titleRect.height / 2.0f);
+    title_text.setPosition(400, 200);
+
+    sf::RectangleShape play_button(sf::Vector2f(200, 60));
+    play_button.setFillColor(sf::Color::Green);
+    play_button.setOrigin(100, 30);
+    play_button.setPosition(400, 400);
+
+    sf::Text play_text("PLAY", font, 30);
+    play_text.setFillColor(sf::Color::White);
+    sf::FloatRect playRect = play_text.getLocalBounds();
+    play_text.setOrigin(playRect.left + playRect.width / 2.0f, playRect.top + playRect.height / 2.0f);
+    play_text.setPosition(400, 400);
+
+    bool in_menu = true;
     bool game_over = false;
 
     sf::Clock clock;
@@ -103,9 +121,19 @@ int main() {
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed)
                 window.close();
+            if (in_menu && event.type == sf::Event::MouseButtonPressed) {
+                if (event.mouseButton.button == sf::Mouse::Left) {
+                    sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+                    sf::Vector2f worldPos = window.mapPixelToCoords(mousePos);
+                    if (play_button.getGlobalBounds().contains(worldPos)) {
+                        in_menu = false;
+                        clock.restart();
+                    }
+                }
+            }
         }
 
-        if (!game_over) {
+        if (!in_menu && !game_over) {
             float dt = clock.restart().asSeconds();
 
             auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(player);
@@ -138,7 +166,12 @@ int main() {
         }
 
         renderer_impl->clear();
-        if (!game_over) {
+        if (in_menu) {
+            window.setView(window.getDefaultView());
+            window.draw(title_text);
+            window.draw(play_button);
+            window.draw(play_text);
+        } else if (!game_over) {
             render_system->update(registry, 0);
         } else {
             lose_text.setPosition(view.getCenter());
