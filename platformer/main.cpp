@@ -20,8 +20,10 @@
 
 int main() {
     GameEngine::Registry registry;
-    sf::RenderWindow window(sf::VideoMode(800, 600), "Platformer PoC");
+    sf::RenderWindow window(sf::VideoMode(800, 600), "Doodle Jump");
     window.setFramerateLimit(60);
+
+    sf::View view(sf::FloatRect(0, 0, 800, 600));
 
     auto renderer_impl =
         std::make_shared<rtype::rendering::SFMLRenderer>(window, *(new std::unordered_map<std::string, sf::Texture>()));
@@ -31,7 +33,7 @@ int main() {
     auto physics_system = std::make_shared<rtype::ecs::PlatformerPhysicsSystem>();
 
     auto player = registry.createEntity();
-    registry.addComponent<rtype::ecs::component::Position>(player, 100.0f, 100.0f);
+    registry.addComponent<rtype::ecs::component::Position>(player, 200.0f, 500.0f);
     registry.addComponent<rtype::ecs::component::Velocity>(player, 0.0f, 0.0f);
     registry.addComponent<rtype::ecs::component::HitBox>(player, 50.0f, 50.0f);
     registry.addComponent<rtype::ecs::component::Drawable>(player, "__RECTANGLE__", 100, 100, 50, 50);
@@ -47,10 +49,27 @@ int main() {
     std::vector<PlatformConfig> level_layout = {{0.0f, 550.0f, 800.0f, 50.0f}, // Ground Floor
                                                                                // Floating platforms going up
                                                 {200.0f, 450.0f, 100.0f, 20.0f},
-                                                {500.0f, 150.0f, 100.0f, 20.0f},
+                                                {500.0f, 350.0f, 100.0f, 20.0f},
+                                                {100.0f, 250.0f, 100.0f, 20.0f},
+                                                {600.0f, 150.0f, 100.0f, 20.0f},
                                                 {300.0f, 50.0f, 100.0f, 20.0f},
                                                 {100.0f, -50.0f, 100.0f, 20.0f},
-                                                {600.0f, -150.0f, 100.0f, 20.0f}};
+                                                {600.0f, -150.0f, 100.0f, 20.0f},
+                                                {350.0f, -250.0f, 100.0f, 20.0f},
+                                                {50.0f, -350.0f, 100.0f, 20.0f},
+                                                {550.0f, -450.0f, 100.0f, 20.0f},
+                                                {250.0f, -550.0f, 100.0f, 20.0f},
+                                                {700.0f, -650.0f, 100.0f, 20.0f},
+                                                {150.0f, -750.0f, 100.0f, 20.0f},
+                                                {450.0f, -850.0f, 100.0f, 20.0f},
+                                                {50.0f, -950.0f, 100.0f, 20.0f},
+                                                {600.0f, -1050.0f, 100.0f, 20.0f},
+                                                {300.0f, -1150.0f, 100.0f, 20.0f},
+                                                {100.0f, -1250.0f, 100.0f, 20.0f},
+                                                {500.0f, -1350.0f, 100.0f, 20.0f},
+                                                {200.0f, -1450.0f, 100.0f, 20.0f},
+                                                {650.0f, -1550.0f, 100.0f, 20.0f},
+                                                {400.0f, -1650.0f, 100.0f, 20.0f}};
 
     for (const auto& config : level_layout) {
         auto wall = registry.createEntity();
@@ -88,6 +107,11 @@ int main() {
             pos.x = -hitbox.width;
         } else if (pos.x < -hitbox.width) {
             pos.x = 800;
+        }
+
+        if (pos.y < view.getCenter().y) {
+            view.setCenter(400, pos.y);
+            window.setView(view);
         }
 
         renderer_impl->clear();
