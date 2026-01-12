@@ -57,7 +57,6 @@ void MenuState::setup_ui() {
     settings_button_text_.setCharacterSize(40);
     settings_button_text_.setFillColor(sf::Color::White);
 
-    // Scoreboard titles
     solo_scores_title_.setFont(font_);
     solo_scores_title_.setString("SOLO TOP 10");
     solo_scores_title_.setCharacterSize(24);
@@ -124,12 +123,40 @@ void MenuState::handle_input(Renderer& renderer, StateManager& state_manager) {
                 handle_button_click(mouse_pos, state_manager);
             }
         } else if (event.type == sf::Event::KeyPressed) {
-            if (event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) {
-                handle_button_click(sf::Vector2f(start_button_.getPosition().x + start_button_.getSize().x / 2.0f,
-                                                 start_button_.getPosition().y + start_button_.getSize().y / 2.0f),
-                                    state_manager);
-            } else if (event.key.code == sf::Keyboard::Escape) {
-                renderer.close_window();
+            if (show_settings_) {
+                if (event.key.code == sf::Keyboard::Escape) {
+                    pending_mode_ = state_manager.get_renderer().get_accessibility_manager().get_current_mode();
+                    std::string mode_name = state_manager.get_renderer().get_accessibility_manager().get_mode_name();
+                    accessibility_cycle_text_.setString("Mode: " + mode_name);
+                    show_settings_ = false;
+                    update_positions(state_manager.get_renderer().get_window_size());
+                }
+            } else {
+                if (event.key.code == sf::Keyboard::Up) {
+                    if (selected_button_ == SelectedButton::SETTINGS) {
+                        selected_button_ = SelectedButton::START;
+                    } else if (selected_button_ == SelectedButton::QUIT) {
+                        selected_button_ = SelectedButton::SETTINGS;
+                    }
+                } else if (event.key.code == sf::Keyboard::Down) {
+                    if (selected_button_ == SelectedButton::START) {
+                        selected_button_ = SelectedButton::SETTINGS;
+                    } else if (selected_button_ == SelectedButton::SETTINGS) {
+                        selected_button_ = SelectedButton::QUIT;
+                    }
+                } else if (event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) {
+                    if (selected_button_ == SelectedButton::START) {
+                        state_manager.change_state(std::make_unique<ModeSelectionState>());
+                    } else if (selected_button_ == SelectedButton::SETTINGS) {
+                        show_settings_ = true;
+                        pending_mode_ = state_manager.get_renderer().get_accessibility_manager().get_current_mode();
+                        std::string mode_name = state_manager.get_renderer().get_accessibility_manager().get_mode_name();
+                        accessibility_cycle_text_.setString("Mode: " + mode_name);
+                        update_positions(state_manager.get_renderer().get_window_size());
+                    } else if (selected_button_ == SelectedButton::QUIT) {
+                        renderer.close_window();
+                    }
+                }
             }
         }
     }
@@ -138,7 +165,6 @@ void MenuState::handle_input(Renderer& renderer, StateManager& state_manager) {
 void MenuState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager& state_manager) {
     if (show_settings_) {
         if (accessibility_cycle_button_.getGlobalBounds().contains(mouse_pos)) {
-            // Cycle through preview modes
             switch (pending_mode_) {
             case ColorBlindMode::None:
                 pending_mode_ = ColorBlindMode::Deuteranopia;
@@ -154,7 +180,6 @@ void MenuState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager&
                 break;
             }
 
-            // Update display
             std::string mode_name;
             switch (pending_mode_) {
             case ColorBlindMode::None:
@@ -176,7 +201,6 @@ void MenuState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager&
         }
 
         if (confirm_button_.getGlobalBounds().contains(mouse_pos)) {
-            // Apply the pending mode
             ColorBlindMode current = state_manager.get_renderer().get_accessibility_manager().get_current_mode();
             while (current != pending_mode_) {
                 state_manager.get_renderer().get_accessibility_manager().cycle_mode();
@@ -187,7 +211,6 @@ void MenuState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager&
         }
 
         if (cancel_button_.getGlobalBounds().contains(mouse_pos)) {
-            // Revert to current mode
             pending_mode_ = state_manager.get_renderer().get_accessibility_manager().get_current_mode();
             std::string mode_name = state_manager.get_renderer().get_accessibility_manager().get_mode_name();
             accessibility_cycle_text_.setString("Mode: " + mode_name);
@@ -220,35 +243,47 @@ void MenuState::update(Renderer& renderer, Client& client, StateManager& state_m
 
     sf::Color start_normal(100, 150, 200);
     sf::Color start_hover(120, 170, 220);
+    sf::Color start_selected(200, 200, 0);
     sf::Color quit_normal(200, 100, 100);
     sf::Color quit_hover(220, 120, 120);
+    sf::Color quit_selected(200, 200, 0);
     sf::Color settings_normal(100, 100, 100);
     sf::Color settings_hover(120, 120, 120);
+    sf::Color settings_selected(200, 200, 0);
 
     switch (mode) {
     case ColorBlindMode::Deuteranopia:
         start_normal = sf::Color(0, 0, 255);
         start_hover = sf::Color(50, 50, 255);
+        start_selected = sf::Color(0, 255, 255);
         quit_normal = sf::Color(255, 165, 0);
         quit_hover = sf::Color(255, 185, 20);
+        quit_selected = sf::Color(0, 255, 255);
         settings_normal = sf::Color(50, 50, 50);
         settings_hover = sf::Color(70, 70, 70);
+        settings_selected = sf::Color(0, 255, 255);
         break;
     case ColorBlindMode::Protanopia:
         start_normal = sf::Color(0, 100, 255);
         start_hover = sf::Color(50, 120, 255);
+        start_selected = sf::Color(0, 255, 255);
         quit_normal = sf::Color(255, 255, 0);
         quit_hover = sf::Color(255, 255, 50);
+        quit_selected = sf::Color(0, 255, 255);
         settings_normal = sf::Color(80, 80, 80);
         settings_hover = sf::Color(100, 100, 100);
+        settings_selected = sf::Color(0, 255, 255);
         break;
     case ColorBlindMode::Tritanopia:
         start_normal = sf::Color(255, 0, 0);
         start_hover = sf::Color(255, 50, 50);
+        start_selected = sf::Color(0, 255, 255);
         quit_normal = sf::Color(0, 200, 200);
         quit_hover = sf::Color(0, 220, 220);
+        quit_selected = sf::Color(255, 255, 0);
         settings_normal = sf::Color(100, 100, 100);
         settings_hover = sf::Color(120, 120, 120);
+        settings_selected = sf::Color(255, 255, 0);
         break;
     case ColorBlindMode::None:
     default:
@@ -257,18 +292,24 @@ void MenuState::update(Renderer& renderer, Client& client, StateManager& state_m
 
     if (start_button_.getGlobalBounds().contains(mouse_pos)) {
         start_button_.setFillColor(start_hover);
+    } else if (selected_button_ == SelectedButton::START) {
+        start_button_.setFillColor(start_selected);
     } else {
         start_button_.setFillColor(start_normal);
     }
 
     if (settings_button_.getGlobalBounds().contains(mouse_pos)) {
         settings_button_.setFillColor(settings_hover);
+    } else if (selected_button_ == SelectedButton::SETTINGS) {
+        settings_button_.setFillColor(settings_selected);
     } else {
         settings_button_.setFillColor(settings_normal);
     }
 
     if (quit_button_.getGlobalBounds().contains(mouse_pos)) {
         quit_button_.setFillColor(quit_hover);
+    } else if (selected_button_ == SelectedButton::QUIT) {
+        quit_button_.setFillColor(quit_selected);
     } else {
         quit_button_.setFillColor(quit_normal);
     }
@@ -288,7 +329,6 @@ void MenuState::render(Renderer& renderer, Client& /* client */) {
         renderer.draw_rectangle(quit_button_);
         renderer.draw_text(quit_button_text_);
 
-        // Draw scoreboard columns
         renderer.draw_text(solo_scores_title_);
         for (const auto& text : solo_score_texts_) {
             renderer.draw_text(text);
@@ -345,15 +385,13 @@ void MenuState::update_positions(const sf::Vector2u& window_size) {
         settings_button_.getPosition().y + (button_height - settings_button_text_.getLocalBounds().height) / 2.0f -
             5.0f);
 
-    // Position scoreboard columns - both on the left side
     float left_margin = 50.0f;
     float column_width = 280.0f;
     float left_column_x = left_margin;
-    float right_column_x = left_margin + column_width + 40.0f; // 40px spacing between columns
+    float right_column_x = left_margin + column_width + 40.0f;
     float scoreboard_y = window_size.y * 0.50f;
     float score_spacing = 28.0f;
 
-    // Solo scores (left column)
     solo_scores_title_.setPosition(left_column_x, scoreboard_y);
     float solo_y = scoreboard_y + 35.0f;
     for (auto& text : solo_score_texts_) {
@@ -361,7 +399,7 @@ void MenuState::update_positions(const sf::Vector2u& window_size) {
         solo_y += score_spacing;
     }
 
-    // Multi scores (right column, next to solo)
+
     multi_scores_title_.setPosition(right_column_x, scoreboard_y);
     float multi_y = scoreboard_y + 35.0f;
     for (auto& text : multi_score_texts_) {
@@ -406,7 +444,6 @@ void MenuState::update_scoreboard_display(Client& client) {
 
     const auto& data = client.get_scoreboard_manager().get_data();
 
-    // Create solo score texts (top 10)
     int rank = 1;
     size_t max_solo = std::min(size_t(10), data.solo_scores.size());
     for (size_t i = 0; i < max_solo; i++) {
@@ -424,7 +461,6 @@ void MenuState::update_scoreboard_display(Client& client) {
         rank++;
     }
 
-    // Create multi score texts (top 10)
     rank = 1;
     size_t max_multi = std::min(size_t(10), data.multi_scores.size());
     for (size_t i = 0; i < max_multi; i++) {

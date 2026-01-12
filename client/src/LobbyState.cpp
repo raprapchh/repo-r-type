@@ -60,15 +60,15 @@ void LobbyState::setup_ui() {
     start_button_text_.setCharacterSize(24);
     start_button_text_.setFillColor(sf::Color::White);
 
-    // Name Input UI
+    
     input_background_.setSize(sf::Vector2f(300, 40));
-    input_background_.setFillColor(sf::Color(30, 30, 30, 200));  // Darker, slight transparency
-    input_background_.setOutlineColor(sf::Color(100, 100, 100)); // Softer outline
+    input_background_.setFillColor(sf::Color(30, 30, 30, 200));  
+    input_background_.setOutlineColor(sf::Color(100, 100, 100)); 
     input_background_.setOutlineThickness(2);
 
     name_input_label_.setFont(font_);
-    name_input_label_.setString("ENTER NAME:"); // All caps to match style
-    name_input_label_.setCharacterSize(18);     // Slightly smaller
+    name_input_label_.setString("ENTER NAME:"); 
+    name_input_label_.setCharacterSize(18);     
     name_input_label_.setFillColor(sf::Color(200, 200, 200));
 
     name_input_text_.setFont(font_);
@@ -79,21 +79,21 @@ void LobbyState::setup_ui() {
     is_typing_name_ = false;
     current_name_input_ = "";
 
-    // Chat UI setup - Professional Gaming Style
+    
     chat_background_.setSize(sf::Vector2f(600, 200));
     chat_background_.setFillColor(sf::Color(15, 15, 20, 240));
-    chat_background_.setOutlineColor(sf::Color(0, 180, 220, 180)); // Cyan accent
+    chat_background_.setOutlineColor(sf::Color(0, 180, 220, 180)); 
     chat_background_.setOutlineThickness(2);
 
     chat_input_background_.setSize(sf::Vector2f(600, 40));
     chat_input_background_.setFillColor(sf::Color(25, 25, 35, 240));
-    chat_input_background_.setOutlineColor(sf::Color(0, 180, 220, 120)); // Cyan accent
+    chat_input_background_.setOutlineColor(sf::Color(0, 180, 220, 120)); 
     chat_input_background_.setOutlineThickness(1);
 
     chat_input_label_.setFont(font_);
     chat_input_label_.setString("CHAT:");
     chat_input_label_.setCharacterSize(14);
-    chat_input_label_.setFillColor(sf::Color(0, 200, 255)); // Cyan text
+    chat_input_label_.setFillColor(sf::Color(0, 200, 255)); 
 
     chat_input_text_.setFont(font_);
     chat_input_text_.setString("");
@@ -103,7 +103,7 @@ void LobbyState::setup_ui() {
     is_typing_chat_ = false;
     current_chat_input_ = "";
 
-    // Room browser UI
+    
     rooms_title_text_.setFont(font_);
     rooms_title_text_.setString("AVAILABLE ROOMS");
     rooms_title_text_.setCharacterSize(36);
@@ -145,7 +145,7 @@ void LobbyState::setup_ui() {
     room_input_text_.setCharacterSize(20);
     room_input_text_.setFillColor(sf::Color::White);
 
-    // Main menu buttons
+    
     title_text_.setString("R-TYPE MULTIPLAYER");
 
     create_button_.setSize(sf::Vector2f(400, 80));
@@ -197,10 +197,10 @@ void LobbyState::on_enter(Renderer& renderer, Client& client) {
     player_count_ = 0;
     game_started_ = false;
 
-    // DO NOT connect here - wait for user to click CREATE or JOIN
-    // Connection will happen when user selects a room action
+    
+    
 
-    // Only add player if already connected
+    
     if (client.is_connected()) {
         add_player(client.get_player_id(), client.get_player_name());
         local_player_id_ = client.get_player_id();
@@ -219,14 +219,14 @@ void LobbyState::on_enter(Renderer& renderer, Client& client) {
 
     client.set_game_start_callback([this]() { game_started_.store(true); });
 
-    // Thread-safe chat callback
+    
     client.set_chat_message_callback(
         [this](uint32_t /*player_id*/, const std::string& player_name, const std::string& message) {
             std::lock_guard<std::mutex> lock(pending_mutex_);
             pending_chat_messages_.emplace_back(player_name, message);
         });
 
-    // Room list callback
+    
     client.set_room_list_callback(
         [this](uint32_t session_id, uint8_t player_count, uint8_t max_players, uint8_t status,
                const std::string& room_name) { add_room(session_id, player_count, max_players, status, room_name); });
@@ -237,27 +237,27 @@ void LobbyState::on_enter(Renderer& renderer, Client& client) {
         lobby_update_pending_.store(true);
     });
 
-    // Start at main menu
+    
     current_mode_ = LobbyMode::MAIN_MENU;
     available_rooms_.clear();
     selected_room_index_ = -1;
 
-    // Initialize current name input with local player name if available, or fetch it
+    
     current_name_input_ = client.get_player_name();
     if (current_name_input_.empty()) {
         current_name_input_ = "Player " + std::to_string(local_player_id_);
     }
     name_input_text_.setString(current_name_input_);
 
-    // Immediately send this default name to server so others see "Player X" instead of empty/default
+    
     if (client.is_connected()) {
         client.send_player_name_update(current_name_input_);
     }
 
-    // Setup chat message callback
+    
     chat_messages_.clear();
     chat_message_texts_.clear();
-    // Callback already set above
+    
 }
 
 void LobbyState::on_exit(Renderer& renderer, Client& client) {
@@ -270,11 +270,11 @@ void LobbyState::on_exit(Renderer& renderer, Client& client) {
     client.set_room_list_callback(nullptr);
     client.set_lobby_update_callback(nullptr);
 
-    // Clear chat data
+    
     chat_messages_.clear();
     chat_message_texts_.clear();
 
-    // Clear room data
+    
     available_rooms_.clear();
     room_texts_.clear();
     room_buttons_.clear();
@@ -293,16 +293,16 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
             if (event.mouseButton.button == sf::Mouse::Left) {
                 sf::Vector2f mouse_pos = renderer.get_mouse_position();
 
-                // Navigation selon le mode
+                
                 if (current_mode_ == LobbyMode::MAIN_MENU) {
-                    // Menu principal: Créer ou Rejoindre
+                    
                     if (create_button_.getGlobalBounds().contains(mouse_pos)) {
-                        // Connecter au serveur AVANT d'aller en mode CREATE_ROOM
+                        
                         if (!state_manager.get_client().is_connected()) {
                             state_manager.get_client().connect();
                             std::this_thread::sleep_for(std::chrono::milliseconds(500));
                         }
-                        // Add player now that we're connected
+                        
                         if (state_manager.get_client().is_connected()) {
                             add_player(state_manager.get_client().get_player_id(),
                                        state_manager.get_client().get_player_name());
@@ -315,12 +315,12 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                             update_positions(renderer_ref_->get_window_size());
                         }
                     } else if (join_button_.getGlobalBounds().contains(mouse_pos)) {
-                        // Connecter au serveur AVANT d'aller en mode BROWSE_ROOMS
+                        
                         if (!state_manager.get_client().is_connected()) {
                             state_manager.get_client().connect();
                             std::this_thread::sleep_for(std::chrono::milliseconds(500));
                         }
-                        // Add player now that we're connected
+                        
                         if (state_manager.get_client().is_connected()) {
                             add_player(state_manager.get_client().get_player_id(),
                                        state_manager.get_client().get_player_name());
@@ -336,7 +336,7 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         update_room_list_display();
                     }
                 } else if (current_mode_ == LobbyMode::CREATE_ROOM) {
-                    // Page de création de room
+                    
                     if (back_button_.getGlobalBounds().contains(mouse_pos)) {
                         current_mode_ = LobbyMode::MAIN_MENU;
                         is_typing_room_name_ = false;
@@ -362,7 +362,7 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
                     }
                 } else if (current_mode_ == LobbyMode::BROWSE_ROOMS) {
-                    // Page de navigation des rooms
+                    
                     if (back_button_.getGlobalBounds().contains(mouse_pos)) {
                         current_mode_ = LobbyMode::MAIN_MENU;
                         if (renderer_ref_) {
@@ -374,11 +374,11 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         state_manager.get_client().request_room_list();
                         update_room_list_display();
                     } else {
-                        // Check room selection
+                        
                         for (size_t i = 0; i < room_buttons_.size(); ++i) {
                             if (room_buttons_[i].getGlobalBounds().contains(mouse_pos)) {
                                 if (static_cast<int>(i) == selected_room_index_) {
-                                    // Double click - join room
+                                    
                                     state_manager.get_client().join_room(available_rooms_[i].session_id);
                                     current_mode_ = LobbyMode::IN_ROOM;
                                     if (renderer_ref_) {
@@ -393,14 +393,14 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         }
                     }
                 } else if (current_mode_ == LobbyMode::IN_ROOM) {
-                    // Dans une room - interface classique du lobby
+                    
 
-                    // Leave room button
+                    
                     if (leave_room_button_.getGlobalBounds().contains(mouse_pos)) {
-                        // Leave room but stay connected to server
+                        
                         state_manager.get_client().leave_room();
 
-                        // Go back to room browser to allow immediate rejoin
+                        
                         current_mode_ = LobbyMode::BROWSE_ROOMS;
                         connected_players_.clear();
                         player_count_ = 0;
@@ -409,7 +409,7 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         available_rooms_.clear();
                         selected_room_index_ = -1;
 
-                        // Ensure connection and refresh list
+                        
                         if (!state_manager.get_client().is_connected()) {
                             state_manager.get_client().connect();
                         }
@@ -423,7 +423,7 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         state_manager.get_client().send_game_start_request();
                     }
 
-                    // Check name input click
+                    
                     if (input_background_.getGlobalBounds().contains(mouse_pos)) {
                         is_typing_name_ = true;
                         is_typing_chat_ = false;
@@ -443,7 +443,7 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                 }
             }
         } else if (event.type == sf::Event::KeyPressed) {
-            // Gestion des touches selon le mode
+            
             if (current_mode_ == LobbyMode::CREATE_ROOM) {
                 if (is_typing_room_name_ && event.key.code == sf::Keyboard::Return) {
                     if (!current_room_name_input_.empty()) {
@@ -524,7 +524,7 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
 
 void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) {
     (void)client;
-    // Room name backspace handling
+    
     if (is_typing_room_name_ && sf::Keyboard::isKeyPressed(sf::Keyboard::BackSpace)) {
         bool delete_char = false;
 
@@ -551,17 +551,17 @@ void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_
         room_backspace_timer_ = 0.0f;
     }
 
-    // Backspace handling
+    
     if (is_typing_name_ && sf::Keyboard::isKeyPressed(sf::Keyboard::BackSpace)) {
         bool delete_char = false;
 
         if (!was_backspace_pressed_) {
-            // First press: delete immediately
+            
             delete_char = true;
             backspace_timer_ = 0.0f;
             backspace_delay_ = INITIAL_BACKSPACE_DELAY;
         } else {
-            // Held down: wait for delay
+            
             backspace_timer_ += delta_time;
             if (backspace_timer_ >= backspace_delay_) {
                 delete_char = true;
@@ -580,7 +580,7 @@ void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_
         backspace_timer_ = 0.0f;
     }
 
-    // Chat backspace handling
+    
     if (is_typing_chat_ && sf::Keyboard::isKeyPressed(sf::Keyboard::BackSpace)) {
         bool delete_char = false;
 
@@ -611,11 +611,11 @@ void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_
         chat_backspace_timer_ = 0.0f;
     }
 
-    // Update local ID and default name if it was 0
+    
     if (local_player_id_ == 0 && client.is_connected()) {
         local_player_id_ = client.get_player_id();
         if (local_player_id_ != 0) {
-            // If name was "Player 0" or empty, update it
+            
             if (current_name_input_.empty() || current_name_input_ == "Player" || current_name_input_ == "Player 0") {
                 current_name_input_ = "Player " + std::to_string(local_player_id_);
                 name_input_text_.setString(current_name_input_);
@@ -624,10 +624,10 @@ void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_
         }
     }
 
-    // Process pending network events on main thread
+    
     process_pending_events();
 
-    // Process pending lobby update (player count from server)
+    
     if (lobby_update_pending_.load()) {
         int8_t count = pending_player_count_.load();
         int8_t playerId = pending_your_player_id_.load();
@@ -639,7 +639,7 @@ void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_
         lobby_update_pending_.store(false);
     }
 
-    // Update room list display if in browse mode and rooms were updated
+    
     if (current_mode_ == LobbyMode::BROWSE_ROOMS && room_list_needs_update_.load()) {
         update_room_list_display();
         room_list_needs_update_.store(false);
@@ -695,14 +695,14 @@ void LobbyState::render(Renderer& renderer, Client& /* client */) {
 
     if (font_loaded_) {
         if (current_mode_ == LobbyMode::MAIN_MENU) {
-            // Menu principal
+            
             renderer.draw_text(title_text_);
             renderer.draw_rectangle(create_button_);
             renderer.draw_text(create_button_text_);
             renderer.draw_rectangle(join_button_);
             renderer.draw_text(join_button_text_);
         } else if (current_mode_ == LobbyMode::CREATE_ROOM) {
-            // Page de création
+            
             renderer.draw_text(title_text_);
             renderer.draw_rectangle(room_input_background_);
             renderer.draw_text(room_input_label_);
@@ -712,7 +712,7 @@ void LobbyState::render(Renderer& renderer, Client& /* client */) {
             renderer.draw_rectangle(back_button_);
             renderer.draw_text(back_button_text_);
         } else if (current_mode_ == LobbyMode::BROWSE_ROOMS) {
-            // Page de navigation des rooms - afficher rooms_title_text_ au lieu de title_text_
+            
             renderer.draw_text(rooms_title_text_);
             for (const auto& button : room_buttons_) {
                 renderer.draw_rectangle(button);
@@ -725,28 +725,28 @@ void LobbyState::render(Renderer& renderer, Client& /* client */) {
             renderer.draw_rectangle(back_button_);
             renderer.draw_text(back_button_text_);
         } else if (current_mode_ == LobbyMode::IN_ROOM) {
-            // Lobby classique dans une room
+            
             renderer.draw_text(title_text_);
             renderer.draw_text(waiting_text_);
             renderer.draw_text(players_text_);
             renderer.draw_text(player_list_text_);
 
-            // Show START button for player 1 with at least 1 player (allow solo)
+            
             if (local_player_id_ == 1) {
                 renderer.draw_rectangle(start_button_);
                 renderer.draw_text(start_button_text_);
             }
 
-            // Leave room button for everyone
+            
             renderer.draw_rectangle(leave_room_button_);
             renderer.draw_text(leave_room_button_text_);
 
-            // Draw Name Input
+            
             renderer.draw_rectangle(input_background_);
             renderer.draw_text(name_input_label_);
             renderer.draw_text(name_input_text_);
 
-            // Draw Chat UI
+            
             renderer.draw_rectangle(chat_background_);
             renderer.draw_rectangle(chat_input_background_);
             renderer.draw_text(chat_input_label_);
@@ -794,7 +794,7 @@ void LobbyState::update_player_display() {
     for (const auto& [id, name] : connected_players_) {
         if (idx > 0)
             player_list += ", ";
-        player_list += name; // Display name
+        player_list += name; 
         idx++;
     }
     player_list_text_.setString(player_list);
@@ -808,7 +808,7 @@ void LobbyState::update_positions(const sf::Vector2u& window_size) {
     float center_x = window_size.x / 2.0f;
     float center_y = window_size.y / 2.0f;
 
-    // Title - change selon le mode
+    
     float title_y = 30.0f;
     if (current_mode_ == LobbyMode::BROWSE_ROOMS) {
         rooms_title_text_.setString("AVAILABLE ROOMS");
@@ -818,7 +818,7 @@ void LobbyState::update_positions(const sf::Vector2u& window_size) {
         title_text_.setPosition((window_size.x - title_text_.getLocalBounds().width) / 2.0f, title_y);
     }
 
-    // Menu principal - Deux gros boutons centrés
+    
     float button_width = std::min(400.0f, window_size.x * 0.6f);
     float button_height = 80.0f;
     create_button_.setSize(sf::Vector2f(button_width, button_height));
@@ -829,13 +829,13 @@ void LobbyState::update_positions(const sf::Vector2u& window_size) {
     join_button_.setPosition(center_x - button_width / 2, center_y + 40);
     join_button_text_.setPosition(center_x - join_button_text_.getLocalBounds().width / 2.0f, center_y + 65);
 
-    // Bouton retour (bas gauche)
+    
     back_button_.setPosition(20, window_size.y - 70);
     back_button_text_.setPosition(back_button_.getPosition().x +
                                       (200 - back_button_text_.getLocalBounds().width) / 2.0f,
                                   back_button_.getPosition().y + 15);
 
-    // Page CREATE_ROOM - centré
+    
     float input_width = std::min(400.0f, window_size.x * 0.6f);
     room_input_label_.setPosition(center_x - input_width / 2, center_y - 80);
     room_input_background_.setSize(sf::Vector2f(input_width, 40));
@@ -847,7 +847,7 @@ void LobbyState::update_positions(const sf::Vector2u& window_size) {
     create_room_button_text_.setPosition(center_x - create_room_button_text_.getLocalBounds().width / 2.0f,
                                          center_y + 35);
 
-    // Page BROWSE_ROOMS - refresh button en haut à droite
+    
     refresh_button_.setPosition(window_size.x - 270, 80);
     refresh_button_text_.setPosition(refresh_button_.getPosition().x +
                                          (250 - refresh_button_text_.getLocalBounds().width) / 2.0f,
@@ -855,7 +855,7 @@ void LobbyState::update_positions(const sf::Vector2u& window_size) {
 
     update_room_list_display();
 
-    // Mode IN_ROOM - Lobby avec positionnement responsive et non chevauchant
+    
     float waiting_y = window_size.y * 0.14f;
     float players_y = waiting_y + 35.0f;
     float list_y = players_y + 35.0f;
@@ -866,7 +866,7 @@ void LobbyState::update_positions(const sf::Vector2u& window_size) {
     players_text_.setPosition((window_size.x - players_text_.getLocalBounds().width) / 2.0f, players_y);
     player_list_text_.setPosition((window_size.x - player_list_text_.getLocalBounds().width) / 2.0f, list_y);
 
-    // Name input centered
+    
     float name_box_width = std::min(320.0f, window_size.x * 0.45f);
     input_background_.setSize(sf::Vector2f(name_box_width, 40.0f));
     input_background_.setPosition(center_x - name_box_width / 2.0f, input_y);
@@ -879,35 +879,35 @@ void LobbyState::update_positions(const sf::Vector2u& window_size) {
     start_button_.setPosition(center_x - start_button_width / 2, start_button_y);
     start_button_text_.setPosition(center_x - start_button_text_.getLocalBounds().width / 2.0f, start_button_y + 15.0f);
 
-    // Leave room button (en haut à droite)
+    
     leave_room_button_.setPosition(window_size.x - 270, 20);
     leave_room_button_text_.setPosition(leave_room_button_.getPosition().x +
                                             (250 - leave_room_button_text_.getLocalBounds().width) / 2.0f,
                                         leave_room_button_.getPosition().y + 15);
 
-    // Chat UI positioning - Bottom Center
+    
     float chat_width = 600.0f;
     float chat_height = 200.0f;
     float chat_x = (window_size.x - chat_width) / 2.0f;
-    float chat_y = window_size.y - chat_height - 20.0f; // Minimal padding from bottom
+    float chat_y = window_size.y - chat_height - 20.0f; 
 
     chat_background_.setPosition(chat_x, chat_y);
     chat_input_background_.setPosition(chat_x, chat_y + chat_height + 5.0f);
-    // Center text vertically in the 40px height input box
-    // Box Y is chat_y + chat_height + 5.0f
-    // Text size is 14px. 40/2 = 20. Text/2 = 7. Offset = 20 - 7 = 13.
+    
+    
+    
     float input_text_y = chat_y + chat_height + 5.0f + 13.0f;
     chat_input_label_.setPosition(chat_x + 10, input_text_y);
-    chat_input_text_.setPosition(chat_x + 70, input_text_y); // After "CHAT:" label (reduced gap slightly)
+    chat_input_text_.setPosition(chat_x + 70, input_text_y); 
 
-    // Update chat message text positions
+    
     update_chat_display();
 }
 
 void LobbyState::add_chat_message(const std::string& player_name, const std::string& message) {
     chat_messages_.push_back({player_name, message});
 
-    // Keep only last MAX_CHAT_MESSAGES
+    
     if (chat_messages_.size() > MAX_CHAT_MESSAGES) {
         chat_messages_.erase(chat_messages_.begin());
     }
@@ -919,7 +919,7 @@ void LobbyState::update_chat_display() {
     if (!font_loaded_)
         return;
 
-    // Clear and rebuild text objects
+    
     chat_message_texts_.clear();
     chat_message_texts_.reserve(chat_messages_.size());
 
@@ -927,7 +927,7 @@ void LobbyState::update_chat_display() {
     float chat_y = chat_background_.getPosition().y + 8.0f;
     float line_height = 20.0f;
 
-    // Show last MAX_CHAT_MESSAGES messages (scroll effect)
+    
     size_t start_idx = chat_messages_.size() > MAX_CHAT_MESSAGES ? chat_messages_.size() - MAX_CHAT_MESSAGES : 0;
     size_t display_count = 0;
 
@@ -953,7 +953,7 @@ void LobbyState::update_chat_display() {
 void LobbyState::process_pending_events() {
     std::lock_guard<std::mutex> lock(pending_mutex_);
 
-    // Process player joins
+    
     bool players_updated = false;
     for (const auto& player : pending_player_joins_) {
         add_player(player.first, player.second);
@@ -961,7 +961,7 @@ void LobbyState::process_pending_events() {
     }
     pending_player_joins_.clear();
 
-    // Process name updates
+    
     for (const auto& update : pending_name_updates_) {
         uint32_t player_id = update.first;
         std::string name = update.second;
@@ -982,7 +982,7 @@ void LobbyState::process_pending_events() {
         update_player_display();
     }
 
-    // Process chat messages
+    
     for (const auto& msg : pending_chat_messages_) {
         add_chat_message(msg.first, msg.second);
     }
@@ -993,13 +993,13 @@ void LobbyState::add_room(uint32_t session_id, uint8_t player_count, uint8_t max
                           const std::string& room_name) {
     std::lock_guard<std::mutex> lock(pending_mutex_);
 
-    // Convert status to string
+    
     std::string status_str = (status == 0) ? "waiting" : "playing";
 
     std::cout << "[ROOM_LIST] Added room: " << room_name << " (ID: " << session_id
               << ") - Players: " << (int)player_count << "/" << (int)max_players << std::endl;
 
-    // Check if room already exists and update it
+    
     for (auto& room : available_rooms_) {
         if (room.session_id == session_id) {
             room.player_count = player_count;
@@ -1011,7 +1011,7 @@ void LobbyState::add_room(uint32_t session_id, uint8_t player_count, uint8_t max
         }
     }
 
-    // Add new room
+    
     RoomEntry entry;
     entry.session_id = session_id;
     entry.player_count = player_count;
@@ -1020,7 +1020,7 @@ void LobbyState::add_room(uint32_t session_id, uint8_t player_count, uint8_t max
     entry.room_name = room_name;
     available_rooms_.push_back(entry);
 
-    // Mark that UI needs refresh
+    
     room_list_needs_update_.store(true);
 }
 
@@ -1031,19 +1031,19 @@ void LobbyState::update_room_list_display() {
     room_texts_.clear();
     room_buttons_.clear();
 
-    // Position dynamique basée sur la taille de la fenêtre
+    
     sf::Vector2u window_size = renderer_ref_->get_window_size();
-    float start_y = 150.0f; // Après le titre
+    float start_y = 150.0f; 
     const float room_height = 70.0f;
     const float room_spacing = 10.0f;
     float room_width = std::min(800.0f, window_size.x - 100.0f);
-    float room_x = (window_size.x - room_width) / 2.0f; // Centrer horizontalement
+    float room_x = (window_size.x - room_width) / 2.0f; 
 
-    for (size_t i = 0; i < available_rooms_.size() && i < 6; ++i) { // Max 6 rooms visibles
+    for (size_t i = 0; i < available_rooms_.size() && i < 6; ++i) { 
         const auto& room = available_rooms_[i];
         float y_pos = start_y + (static_cast<float>(i) * (room_height + room_spacing));
 
-        // Room button background
+        
         sf::RectangleShape room_bg;
         room_bg.setSize(sf::Vector2f(room_width, room_height));
         room_bg.setPosition(room_x, y_pos);
@@ -1061,7 +1061,7 @@ void LobbyState::update_room_list_display() {
         room_bg.setOutlineThickness(2);
         room_buttons_.push_back(room_bg);
 
-        // Room name
+        
         sf::Text name_text;
         name_text.setFont(font_);
         name_text.setString(room.room_name.empty() ? "Room " + std::to_string(room.session_id) : room.room_name);
@@ -1070,7 +1070,7 @@ void LobbyState::update_room_list_display() {
         name_text.setPosition(room_x + 20.0f, y_pos + 8.0f);
         room_texts_.push_back(name_text);
 
-        // Room info (players/status)
+        
         sf::Text info_text;
         info_text.setFont(font_);
         info_text.setString("Players: " + std::to_string(room.player_count) + "/" + std::to_string(room.max_players) +
@@ -1082,4 +1082,4 @@ void LobbyState::update_room_list_display() {
     }
 }
 
-} // namespace rtype::client
+} 

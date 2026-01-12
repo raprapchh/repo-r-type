@@ -50,6 +50,9 @@ class MenuState : public IState {
     sf::Text confirm_button_text_;
     sf::Text cancel_button_text_;
 
+    enum class SelectedButton { START, SETTINGS, QUIT };
+    SelectedButton selected_button_ = SelectedButton::START;
+
     bool font_loaded_;
 };
 

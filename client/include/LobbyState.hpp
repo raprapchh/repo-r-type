@@ -8,10 +8,10 @@
 namespace rtype::client {
 
 enum class LobbyMode {
-    MAIN_MENU,    // Choix: Créer ou Rejoindre
-    CREATE_ROOM,  // Formulaire de création de room
-    BROWSE_ROOMS, // Liste des rooms disponibles
-    IN_ROOM       // Dans une room, attente des joueurs
+    MAIN_MENU,
+    CREATE_ROOM,
+    BROWSE_ROOMS,
+    IN_ROOM
 };
 
 class LobbyState : public IState {
@@ -63,6 +63,9 @@ class LobbyState : public IState {
     uint32_t local_player_id_;
 
     LobbyMode current_mode_;
+    enum class MainMenuButton { CREATE, JOIN, BACK };
+    MainMenuButton selected_main_menu_button_ = MainMenuButton::CREATE;
+    
     sf::RectangleShape create_button_;
     sf::Text create_button_text_;
     sf::RectangleShape join_button_;
@@ -112,7 +115,7 @@ class LobbyState : public IState {
     sf::Text chat_input_label_;
     sf::Text chat_input_text_;
     std::string current_chat_input_;
-    std::vector<std::pair<std::string, std::string>> chat_messages_; // {player_name, message}
+    std::vector<std::pair<std::string, std::string>> chat_messages_;
     std::vector<sf::Text> chat_message_texts_;
     bool is_typing_chat_;
     float chat_backspace_timer_;
