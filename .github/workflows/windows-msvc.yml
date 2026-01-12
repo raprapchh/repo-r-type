@@ -77,6 +77,30 @@ jobs:
         }
       shell: pwsh
 
+    - name: Validate artifacts
+      run: |
+        if (-Not (Test-Path 'dist')) { Write-Host 'dist not found'; exit 1 }
+        $zeros = Get-ChildItem -Path dist -Recurse -File | Where-Object { $_.Length -eq 0 }
+        if ($zeros.Count -gt 0) {
+          Write-Host 'ERROR: Found zero-byte files in dist:'
+          $zeros | ForEach-Object { Write-Host $_.FullName }
+          exit 1
+        } else {
+          Write-Host 'No zero-byte files found in dist.'
+        }
+      shell: pwsh
+
+    - name: Archive dist
+      run: |
+        if (Test-Path 'dist') {
+          Remove-Item -Force -ErrorAction SilentlyContinue dist.zip
+          Compress-Archive -Path dist/* -DestinationPath dist.zip -Force
+          Get-Item dist.zip | Select-Object FullName,@{Name='SizeMB';Expression={[math]::Round($_.Length/1MB,3)}} | Format-Table -AutoSize
+        } else {
+          Write-Host 'dist not found'; exit 1
+        }
+      shell: pwsh
+
     - name: List release candidate files
       run: |
         Write-Host '--- dist/ contents ---'
@@ -92,6 +116,6 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          dist/**
+          dist.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
