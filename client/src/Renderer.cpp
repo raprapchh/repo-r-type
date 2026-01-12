@@ -13,8 +13,8 @@ Renderer::Renderer(uint32_t width, uint32_t height)
     view_.setSize(rtype::constants::SCREEN_WIDTH, rtype::constants::SCREEN_HEIGHT);
     view_.setCenter(rtype::constants::SCREEN_WIDTH / 2.0f, rtype::constants::SCREEN_HEIGHT / 2.0f);
     window_->setView(view_);
-        initialize_key_bindings();
-        action_states_.fill(false);
+    initialize_key_bindings();
+    action_states_.fill(false);
     load_sprites();
     load_fonts();
 }

@@ -194,8 +194,7 @@ void MenuState::handle_input(Renderer& renderer, StateManager& state_manager) {
     }
 }
 
-void MenuState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager& state_manager,
-                                     Renderer& renderer) {
+void MenuState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager& state_manager, Renderer& renderer) {
     if (show_settings_) {
         for (auto& row : key_binding_rows_) {
             if (row.box.getGlobalBounds().contains(mouse_pos)) {
@@ -489,7 +488,8 @@ void MenuState::update_positions(const sf::Vector2u& window_size) {
         for (size_t i = 0; i < key_binding_rows_.size(); i++) {
             auto& row = key_binding_rows_[i];
             row.box.setSize(sf::Vector2f(box_width, box_height));
-            row.box.setPosition(center_x - box_width / 2.0f, start_y + static_cast<float>(i) * (box_height + row_spacing));
+            row.box.setPosition(center_x - box_width / 2.0f,
+                                start_y + static_cast<float>(i) * (box_height + row_spacing));
 
             sf::FloatRect action_bounds = row.action_text.getLocalBounds();
             row.action_text.setOrigin(action_bounds.left, action_bounds.top);
@@ -502,7 +502,8 @@ void MenuState::update_positions(const sf::Vector2u& window_size) {
                                      row.box.getPosition().y + (box_height - key_bounds.height) / 2.0f - 5.0f);
         }
 
-        float after_rows_y = start_y + static_cast<float>(key_binding_rows_.size()) * (box_height + row_spacing) + 10.0f;
+        float after_rows_y =
+            start_y + static_cast<float>(key_binding_rows_.size()) * (box_height + row_spacing) + 10.0f;
 
         float accessibility_width = std::min(400.0f, window_size.x * 0.6f);
         accessibility_cycle_button_.setSize(sf::Vector2f(accessibility_width, accessibility_cycle_button_.getSize().y));

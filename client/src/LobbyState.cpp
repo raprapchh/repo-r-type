@@ -822,7 +822,8 @@ void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_
         sf::Color back_normal(150, 50, 50);
         sf::Color back_selected(200, 100, 100);
 
-        create_button_.setFillColor(selected_main_menu_button_ == MainMenuButton::CREATE ? create_selected : create_normal);
+        create_button_.setFillColor(selected_main_menu_button_ == MainMenuButton::CREATE ? create_selected
+                                                                                         : create_normal);
         join_button_.setFillColor(selected_main_menu_button_ == MainMenuButton::JOIN ? join_selected : join_normal);
         back_button_.setFillColor(selected_main_menu_button_ == MainMenuButton::BACK ? back_selected : back_normal);
     } else if (current_mode_ == LobbyMode::CREATE_ROOM) {
@@ -833,10 +834,10 @@ void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_
         sf::Color back_normal(150, 50, 50);
         sf::Color back_selected(200, 100, 100);
 
-        room_input_background_.setFillColor(
-            selected_create_room_button_ == CreateRoomButton::INPUT ? input_selected : input_normal);
-        create_room_button_.setFillColor(
-            selected_create_room_button_ == CreateRoomButton::CREATE ? create_room_selected : create_room_normal);
+        room_input_background_.setFillColor(selected_create_room_button_ == CreateRoomButton::INPUT ? input_selected
+                                                                                                    : input_normal);
+        create_room_button_.setFillColor(selected_create_room_button_ == CreateRoomButton::CREATE ? create_room_selected
+                                                                                                  : create_room_normal);
         back_button_.setFillColor(selected_create_room_button_ == CreateRoomButton::BACK ? back_selected : back_normal);
     } else if (current_mode_ == LobbyMode::BROWSE_ROOMS) {
         sf::Color refresh_normal(100, 100, 150);
@@ -844,9 +845,10 @@ void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_
         sf::Color back_normal(150, 50, 50);
         sf::Color back_selected(200, 100, 100);
 
-        refresh_button_.setFillColor(
-            selected_browse_rooms_button_ == BrowseRoomsButton::REFRESH ? refresh_selected : refresh_normal);
-        back_button_.setFillColor(selected_browse_rooms_button_ == BrowseRoomsButton::BACK ? back_selected : back_normal);
+        refresh_button_.setFillColor(selected_browse_rooms_button_ == BrowseRoomsButton::REFRESH ? refresh_selected
+                                                                                                 : refresh_normal);
+        back_button_.setFillColor(selected_browse_rooms_button_ == BrowseRoomsButton::BACK ? back_selected
+                                                                                           : back_normal);
 
         for (size_t i = 0; i < room_buttons_.size(); i++) {
             if (static_cast<int>(i) == selected_room_index_) {
@@ -866,7 +868,8 @@ void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_
         } else {
             start_button_.setFillColor(sf::Color(80, 80, 80));
         }
-        leave_room_button_.setFillColor(selected_in_room_button_ == InRoomButton::LEAVE ? leave_selected : leave_normal);
+        leave_room_button_.setFillColor(selected_in_room_button_ == InRoomButton::LEAVE ? leave_selected
+                                                                                        : leave_normal);
     }
 }
 

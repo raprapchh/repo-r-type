@@ -28,7 +28,7 @@ struct Entity {
 
 class Renderer {
   public:
-        enum class Action { Up, Down, Left, Right, Shoot, Count };
+    enum class Action { Up, Down, Left, Right, Shoot, Count };
 
     Renderer(uint32_t width = 1280, uint32_t height = 720);
     ~Renderer();
