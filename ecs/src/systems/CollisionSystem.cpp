@@ -1,6 +1,7 @@
 #include "../../include/systems/CollisionSystem.hpp"
 #include "../../include/components/TextureAnimation.hpp"
 #include "../../include/components/EnemySpawner.hpp"
+#include "../../include/components/GameRulesComponent.hpp"
 #include <vector>
 #include <iostream>
 #include <cstdlib>
@@ -31,6 +32,15 @@ void spawnForcePodCompanion(GameEngine::Registry& registry, GameEngine::entity_t
 
 void CollisionSystem::update(GameEngine::Registry& registry, double dt) {
     (void)dt;
+
+    bool friendly_fire_enabled = false;
+    auto rules_view = registry.view<component::GameRulesComponent>();
+    for (auto entity : rules_view) {
+        const auto& rules_comp = registry.getComponent<component::GameRulesComponent>(entity);
+        friendly_fire_enabled = rules_comp.rules.friendly_fire_enabled;
+        break;
+    }
+
     auto view = registry.view<component::Position, component::HitBox, component::Collidable>();
 
     std::vector<GameEngine::entity_t> entities;
@@ -78,7 +88,7 @@ void CollisionSystem::update(GameEngine::Registry& registry, double dt) {
                 continue;
             }
 
-            if (!ShouldCollide(collidable1.layer, collidable2.layer)) {
+            if (!ShouldCollide(collidable1.layer, collidable2.layer, friendly_fire_enabled)) {
                 continue;
             }
 
@@ -97,7 +107,8 @@ bool CollisionSystem::CheckAABBCollision(float x1, float y1, float w1, float h1,
     return (x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2);
 }
 
-bool CollisionSystem::ShouldCollide(component::CollisionLayer layer1, component::CollisionLayer layer2) {
+bool CollisionSystem::ShouldCollide(component::CollisionLayer layer1, component::CollisionLayer layer2,
+                                    bool friendly_fire_enabled) {
     using CL = component::CollisionLayer;
 
     if (layer1 == CL::None || layer2 == CL::None) {
@@ -131,6 +142,15 @@ bool CollisionSystem::ShouldCollide(component::CollisionLayer layer1, component:
         return true;
     if (layer1 == CL::EnemyProjectile && layer2 == CL::PlayerProjectile)
         return true;
+
+    if (friendly_fire_enabled) {
+        if (layer1 == CL::Player && layer2 == CL::Player)
+            return true;
+        if (layer1 == CL::Player && layer2 == CL::PlayerProjectile)
+            return true;
+        if (layer1 == CL::PlayerProjectile && layer2 == CL::Player)
+            return true;
+    }
 
     return false;
 }
@@ -382,6 +402,45 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
             registry.destroyEntity(player_projectile);
         }
         registry.destroyEntity(enemy_projectile);
+    }
+
+    if (layer1 == CL::Player && layer2 == CL::Player) {
+        if (registry.hasComponent<component::Health>(entity1)) {
+            auto& health1 = registry.getComponent<component::Health>(entity1);
+            if (health1.hp > 0) {
+                health1.hp -= 10;
+                registry.addComponent<component::AudioEvent>(entity1, component::AudioEventType::PLAYER_DAMAGE);
+            }
+        }
+        if (registry.hasComponent<component::Health>(entity2)) {
+            auto& health2 = registry.getComponent<component::Health>(entity2);
+            if (health2.hp > 0) {
+                health2.hp -= 10;
+                registry.addComponent<component::AudioEvent>(entity2, component::AudioEventType::PLAYER_DAMAGE);
+            }
+        }
+    }
+
+    if ((layer1 == CL::PlayerProjectile && layer2 == CL::Player) ||
+        (layer1 == CL::Player && layer2 == CL::PlayerProjectile)) {
+        auto projectile_entity = (layer1 == CL::PlayerProjectile) ? entity1 : entity2;
+        auto player_entity = (layer1 == CL::Player) ? entity1 : entity2;
+
+        registry.destroyEntity(projectile_entity);
+
+        if (registry.hasComponent<component::Health>(player_entity)) {
+            auto& health = registry.getComponent<component::Health>(player_entity);
+            if (health.hp > 0) {
+                health.hp -= 15;
+                registry.addComponent<component::AudioEvent>(player_entity, component::AudioEventType::PLAYER_DAMAGE);
+
+                if (health.hp <= 0) {
+                    if (!registry.hasComponent<component::Lives>(player_entity)) {
+                        registry.destroyEntity(player_entity);
+                    }
+                }
+            }
+        }
     }
 }
 
