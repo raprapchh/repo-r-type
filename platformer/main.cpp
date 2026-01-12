@@ -1,5 +1,5 @@
 #include <SFML/Graphics.hpp>
-#include <iostream>
+
 #include <memory>
 #include <vector>
 
@@ -40,11 +40,23 @@ int main() {
     registry.addComponent<rtype::ecs::component::Jump>(player);
     registry.addComponent<rtype::ecs::component::Tag>(player, "Player");
 
-    auto platform = registry.createEntity();
-    registry.addComponent<rtype::ecs::component::Position>(platform, 200.0f, 400.0f);
-    registry.addComponent<rtype::ecs::component::HitBox>(platform, 200.0f, 20.0f);
-    registry.addComponent<rtype::ecs::component::Collidable>(platform, rtype::ecs::component::CollisionLayer::Obstacle);
-    registry.addComponent<rtype::ecs::component::Drawable>(platform, "__RECTANGLE__", 200, 400, 200, 20);
+    struct PlatformConfig {
+        float x, y, width, height;
+    };
+
+    std::vector<PlatformConfig> level_layout = {{0.0f, 550.0f, 800.0f, 50.0f},   {200.0f, 450.0f, 100.0f, 20.0f},
+                                                {400.0f, 350.0f, 100.0f, 20.0f}, {150.0f, 250.0f, 100.0f, 20.0f},
+                                                {500.0f, 150.0f, 100.0f, 20.0f}, {300.0f, 50.0f, 100.0f, 20.0f},
+                                                {100.0f, -50.0f, 100.0f, 20.0f}, {600.0f, -150.0f, 100.0f, 20.0f}};
+
+    for (const auto& config : level_layout) {
+        auto wall = registry.createEntity();
+        registry.addComponent<rtype::ecs::component::Position>(wall, config.x, config.y);
+        registry.addComponent<rtype::ecs::component::HitBox>(wall, config.width, config.height);
+        registry.addComponent<rtype::ecs::component::Collidable>(wall, rtype::ecs::component::CollisionLayer::Obstacle);
+        registry.addComponent<rtype::ecs::component::Drawable>(
+            wall, "__RECTANGLE__", 0, 0, static_cast<int>(config.width), static_cast<int>(config.height));
+    }
 
     sf::Clock clock;
     while (window.isOpen()) {
@@ -52,16 +64,6 @@ int main() {
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed)
                 window.close();
-
-            if (event.type == sf::Event::KeyPressed) {
-                auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(player);
-                auto& jump = registry.getComponent<rtype::ecs::component::Jump>(player);
-
-                if (event.key.code == sf::Keyboard::Space && jump.can_jump) {
-                    vel.vy = jump.strength;
-                    jump.can_jump = false;
-                }
-            }
         }
 
         float dt = clock.restart().asSeconds();
@@ -69,9 +71,9 @@ int main() {
         auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(player);
         vel.vx = 0;
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
-            vel.vx = -200.0f;
+            vel.vx = -400.0f;
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
-            vel.vx = 200.0f;
+            vel.vx = 400.0f;
 
         physics_system->update(registry, dt);
         movement_system->update(registry, dt);
