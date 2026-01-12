@@ -2,7 +2,6 @@ name: Windows MSVC Build
 
 on:
   push:
-    branches: [ "main", "dev", "feat/cross-platform" ]
     tags: [ "v*" ]
   pull_request:
     branches: [ "main" ]
