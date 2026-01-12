@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include "../interfaces/network/IProtocolAdapter.hpp"
 #include "Packet.hpp"
 #include <cstdint>
@@ -27,6 +28,8 @@ class ProtocolAdapter : public IProtocolAdapter {
         }
 
         if (data.size() < sizeof(PacketHeader)) {
+            std::cerr << "Packet too short: " << data.size() << " bytes, expected header " << sizeof(PacketHeader)
+                      << std::endl;
             return false;
         }
 
@@ -36,14 +39,18 @@ class ProtocolAdapter : public IProtocolAdapter {
         uint16_t expected_size = sizeof(PacketHeader) + header.payload_size;
 
         if (data.size() != expected_size) {
+            std::cerr << "Invalid packet size: " << data.size() << " expected " << expected_size << " for type "
+                      << header.message_type << std::endl;
             return false;
         }
 
-        if (header.message_type == 0 || header.message_type > 20) {
+        if (header.message_type == 0 || header.message_type > 30) {
+            std::cerr << "Invalid message type: " << header.message_type << std::endl;
             return false;
         }
 
         if (header.payload_size > MAX_PAYLOAD_SIZE) {
+            std::cerr << "Payload too large: " << header.payload_size << std::endl;
             return false;
         }
 
