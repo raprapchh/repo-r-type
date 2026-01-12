@@ -13,7 +13,8 @@ Renderer::Renderer(uint32_t width, uint32_t height)
     view_.setSize(rtype::constants::SCREEN_WIDTH, rtype::constants::SCREEN_HEIGHT);
     view_.setCenter(rtype::constants::SCREEN_WIDTH / 2.0f, rtype::constants::SCREEN_HEIGHT / 2.0f);
     window_->setView(view_);
-    std::fill(std::begin(keys_), std::end(keys_), false);
+        initialize_key_bindings();
+        action_states_.fill(false);
     load_sprites();
     load_fonts();
 }
@@ -59,19 +60,98 @@ void Renderer::display() {
 
 void Renderer::handle_input() {
     if (!window_ || !window_->hasFocus()) {
-        std::fill(std::begin(keys_), std::end(keys_), false);
+        action_states_.fill(false);
         return;
     }
 
-    keys_[sf::Keyboard::Up] =
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Up) || sf::Keyboard::isKeyPressed(sf::Keyboard::Z);
-    keys_[sf::Keyboard::Down] =
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Down) || sf::Keyboard::isKeyPressed(sf::Keyboard::S);
-    keys_[sf::Keyboard::Left] =
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::Q);
-    keys_[sf::Keyboard::Right] =
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Right) || sf::Keyboard::isKeyPressed(sf::Keyboard::D);
-    keys_[sf::Keyboard::Space] = sf::Keyboard::isKeyPressed(sf::Keyboard::Space);
+    refresh_action_states();
+}
+
+void Renderer::initialize_key_bindings() {
+    key_bindings_[action_index(Action::Up)] = sf::Keyboard::Up;
+    key_bindings_[action_index(Action::Down)] = sf::Keyboard::Down;
+    key_bindings_[action_index(Action::Left)] = sf::Keyboard::Left;
+    key_bindings_[action_index(Action::Right)] = sf::Keyboard::Right;
+    key_bindings_[action_index(Action::Shoot)] = sf::Keyboard::Space;
+}
+
+void Renderer::refresh_action_states() {
+    for (size_t i = 0; i < static_cast<size_t>(Action::Count); i++) {
+        action_states_[i] = sf::Keyboard::isKeyPressed(key_bindings_[i]);
+    }
+}
+
+void Renderer::set_key_binding(Action action, sf::Keyboard::Key key) {
+    key_bindings_[action_index(action)] = key;
+    refresh_action_states();
+}
+
+sf::Keyboard::Key Renderer::get_key_binding(Action action) const {
+    return key_bindings_[action_index(action)];
+}
+
+std::string Renderer::key_to_string(sf::Keyboard::Key key) const {
+    if (key >= sf::Keyboard::A && key <= sf::Keyboard::Z) {
+        char letter = static_cast<char>('A' + static_cast<int>(key) - static_cast<int>(sf::Keyboard::A));
+        return std::string(1, letter);
+    }
+    if (key >= sf::Keyboard::Num0 && key <= sf::Keyboard::Num9) {
+        char digit = static_cast<char>('0' + static_cast<int>(key) - static_cast<int>(sf::Keyboard::Num0));
+        return std::string(1, digit);
+    }
+    switch (key) {
+    case sf::Keyboard::Space:
+        return "Space";
+    case sf::Keyboard::Enter:
+        return "Enter";
+    case sf::Keyboard::Tab:
+        return "Tab";
+    case sf::Keyboard::Escape:
+        return "Escape";
+    case sf::Keyboard::LShift:
+        return "Left Shift";
+    case sf::Keyboard::RShift:
+        return "Right Shift";
+    case sf::Keyboard::LControl:
+        return "Left Ctrl";
+    case sf::Keyboard::RControl:
+        return "Right Ctrl";
+    case sf::Keyboard::LAlt:
+        return "Left Alt";
+    case sf::Keyboard::RAlt:
+        return "Right Alt";
+    case sf::Keyboard::Left:
+        return "Left";
+    case sf::Keyboard::Right:
+        return "Right";
+    case sf::Keyboard::Up:
+        return "Up";
+    case sf::Keyboard::Down:
+        return "Down";
+    default:
+        return "Key " + std::to_string(static_cast<int>(key));
+    }
+}
+
+std::string Renderer::get_key_name(sf::Keyboard::Key key) const {
+    return key_to_string(key);
+}
+
+std::string Renderer::get_action_name(Action action) const {
+    switch (action) {
+    case Action::Up:
+        return "Up";
+    case Action::Down:
+        return "Down";
+    case Action::Left:
+        return "Left";
+    case Action::Right:
+        return "Right";
+    case Action::Shoot:
+        return "Shoot";
+    default:
+        return "Unknown";
+    }
 }
 
 void Renderer::update_entity(const Entity& entity) {
