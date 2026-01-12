@@ -34,7 +34,6 @@ class MenuState : public IState {
     sf::RectangleShape settings_button_;
     sf::RectangleShape quit_button_;
 
-    // Scoreboard display
     sf::Text solo_scores_title_;
     sf::Text multi_scores_title_;
     std::vector<sf::Text> solo_score_texts_;

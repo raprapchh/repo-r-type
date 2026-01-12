@@ -7,7 +7,7 @@ namespace rtype::client {
 
 class GameState : public IState {
   public:
-    GameState();
+    explicit GameState(bool multiplayer = true);
     ~GameState() override = default;
 
     void handle_input(Renderer& renderer, StateManager& state_manager) override;
@@ -46,6 +46,16 @@ class GameState : public IState {
 
     sf::RectangleShape accessibility_cycle_button_;
     sf::Text accessibility_cycle_text_;
+
+    bool multiplayer_ = true;
+    float spawn_timer_ = 0.0f;
+    float spawn_interval_ = 1.5f;
+    uint32_t next_enemy_id_ = 1000;
+    uint32_t next_projectile_id_ = 5000;
+    bool game_start_sent_ = false;
+
+    void spawn_enemy_solo(GameEngine::Registry& registry);
+    void spawn_player_projectile(GameEngine::Registry& registry, GameEngine::entity_t player_entity);
 };
 
 } // namespace rtype::client

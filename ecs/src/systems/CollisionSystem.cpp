@@ -1,8 +1,10 @@
 #include "../../include/systems/CollisionSystem.hpp"
+#include "../../include/components/TextureAnimation.hpp"
 #include "../../include/components/EnemySpawner.hpp"
 #include <vector>
 #include <iostream>
 #include <cstdlib>
+#include <string>
 #include "../../include/components/Position.hpp"
 #include "../../include/components/HitBox.hpp"
 #include "../../include/components/CollisionLayer.hpp"
@@ -24,7 +26,6 @@
 
 namespace rtype::ecs {
 
-// Forward declarations for factory functions
 void spawnForcePodItem(GameEngine::Registry& registry, float x, float y);
 void spawnForcePodCompanion(GameEngine::Registry& registry, GameEngine::entity_t playerId);
 
@@ -241,6 +242,10 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
                                     podCount++;
                                 }
                             }
+                            // Logger::instance().info("Drop Check: Scorer=" + std::to_string(scorer_id) + " Pods=" +
+                            // std::to_string(podCount));
+                        } else {
+                            // Logger::instance().warn("Drop Check: Scorer is 0!");
                         }
 
                         if (podCount < 2) {
@@ -312,11 +317,9 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
 
     if ((layer1 == CL::Companion && layer2 == CL::Enemy) || (layer1 == CL::Enemy && layer2 == CL::Companion)) {
         auto enemy_entity = (layer1 == CL::Enemy) ? entity1 : entity2;
-        // NOTE: We do not destroy the companion (Force Pod). It is invulnerable to body collisions.
 
         if (registry.hasComponent<component::Health>(enemy_entity)) {
             auto& health = registry.getComponent<component::Health>(enemy_entity);
-            // Inflict massive damage to ensure instant kill per frame
             health.hp -= 100000;
 
             if (health.hp <= 0) {
@@ -386,19 +389,21 @@ void spawnForcePodItem(GameEngine::Registry& registry, float x, float y) {
     auto item = registry.createEntity();
     registry.addComponent<component::Position>(item, x, y);
     registry.addComponent<component::Velocity>(item, -50.0f, 0.0f); // Slow drift left
-    registry.addComponent<component::Drawable>(item, "force_pod", 0, 0, 32, 32, 2.5f, 2.5f);
+    registry.addComponent<component::Drawable>(item, "force_pod_0", 0, 0, 32, 32, 2.5f, 2.5f);
+    std::vector<std::string> Frames;
+    for (int i = 0; i < 13; ++i)
+        Frames.push_back("force_pod_" + std::to_string(i));
+    registry.addComponent<component::TextureAnimation>(item, Frames, 0.04f, true);
     registry.addComponent<component::PowerUpType>(item, component::PowerUpTypeEnum::FORCE_POD);
     registry.addComponent<component::Collidable>(item, component::CollisionLayer::PowerUp);
     registry.addComponent<component::HitBox>(item, 64.0f, 64.0f);
     registry.addComponent<component::Tag>(item, "ForcePodItem");
     registry.addComponent<component::SpawnEffect>(item);
-    // NOTE: Do NOT add NetworkId here - let BroadcastSystem assign it
 }
 
 void spawnForcePodCompanion(GameEngine::Registry& registry, GameEngine::entity_t playerId) {
     auto pod = registry.createEntity();
     auto& playerPos = registry.getComponent<component::Position>(playerId);
-    // Dynamic positioning based on existing pod count
     int podCount = 0;
     auto view = registry.view<component::Tag, component::Parent>();
     for (auto entity : view) {
@@ -418,20 +423,44 @@ void spawnForcePodCompanion(GameEngine::Registry& registry, GameEngine::entity_t
     registry.addComponent<component::Position>(pod, playerPos.x + offsetX, playerPos.y + offsetY);
     registry.addComponent<component::Velocity>(pod, 0.0f, 0.0f);
     registry.addComponent<component::Parent>(pod, static_cast<std::size_t>(playerId), offsetX, offsetY);
-    registry.addComponent<component::Drawable>(pod, "force_pod", 0, 0, 32, 32, 2.5f, 2.5f);
+
+    auto& drawable = registry.addComponent<component::Drawable>(pod, "force_pod_0", 0, 0, 32, 32, 2.5f, 2.5f);
+    drawable.current_sprite = 0;
+    drawable.sprite_index = 0;
+
+    if (drawable.texture_name.empty()) {
+        std::cerr << "[WARNING] Force Pod spawned with invalid Sprite ID/Name!" << std::endl;
+    }
+
+    std::vector<std::string> podFrames;
+    for (int i = 0; i < 13; ++i)
+        podFrames.push_back("force_pod_" + std::to_string(i));
+    registry.addComponent<component::TextureAnimation>(pod, podFrames, 0.04f, true);
     auto& weapon = registry.addComponent<component::Weapon>(pod);
     std::string pTag = (podCount == 0) ? "PodProjectile" : "PodProjectileRed";
     weapon.projectileTag = pTag;
     weapon.fireRate = 0.3f;
     weapon.projectileSpeed = 1000.0f;
     weapon.damage = 15.0f;
-    weapon.spawnOffsetX =
-        16.0f; // Center of pod (32 width * 2.5 scale / 2 ? No, offset is in world coords usually relative to pos)
+    weapon.spawnOffsetX = 16.0f;
     weapon.spawnOffsetY = 0.0f;
     registry.addComponent<component::Collidable>(pod, component::CollisionLayer::Companion);
     registry.addComponent<component::HitBox>(pod, 64.0f, 64.0f);
     registry.addComponent<component::Tag>(pod, "ForcePod");
-    // NOTE: Do NOT add NetworkId here - let BroadcastSystem assign it
+
+    if (podCount == 1) {
+        auto itemView = registry.view<component::Tag>();
+        std::vector<GameEngine::entity_t> itemsToRemove;
+        for (auto entity : itemView) {
+            const auto& tag = itemView.get<component::Tag>(entity);
+            if (tag.name == "ForcePodItem") {
+                itemsToRemove.push_back(entity);
+            }
+        }
+        for (auto entity : itemsToRemove) {
+            registry.destroyEntity(entity);
+        }
+    }
 }
 
 } // namespace rtype::ecs
