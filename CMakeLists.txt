@@ -80,10 +80,29 @@ target_include_directories(r-type_server PRIVATE ${CMAKE_SOURCE_DIR}/server/incl
 target_link_libraries(r-type_server PRIVATE
     rtype_ecs
     rtype_shared
+    rtype_shared
     asio::asio
+)
+
+# 5. Platformer PoC
+add_executable(platformer_game
+    platformer/main.cpp
+    client/src/SFMLRenderer.cpp
+    client/src/AccessibilityManager.cpp
+)
+target_include_directories(platformer_game PRIVATE
+    ${CMAKE_SOURCE_DIR}/client/include
+    ${CMAKE_SOURCE_DIR}/ecs/include
+    ${CMAKE_SOURCE_DIR}/shared
+)
+target_link_libraries(platformer_game PRIVATE
+    rtype_ecs
+    rtype_shared
+    sfml-graphics sfml-window sfml-system sfml-audio
 )
 
 if(UNIX)
     target_link_libraries(r-type_server PRIVATE pthread)
     target_link_libraries(r-type_client PRIVATE pthread)
+    target_link_libraries(platformer_game PRIVATE pthread)
 endif()
