@@ -108,11 +108,19 @@ void Renderer::update_animations(float delta_time) {
                 }
             }
         }
-        if (entity.type == rtype::net::EntityType::ENEMY && entity.sub_type == 100) { // Boss
-            entity.animation_timer += delta_time;
-            if (entity.animation_timer >= 0.1f) {
-                entity.animation_timer = 0.0f;
-                entity.animation_frame = (entity.animation_frame + 1) % 4;
+        if (entity.type == rtype::net::EntityType::ENEMY) {
+            if (entity.sub_type == 100) { // Boss
+                entity.animation_timer += delta_time;
+                if (entity.animation_timer >= 0.1f) {
+                    entity.animation_timer = 0.0f;
+                    entity.animation_frame = (entity.animation_frame + 1) % 4;
+                }
+            } else if (entity.sub_type == 5 || entity.sub_type == 6) {
+                entity.animation_timer += delta_time;
+                if (entity.animation_timer >= 0.1f) {
+                    entity.animation_timer = 0.0f;
+                    entity.animation_frame = (entity.animation_frame + 1) % 8;
+                }
             }
         }
         if (entity.type == rtype::net::EntityType::PLAYER) {
@@ -198,6 +206,12 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
         if (entity.sub_type == 100) {
             texture_name = "boss_1";
             sprite.setScale(4.0f, 4.0f); // Adjust scale as needed
+        } else if (entity.sub_type == 5) {
+            texture_name = "monster-wave-2-left";
+            sprite.setScale(3.0f, 3.0f);
+        } else if (entity.sub_type == 6) {
+            texture_name = "monster-wave-2-right";
+            sprite.setScale(3.0f, 3.0f);
         } else {
             texture_name = "enemy_basic";
             sprite.setScale(6.0f, 6.0f);
@@ -236,14 +250,14 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
     }
 
     if (entity.type == rtype::net::EntityType::PROJECTILE) {
-        if (entity.sub_type == 20) { // Bayblade
+        if (entity.sub_type == 20) {
             sprite.setTextureRect(sf::IntRect(entity.animation_frame * 34, 0, 34, 34));
-        } else if (entity.sub_type == 21) { // Attack
+        } else if (entity.sub_type == 21) {
             sprite.setTextureRect(sf::IntRect(entity.animation_frame * 64, 0, 64, 64));
-        } else if (entity.sub_type == 30 || entity.sub_type == 31) { // Pod Projectile
+        } else if (entity.sub_type == 30 || entity.sub_type == 31) {
             if (entity.sub_type == 31) {
                 texture_name = "pod_projectile_red_" + std::to_string(entity.animation_frame % 2);
-                sprite.setTextureRect(sf::IntRect(0, 0, 36, 13));
+                sprite.setTextureRect(sf::IntRect(entity.animation_frame % 2 * 36, 0, 36, 13));
             } else {
                 texture_name = "pod_projectile_" + std::to_string(entity.animation_frame % 2);
                 sprite.setTextureRect(sf::IntRect(0, 0, 34, 19));
@@ -251,8 +265,12 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
         } else {
             texture_name = "shot";
         }
-    } else if (entity.type == rtype::net::EntityType::ENEMY && entity.sub_type == 100) { // Boss
-        sprite.setTextureRect(sf::IntRect(entity.animation_frame * 100, 0, 100, 100));
+    } else if (entity.type == rtype::net::EntityType::ENEMY) {
+        if (entity.sub_type == 100) {
+            sprite.setTextureRect(sf::IntRect(entity.animation_frame * 100, 0, 100, 100));
+        } else if (entity.sub_type == 5 || entity.sub_type == 6) {
+            sprite.setTextureRect(sf::IntRect(entity.animation_frame * 33, 0, 33, 36));
+        }
     } else if (entity.type == rtype::net::EntityType::PLAYER) {
         if (textures_.count("player_ships")) {
             sf::Vector2u texture_size = textures_["player_ships"].getSize();
@@ -284,11 +302,6 @@ void Renderer::draw_ui() {
     window_->draw(score_text_);
     window_->draw(score_text_);
     window_->draw(lives_text_);
-
-    // int level = game_state_.wave_number / 100;
-    // int wave = game_state_.wave_number % 100;
-    // wave_text_.setString("Level " + std::to_string(level + 1) + " - Wave " + std::to_string(wave));
-    // window_->draw(wave_text_);
 
     if (charge_percentage_ > 0.0f) {
         sf::RectangleShape charge_bar_bg(sf::Vector2f(200.0f, 20.0f));
@@ -508,6 +521,8 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/boss_1-ezgif.com-crop.gif", "boss_1");
     load_texture("client/sprites/boss_1-attack.gif", "boss_1_attack");
     load_texture("client/sprites/boss_1-bayblade.gif", "boss_1_bayblade");
+    load_texture("client/sprites/monster-wave-2-left.gif", "monster-wave-2-left");
+    load_texture("client/sprites/monster-wave-2-right.gif", "monster-wave-2-right");
     // Force Pod animation frames (13 frames)
     for (int i = 0; i < 13; i++) {
         std::string path =

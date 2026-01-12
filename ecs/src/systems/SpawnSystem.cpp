@@ -125,6 +125,9 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                 } else if (tag == "Boss_1") {
                     offX = 0.0f;
                     offY = 100.0f;
+                } else if (tag == "Monster_Wave_2_Left" || tag == "Monster_Wave_2_Right") {
+                    offX = 0.0f;
+                    offY = 0.0f;
                 }
 
                 registry.addComponent<component::Position>(enemy, spawnX, spawnY);
@@ -155,6 +158,13 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                     weapon.projectileFrequency = 5.0f;
                     weapon.damage = 50.0f;
                     weapon.fireRate = 0.2f;
+                } else if (tag == "Monster_Wave_2_Left" || tag == "Monster_Wave_2_Right") {
+                    registry.addComponent<component::HitBox>(enemy, 100.0f, 100.0f);
+                    registry.addComponent<component::Health>(enemy, 10, 10);
+                    registry.addComponent<component::MovementPattern>(enemy, component::MovementPatternType::Sinusoidal,
+                                                                      0.0f, 100.0f, 2.0f);
+                    weapon.projectileTag = "Monster_0_Ball";
+                    weapon.autoFire = false;
                 } else {
                     registry.addComponent<component::HitBox>(enemy, 100.0f, 100.0f);
                     registry.addComponent<component::Health>(enemy, 5, 5);
