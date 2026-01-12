@@ -115,6 +115,7 @@ void Renderer::update_animations(float delta_time) {
                     entity.animation_timer = 0.0f;
                     entity.animation_frame = (entity.animation_frame + 1) % 4;
                 }
+            } else if (entity.sub_type == 101) { // Boss_2
             } else if (entity.sub_type == 5 || entity.sub_type == 6) {
                 entity.animation_timer += delta_time;
                 if (entity.animation_timer >= 0.1f) {
@@ -206,6 +207,9 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
         if (entity.sub_type == 100) {
             texture_name = "boss_1";
             sprite.setScale(4.0f, 4.0f); // Adjust scale as needed
+        } else if (entity.sub_type == 101) {
+            texture_name = "boss_2";
+            sprite.setScale(2.0f, 2.0f);
         } else if (entity.sub_type == 5) {
             texture_name = "monster-wave-2-left";
             sprite.setScale(3.0f, 3.0f);
@@ -223,6 +227,9 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
             sprite.setScale(2.0f, 2.0f);
         } else if (entity.sub_type == 21) {
             texture_name = "boss_1_attack";
+            sprite.setScale(2.0f, 2.0f);
+        } else if (entity.sub_type == 22) { // Boss_2_Projectile
+            texture_name = "monster_0-ball";
             sprite.setScale(2.0f, 2.0f);
         } else if (entity.sub_type == 30) {
             texture_name = "pod_projectile_" + std::to_string(entity.animation_frame % 2);
@@ -286,6 +293,12 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
             sprite.setTextureRect(sf::IntRect(col * sprite_width, row * sprite_height, sprite_width, sprite_height));
             sprite.setScale(1.7f, 1.7f);
         }
+    }
+
+    if (entity.type == rtype::net::EntityType::ENEMY && entity.sub_type == 101) {
+        sprite.setRotation(270.0f);
+        sf::FloatRect bounds = sprite.getLocalBounds();
+        sprite.setOrigin(bounds.width, 0.0f);
     }
 
     sprite.setPosition(entity.x, entity.y);
@@ -523,17 +536,17 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/boss_1-bayblade.gif", "boss_1_bayblade");
     load_texture("client/sprites/monster-wave-2-left.gif", "monster-wave-2-left");
     load_texture("client/sprites/monster-wave-2-right.gif", "monster-wave-2-right");
-    // Force Pod animation frames (13 frames)
+    load_texture("client/sprites/r-typesheet32-ezgif.com-crop.gif", "boss_2");
+    load_texture("client/sprites/r-typesheet14-boss-2-proj.gif", "boss_2_projectile");
+    load_texture("client/sprites/monster_3-boss2-proj-2.gif", "boss_2_projectile_2");
     for (int i = 0; i < 13; i++) {
         std::string path =
             "client/sprites/force_pod/tile" + std::string(i < 10 ? "00" : "0") + std::to_string(i) + ".png";
         load_texture(path, "force_pod_" + std::to_string(i));
     }
     load_texture("client/sprites/force_pod/tile000.png", "force_pod"); // Default
-    // Force Pod projectile sprites
     load_texture("client/sprites/force_pod/tile013.png", "pod_projectile_0");
     load_texture("client/sprites/force_pod/tile014.png", "pod_projectile_1");
-    // Force Pod Red projectile sprites
     load_texture("client/sprites/force_pod/tile015.png", "pod_projectile_red_0");
     load_texture("client/sprites/force_pod/tile016.png", "pod_projectile_red_1");
     load_texture("client/sprites/players_ship.png", "default");
@@ -614,42 +627,62 @@ void Renderer::show_stage_cleared(uint8_t stage_number) {
     stage_cleared_timer_ = 5.0f; // Display for 5 seconds
 }
 
+void Renderer::update(float delta_time) {
+    if (stage_cleared_) {
+        stage_cleared_timer_ -= delta_time;
+        if (stage_cleared_timer_ <= 0.0f) {
+            stage_cleared_ = false;
+        }
+    }
+    update_animations(delta_time);
+}
+
 void Renderer::draw_stage_cleared() {
     if (!stage_cleared_)
         return;
 
-    // Semi-transparent overlay
     sf::RectangleShape overlay;
     overlay.setSize(sf::Vector2f(rtype::constants::SCREEN_WIDTH, rtype::constants::SCREEN_HEIGHT));
     overlay.setPosition(0, 0);
-    overlay.setFillColor(sf::Color(0, 50, 0, 180)); // Green tint
+    overlay.setFillColor(sf::Color(0, 50, 0, 180));
     window_->draw(overlay);
 
-    // Victory title
+
+    float alpha = 255.0f;
+    float y_offset = 0.0f;
+
+    if (stage_cleared_timer_ > 4.5f) {
+        float progress = (5.0f - stage_cleared_timer_) / 0.5f;
+        y_offset = -100.0f * (1.0f - progress);
+    } else if (stage_cleared_timer_ < 0.5f) {
+        float progress = stage_cleared_timer_ / 0.5f;
+        alpha = 255.0f * progress;
+    }
+
     sf::Text title_text;
     title_text.setFont(font_);
     title_text.setCharacterSize(64);
-    title_text.setFillColor(sf::Color::Yellow);
-    title_text.setOutlineColor(sf::Color::Black);
+    title_text.setFillColor(sf::Color(255, 255, 0, static_cast<uint8_t>(alpha)));
+    title_text.setOutlineColor(sf::Color(0, 0, 0, static_cast<uint8_t>(alpha)));
     title_text.setOutlineThickness(3);
     title_text.setString("STAGE " + std::to_string(cleared_stage_number_) + " - CLEARED!");
 
-    // Center text
     sf::FloatRect textBounds = title_text.getLocalBounds();
     title_text.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
-    title_text.setPosition(rtype::constants::SCREEN_WIDTH / 2.0f, rtype::constants::SCREEN_HEIGHT / 2.0f - 50.0f);
+    title_text.setPosition(rtype::constants::SCREEN_WIDTH / 2.0f,
+                           rtype::constants::SCREEN_HEIGHT / 2.0f - 50.0f + y_offset);
     window_->draw(title_text);
 
-    // Victory message
     sf::Text victory_text;
     victory_text.setFont(font_);
     victory_text.setCharacterSize(32);
-    victory_text.setFillColor(sf::Color::White);
+    victory_text.setFillColor(sf::Color(255, 255, 255, static_cast<uint8_t>(alpha)));
     victory_text.setString("CONGRATULATIONS!");
     sf::FloatRect victoryBounds = victory_text.getLocalBounds();
     victory_text.setOrigin(victoryBounds.left + victoryBounds.width / 2.0f,
                            victoryBounds.top + victoryBounds.height / 2.0f);
-    victory_text.setPosition(rtype::constants::SCREEN_WIDTH / 2.0f, rtype::constants::SCREEN_HEIGHT / 2.0f + 50.0f);
+    victory_text.setPosition(rtype::constants::SCREEN_WIDTH / 2.0f,
+                             rtype::constants::SCREEN_HEIGHT / 2.0f + 50.0f + y_offset);
     window_->draw(victory_text);
 }
 
