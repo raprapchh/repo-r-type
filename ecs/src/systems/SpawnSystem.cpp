@@ -56,20 +56,27 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
         const auto& wave = level.waves[spawner.currentWave];
 
         while (spawner.currentEnemyIndex < static_cast<int>(wave.enemies.size())) {
-            // Boss Warning Logic
-            if (spawner.currentLevel == static_cast<int>(_levels.size()) - 1 && spawner.currentWave == 0 &&
-                spawner.currentEnemyIndex == 0) {
-                if (!spawner.bossWarningActive && spawner.bossWarningTimer == 0.0f) {
-                    spawner.bossWarningActive = true;
-                    spawner.bossWarningTimer = 4.0f;
+            if (spawner.currentWave == 0 && spawner.currentEnemyIndex == 0) {
+                bool isBossLevel = false;
+                if (!wave.enemies.empty()) {
+                    if (wave.enemies[0].type.find("Boss") != std::string::npos) {
+                        isBossLevel = true;
+                    }
+                }
 
-                    auto playerView = registry.view<component::Position, component::Tag>();
-                    for (auto entity : playerView) {
-                        const auto& tag = registry.getComponent<component::Tag>(entity);
-                        if (tag.name == "Player") {
-                            auto& pos = registry.getComponent<component::Position>(entity);
-                            pos.x = 100.0f;
-                            pos.y = 540.0f;
+                if (isBossLevel) {
+                    if (!spawner.bossWarningActive && spawner.bossWarningTimer == 0.0f) {
+                        spawner.bossWarningActive = true;
+                        spawner.bossWarningTimer = 4.0f;
+
+                        auto playerView = registry.view<component::Position, component::Tag>();
+                        for (auto entity : playerView) {
+                            const auto& tag = registry.getComponent<component::Tag>(entity);
+                            if (tag.name == "Player") {
+                                auto& pos = registry.getComponent<component::Position>(entity);
+                                pos.x = 100.0f;
+                                pos.y = 540.0f;
+                            }
                         }
                     }
                 }
@@ -128,6 +135,9 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                 } else if (tag == "Monster_Wave_2_Left" || tag == "Monster_Wave_2_Right") {
                     offX = 0.0f;
                     offY = 0.0f;
+                } else if (tag == "Boss_2") {
+                    offX = 0.0f;
+                    offY = 256.0f;
                 }
 
                 registry.addComponent<component::Position>(enemy, spawnX, spawnY);
@@ -158,6 +168,17 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                     weapon.projectileFrequency = 5.0f;
                     weapon.damage = 50.0f;
                     weapon.fireRate = 0.2f;
+                } else if (tag == "Boss_2") {
+                    registry.addComponent<component::HitBox>(enemy, 256.0f, 256.0f);
+                    registry.addComponent<component::Health>(enemy, 1000, 1000);
+                    registry.addComponent<component::MovementPattern>(enemy, component::MovementPatternType::None, 0.0f,
+                                                                      0.0f, 0.0f);
+                    weapon.projectileTag = "Boss_2_Projectile";
+                    weapon.projectilePattern = component::MovementPatternType::Circular;
+                    weapon.projectileAmplitude = 100.0f;
+                    weapon.projectileFrequency = 10.0f;
+                    weapon.damage = 20.0f;
+                    weapon.fireRate = 0.05f;
                 } else if (tag == "Monster_Wave_2_Left" || tag == "Monster_Wave_2_Right") {
                     registry.addComponent<component::HitBox>(enemy, 100.0f, 100.0f);
                     registry.addComponent<component::Health>(enemy, 10, 10);
