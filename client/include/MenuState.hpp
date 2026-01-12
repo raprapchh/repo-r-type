@@ -2,6 +2,9 @@
 
 #include "States.hpp"
 #include <SFML/Graphics.hpp>
+#include <array>
+#include <optional>
+#include <vector>
 
 namespace rtype::client {
 
@@ -21,9 +24,14 @@ class MenuState : public IState {
 
   private:
     void setup_ui();
-    void handle_button_click(const sf::Vector2f& mouse_pos, StateManager& state_manager);
+    void handle_button_click(const sf::Vector2f& mouse_pos, StateManager& state_manager, Renderer& renderer);
     void update_positions(const sf::Vector2u& window_size);
     void update_scoreboard_display(Client& client);
+    void update_key_binding_texts(Renderer& renderer);
+    void begin_rebinding(Renderer& renderer, Renderer::Action action);
+    bool handle_rebinding_event(const sf::Event& event, Renderer& renderer);
+    void sync_pending_key_bindings(Renderer& renderer);
+    size_t action_index(Renderer::Action action) const;
 
     sf::Font font_;
     sf::Texture logo_texture_;
@@ -49,6 +57,20 @@ class MenuState : public IState {
     sf::RectangleShape cancel_button_;
     sf::Text confirm_button_text_;
     sf::Text cancel_button_text_;
+
+    struct KeyBindingRow {
+        Renderer::Action action;
+        sf::RectangleShape box;
+        sf::Text action_text;
+        sf::Text key_text;
+    };
+
+    std::vector<KeyBindingRow> key_binding_rows_;
+    std::array<sf::Keyboard::Key, static_cast<size_t>(Renderer::Action::Count)> pending_key_bindings_{};
+    std::optional<Renderer::Action> rebind_target_;
+
+    enum class SelectedButton { START, SETTINGS, QUIT };
+    SelectedButton selected_button_ = SelectedButton::START;
 
     bool font_loaded_;
 };

@@ -11,6 +11,9 @@
 #include "../../ecs/include/systems/SpawnEffectSystem.hpp"
 #include "../../ecs/include/systems/ProjectileSystem.hpp"
 #include "../../ecs/include/systems/ForcePodSystem.hpp"
+#include "../../ecs/include/systems/FpsSystem.hpp"
+#include "../../ecs/include/systems/DevToolsSystem.hpp"
+#include "../../ecs/include/systems/UIRenderSystem.hpp"
 #include "../../ecs/include/components/MapBounds.hpp"
 #include "../../ecs/include/components/NetworkId.hpp"
 #include "../../ecs/include/components/NetworkInterpolation.hpp"
@@ -23,6 +26,9 @@
 #include "../../ecs/include/components/Weapon.hpp"
 #include "../../ecs/include/components/Score.hpp"
 #include "../../ecs/include/components/Projectile.hpp"
+#include "../../ecs/include/components/TextDrawable.hpp"
+#include "../../ecs/include/components/UITag.hpp"
+#include "../../ecs/include/components/FpsCounter.hpp"
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -82,6 +88,12 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
     }
 
     std::cout << "GameState: Counted " << initial_player_count_ << " player(s) in game" << std::endl;
+
+    // FPS Counter: Only spawn in Multiplayer Mode
+    if (multiplayer_) {
+        sf::Vector2u windowSize = renderer.get_window_size();
+        createFpsCounter(registry, static_cast<float>(windowSize.x));
+    }
 
     client.get_audio_system().startBackgroundMusic();
 }
@@ -153,14 +165,14 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         }
                     }
                 }
-            } else if (event.key.code == sf::Keyboard::Space) {
+            } else if (event.key.code == renderer.get_key_binding(Renderer::Action::Shoot)) {
                 if (!is_charging_) {
                     is_charging_ = true;
                     charge_start_time_ = std::chrono::steady_clock::now();
                 }
             }
         } else if (event.type == sf::Event::KeyReleased) {
-            if (event.key.code == sf::Keyboard::Space) {
+            if (event.key.code == renderer.get_key_binding(Renderer::Action::Shoot)) {
                 if (is_charging_) {
                     auto now = std::chrono::steady_clock::now();
                     auto duration =
@@ -183,6 +195,17 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         client_->send_shoot(0, 0, chargeLevel);
                     }
                 }
+            } else if (event.key.code == sf::Keyboard::F3) {
+                // Toggle Dev Tools (FPS Counter) visibility - Multiplayer only
+                if (multiplayer_ && client_) {
+                    GameEngine::Registry& registry = client_->get_registry();
+                    std::mutex& registry_mutex = client_->get_registry_mutex();
+                    std::lock_guard<std::mutex> lock(registry_mutex);
+
+                    rtype::ecs::DevToolsSystem dev_tools_system;
+                    dev_tools_system.setTogglePressed(true);
+                    dev_tools_system.update(registry, 0.0);
+                }
             }
         } else if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
             if (is_paused_) {
@@ -198,6 +221,19 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         std::mutex& registry_mutex = client_->get_registry_mutex();
                         std::lock_guard<std::mutex> lock(registry_mutex);
                         registry.clear();
+                    }
+                    game_over_ = false;
+                    all_players_dead_ = false;
+                    score_saved_ = false;
+                    state_manager.change_state(std::make_unique<MenuState>());
+                }
+            } else if (renderer.is_stage_cleared() && renderer.is_game_finished()) {
+                sf::Vector2f mouse_pos = renderer.get_window()->mapPixelToCoords(
+                    sf::Vector2i(event.mouseButton.x, event.mouseButton.y), renderer.get_window()->getDefaultView());
+
+                if (renderer.is_victory_back_to_menu_clicked(mouse_pos)) {
+                    if (client_) {
+                        client_->leave_room();
                     }
                     game_over_ = false;
                     all_players_dead_ = false;
@@ -443,6 +479,23 @@ void GameState::render(Renderer& renderer, Client& client) {
 
     renderer.draw_ui();
 
+    // FPS Counter: Update FPS calculation and render UI overlay (Multiplayer only)
+    if (multiplayer_ && renderer.get_window()) {
+        float fps_dt = fps_clock_.restart().asSeconds();
+
+        GameEngine::Registry& registry = client.get_registry();
+        std::mutex& registry_mutex = client.get_registry_mutex();
+        std::lock_guard<std::mutex> lock(registry_mutex);
+
+        // Update FPS calculation with REAL delta time
+        rtype::ecs::FpsSystem fps_system;
+        fps_system.update(registry, static_cast<double>(fps_dt));
+
+        // Render UI overlay (FPS counter)
+        rtype::ecs::UIRenderSystem ui_render_system(renderer.get_window());
+        ui_render_system.update(registry, static_cast<double>(fps_dt));
+    }
+
     // Stage cleared victory screen
     renderer.draw_stage_cleared();
 
@@ -614,6 +667,33 @@ void GameState::spawn_player_projectile(GameEngine::Registry& registry, GameEngi
                                                            true);
     registry.addComponent<rtype::ecs::component::NetworkInterpolation>(projectile, spawn_x, spawn_y,
                                                                        weapon.projectileSpeed, 0.0f);
+}
+
+void GameState::createFpsCounter(GameEngine::Registry& registry, float windowWidth) {
+    if (!dev_font_) {
+        dev_font_ = std::make_shared<sf::Font>();
+        if (!dev_font_->loadFromFile("client/fonts/Ethnocentric-Regular.otf")) {
+            std::cerr << "Warning: Could not load client/fonts/Ethnocentric-Regular.otf for FPS Counter" << std::endl;
+            // Fallback to default arial if possible, or just don't crash
+        }
+    }
+
+    fps_counter_entity_ = registry.createEntity();
+
+    // Position: Top-Right with padding
+    // Approximate width of "FPS: 60" is about 120 pixels with size 20 font
+    float x = windowWidth - 140.0f;
+    float y = 10.0f;
+
+    registry.addComponent<rtype::ecs::component::Position>(fps_counter_entity_, x, y);
+    registry.addComponent<rtype::ecs::component::UITag>(fps_counter_entity_);
+    registry.addComponent<rtype::ecs::component::FpsCounter>(fps_counter_entity_);
+
+    // Text Setup
+    // Using green color for high visibility
+    sf::Color textColor = sf::Color::Green;
+    registry.addComponent<rtype::ecs::component::TextDrawable>(fps_counter_entity_, dev_font_, "FPS: --", 20,
+                                                               textColor);
 }
 
 } // namespace rtype::client

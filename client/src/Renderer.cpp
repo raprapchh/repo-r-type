@@ -13,7 +13,8 @@ Renderer::Renderer(uint32_t width, uint32_t height)
     view_.setSize(rtype::constants::SCREEN_WIDTH, rtype::constants::SCREEN_HEIGHT);
     view_.setCenter(rtype::constants::SCREEN_WIDTH / 2.0f, rtype::constants::SCREEN_HEIGHT / 2.0f);
     window_->setView(view_);
-    std::fill(std::begin(keys_), std::end(keys_), false);
+    initialize_key_bindings();
+    action_states_.fill(false);
     load_sprites();
     load_fonts();
 }
@@ -59,19 +60,98 @@ void Renderer::display() {
 
 void Renderer::handle_input() {
     if (!window_ || !window_->hasFocus()) {
-        std::fill(std::begin(keys_), std::end(keys_), false);
+        action_states_.fill(false);
         return;
     }
 
-    keys_[sf::Keyboard::Up] =
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Up) || sf::Keyboard::isKeyPressed(sf::Keyboard::Z);
-    keys_[sf::Keyboard::Down] =
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Down) || sf::Keyboard::isKeyPressed(sf::Keyboard::S);
-    keys_[sf::Keyboard::Left] =
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::Q);
-    keys_[sf::Keyboard::Right] =
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Right) || sf::Keyboard::isKeyPressed(sf::Keyboard::D);
-    keys_[sf::Keyboard::Space] = sf::Keyboard::isKeyPressed(sf::Keyboard::Space);
+    refresh_action_states();
+}
+
+void Renderer::initialize_key_bindings() {
+    key_bindings_[action_index(Action::Up)] = sf::Keyboard::Up;
+    key_bindings_[action_index(Action::Down)] = sf::Keyboard::Down;
+    key_bindings_[action_index(Action::Left)] = sf::Keyboard::Left;
+    key_bindings_[action_index(Action::Right)] = sf::Keyboard::Right;
+    key_bindings_[action_index(Action::Shoot)] = sf::Keyboard::Space;
+}
+
+void Renderer::refresh_action_states() {
+    for (size_t i = 0; i < static_cast<size_t>(Action::Count); i++) {
+        action_states_[i] = sf::Keyboard::isKeyPressed(key_bindings_[i]);
+    }
+}
+
+void Renderer::set_key_binding(Action action, sf::Keyboard::Key key) {
+    key_bindings_[action_index(action)] = key;
+    refresh_action_states();
+}
+
+sf::Keyboard::Key Renderer::get_key_binding(Action action) const {
+    return key_bindings_[action_index(action)];
+}
+
+std::string Renderer::key_to_string(sf::Keyboard::Key key) const {
+    if (key >= sf::Keyboard::A && key <= sf::Keyboard::Z) {
+        char letter = static_cast<char>('A' + static_cast<int>(key) - static_cast<int>(sf::Keyboard::A));
+        return std::string(1, letter);
+    }
+    if (key >= sf::Keyboard::Num0 && key <= sf::Keyboard::Num9) {
+        char digit = static_cast<char>('0' + static_cast<int>(key) - static_cast<int>(sf::Keyboard::Num0));
+        return std::string(1, digit);
+    }
+    switch (key) {
+    case sf::Keyboard::Space:
+        return "Space";
+    case sf::Keyboard::Enter:
+        return "Enter";
+    case sf::Keyboard::Tab:
+        return "Tab";
+    case sf::Keyboard::Escape:
+        return "Escape";
+    case sf::Keyboard::LShift:
+        return "Left Shift";
+    case sf::Keyboard::RShift:
+        return "Right Shift";
+    case sf::Keyboard::LControl:
+        return "Left Ctrl";
+    case sf::Keyboard::RControl:
+        return "Right Ctrl";
+    case sf::Keyboard::LAlt:
+        return "Left Alt";
+    case sf::Keyboard::RAlt:
+        return "Right Alt";
+    case sf::Keyboard::Left:
+        return "Left";
+    case sf::Keyboard::Right:
+        return "Right";
+    case sf::Keyboard::Up:
+        return "Up";
+    case sf::Keyboard::Down:
+        return "Down";
+    default:
+        return "Key " + std::to_string(static_cast<int>(key));
+    }
+}
+
+std::string Renderer::get_key_name(sf::Keyboard::Key key) const {
+    return key_to_string(key);
+}
+
+std::string Renderer::get_action_name(Action action) const {
+    switch (action) {
+    case Action::Up:
+        return "Up";
+    case Action::Down:
+        return "Down";
+    case Action::Left:
+        return "Left";
+    case Action::Right:
+        return "Right";
+    case Action::Shoot:
+        return "Shoot";
+    default:
+        return "Unknown";
+    }
 }
 
 void Renderer::update_entity(const Entity& entity) {
@@ -624,11 +704,17 @@ bool Renderer::is_game_over_back_to_menu_clicked(const sf::Vector2f& mouse_pos) 
 void Renderer::show_stage_cleared(uint8_t stage_number) {
     stage_cleared_ = true;
     cleared_stage_number_ = stage_number;
-    stage_cleared_timer_ = 5.0f; // Display for 5 seconds
+    if (stage_number == 2) {
+        game_finished_ = true;
+        stage_cleared_timer_ = 999999.0f;
+    } else {
+        game_finished_ = false;
+        stage_cleared_timer_ = 5.0f;
+    }
 }
 
 void Renderer::update(float delta_time) {
-    if (stage_cleared_) {
+    if (stage_cleared_ && !game_finished_) {
         stage_cleared_timer_ -= delta_time;
         if (stage_cleared_timer_ <= 0.0f) {
             stage_cleared_ = false;
@@ -650,12 +736,14 @@ void Renderer::draw_stage_cleared() {
     float alpha = 255.0f;
     float y_offset = 0.0f;
 
-    if (stage_cleared_timer_ > 4.5f) {
-        float progress = (5.0f - stage_cleared_timer_) / 0.5f;
-        y_offset = -100.0f * (1.0f - progress);
-    } else if (stage_cleared_timer_ < 0.5f) {
-        float progress = stage_cleared_timer_ / 0.5f;
-        alpha = 255.0f * progress;
+    if (!game_finished_) {
+        if (stage_cleared_timer_ > 4.5f) {
+            float progress = (5.0f - stage_cleared_timer_) / 0.5f;
+            y_offset = -100.0f * (1.0f - progress);
+        } else if (stage_cleared_timer_ < 0.5f) {
+            float progress = stage_cleared_timer_ / 0.5f;
+            alpha = 255.0f * progress;
+        }
     }
 
     sf::Text title_text;
@@ -664,7 +752,12 @@ void Renderer::draw_stage_cleared() {
     title_text.setFillColor(sf::Color(255, 255, 0, static_cast<uint8_t>(alpha)));
     title_text.setOutlineColor(sf::Color(0, 0, 0, static_cast<uint8_t>(alpha)));
     title_text.setOutlineThickness(3);
-    title_text.setString("STAGE " + std::to_string(cleared_stage_number_) + " - CLEARED!");
+
+    if (game_finished_) {
+        title_text.setString("GAME COMPLETED!");
+    } else {
+        title_text.setString("STAGE " + std::to_string(cleared_stage_number_) + " - CLEARED!");
+    }
 
     sf::FloatRect textBounds = title_text.getLocalBounds();
     title_text.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
@@ -683,6 +776,40 @@ void Renderer::draw_stage_cleared() {
     victory_text.setPosition(rtype::constants::SCREEN_WIDTH / 2.0f,
                              rtype::constants::SCREEN_HEIGHT / 2.0f + 50.0f + y_offset);
     window_->draw(victory_text);
+
+    if (game_finished_) {
+        sf::Color button_color = sf::Color(70, 130, 180);
+
+        back_to_menu_button_.setSize(sf::Vector2f(280.0f, 65.0f));
+        back_to_menu_button_.setFillColor(button_color);
+        back_to_menu_button_.setOutlineThickness(2);
+        back_to_menu_button_.setOutlineColor(sf::Color::White);
+
+        sf::FloatRect button_bounds = back_to_menu_button_.getLocalBounds();
+        back_to_menu_button_.setOrigin(button_bounds.width / 2.0f, button_bounds.height / 2.0f);
+        back_to_menu_button_.setPosition(rtype::constants::SCREEN_WIDTH / 2.0f,
+                                         rtype::constants::SCREEN_HEIGHT / 2.0f + 150.0f);
+
+        back_to_menu_text_.setFont(font_);
+        back_to_menu_text_.setString("BACK TO MENU");
+        back_to_menu_text_.setCharacterSize(23);
+        back_to_menu_text_.setFillColor(sf::Color::White);
+
+        sf::FloatRect text_bounds_btn = back_to_menu_text_.getLocalBounds();
+        back_to_menu_text_.setOrigin(text_bounds_btn.left + text_bounds_btn.width / 2.0f,
+                                     text_bounds_btn.top + text_bounds_btn.height / 2.0f);
+        back_to_menu_text_.setPosition(rtype::constants::SCREEN_WIDTH / 2.0f,
+                                       rtype::constants::SCREEN_HEIGHT / 2.0f + 150.0f);
+
+        window_->draw(back_to_menu_button_);
+        window_->draw(back_to_menu_text_);
+    }
+}
+
+bool Renderer::is_victory_back_to_menu_clicked(const sf::Vector2f& mouse_pos) const {
+    if (!game_finished_)
+        return false;
+    return back_to_menu_button_.getGlobalBounds().contains(mouse_pos);
 }
 
 } // namespace rtype::client
