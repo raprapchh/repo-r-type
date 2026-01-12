@@ -122,11 +122,23 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 frameH = 219;
                 scale = 2.0f;
                 frameCount = 4;
+            } else if (data.sub_type == 101) {
+                sprite_name = "boss_2";
+                frameW = 0;
+                frameH = 0;
+                scale = 2.0f;
+                scale = 2.0f;
+                frameCount = 1;
             }
 
             registry.addComponent<rtype::ecs::component::Drawable>(
                 entity, sprite_name, static_cast<uint32_t>(0), static_cast<uint32_t>(0), static_cast<uint32_t>(frameW),
                 static_cast<uint32_t>(frameH), scale, scale, frameCount, 0.1f, true);
+
+            if (data.sub_type == 101) {
+                auto& drawable = registry.getComponent<rtype::ecs::component::Drawable>(entity);
+                drawable.rotation = 270.0f;
+            }
 
             float hp = 100.0f;
             float hitboxW = 100.0f;
@@ -136,6 +148,10 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 hp = 500.0f;
                 hitboxW = 200.0f;
                 hitboxH = 200.0f;
+            } else if (data.sub_type == 101) {
+                hp = 5000.0f;
+                hitboxW = 256.0f;
+                hitboxH = 256.0f;
             }
 
             registry.addComponent<rtype::ecs::component::Health>(entity, hp, hp);
@@ -190,8 +206,15 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 height = 40.0f;
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 21, 20, 2.0f, 2.0f, 8,
                                                                        0.1f, true);
+            } else if (data.sub_type == 22) {
+                sprite_name = "boss_2_projectile";
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 0, 0, 3.0f, 3.0f, 1,
+                                                                       0.1f, false);
+            } else if (data.sub_type == 23) {
+                sprite_name = "boss_2_projectile_2";
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 0, 0, 4.0f, 4.0f, 1,
+                                                                       0.1f, false);
             } else if (data.sub_type == 30 || data.sub_type == 31) {
-                // Force Pod Projectile
                 if (data.sub_type == 31) {
                     sprite_name = "pod_projectile_red_0";
                     width = 36.0f;
@@ -201,7 +224,6 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                     width = 34.0f;
                     height = 19.0f;
                 }
-                // Use 1 frame for now to match other logic, or let Renderer handle animation if it overrides
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, width, height, 2.5f,
                                                                        2.5f, 1, 0.1f, false);
             } else {
@@ -401,7 +423,6 @@ void NetworkSystem::handle_destroy(GameEngine::Registry& registry, const rtype::
                         explosion_drawable.current_state = "explosion";
                         explosion_drawable.animation_frame = 5;
 
-                        // Add audio event for explosion
                         registry.addComponent<rtype::ecs::component::AudioEvent>(
                             explosion_entity, rtype::ecs::component::AudioEventType::EXPLOSION);
                     }

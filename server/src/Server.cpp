@@ -666,6 +666,8 @@ uint16_t Server::get_monster_subtype(const std::string& tag_name) {
         return 4;
     if (tag_name == "Boss_1")
         return 100;
+    if (tag_name == "Boss_2")
+        return 101;
     return 0;
 }
 
@@ -684,6 +686,8 @@ uint16_t Server::get_projectile_subtype(const std::string& tag_name) {
         return 20;
     if (tag_name == "Boss_1_Attack")
         return 21;
+    if (tag_name == "Boss_2_Projectile")
+        return 22;
     if (tag_name == "PodProjectile")
         return 30;
     return 0;
@@ -711,10 +715,10 @@ GameEngine::entity_t Server::create_player_entity(uint32_t player_id, const std:
     weapon.spawnOffsetX = 35.0f;
     weapon.spawnOffsetY = 10.0f;
     weapon.fireRate = 0.1f;
-    weapon.projectileSpeed = 1500.0f;
+    weapon.damage = 1000.0f;
     registry_.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
     registry_.addComponent<rtype::ecs::component::Score>(entity, 0);
-    registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
+    registry_.addComponent<rtype::ecs::component::Lives>(entity, 50);
     registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
     registry_.addComponent<rtype::ecs::component::NetworkId>(entity, player_id);
     registry_.addComponent<rtype::ecs::component::Collidable>(entity, rtype::ecs::component::CollisionLayer::Player);

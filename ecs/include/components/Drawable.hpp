@@ -28,6 +28,7 @@ struct Drawable {
     std::string last_state = "";
     uint32_t animation_index = 0;
     bool loop;
+    float rotation = 0.0f;
 
     Drawable()
         : texture_name(""), sprite_index(0), animation_frame(0), current_sprite(0), scale_x(1.0f), scale_y(1.0f),

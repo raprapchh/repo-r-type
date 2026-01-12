@@ -17,6 +17,7 @@ struct RenderData {
     uint32_t frame_count;
     uint8_t color_r, color_g, color_b, color_a;
     bool visible;
+    float rotation = 0.0f;
 };
 
 class IRenderer {
