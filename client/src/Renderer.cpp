@@ -647,7 +647,6 @@ void Renderer::draw_stage_cleared() {
     overlay.setFillColor(sf::Color(0, 50, 0, 180));
     window_->draw(overlay);
 
-
     float alpha = 255.0f;
     float y_offset = 0.0f;
 
