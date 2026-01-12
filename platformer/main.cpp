@@ -1,6 +1,7 @@
 #include <SFML/Graphics.hpp>
 
 #include <memory>
+#include <iostream>
 #include <vector>
 
 #include "../ecs/include/Registry.hpp"
@@ -80,6 +81,22 @@ int main() {
             wall, "__RECTANGLE__", 0, 0, static_cast<int>(config.width), static_cast<int>(config.height));
     }
 
+    sf::Font font;
+    if (!font.loadFromFile("client/fonts/Ethnocentric-Regular.otf") &&
+        !font.loadFromFile("../client/fonts/Ethnocentric-Regular.otf") &&
+        !font.loadFromFile("../../client/fonts/Ethnocentric-Regular.otf") &&
+        !font.loadFromFile("fonts/Ethnocentric-Regular.otf")) {
+        std::cerr << "Failed to load font from any common path!" << std::endl;
+        return 84;
+    }
+    sf::Text lose_text("You Lost", font, 50);
+    lose_text.setFillColor(sf::Color::Red);
+
+    sf::FloatRect textRect = lose_text.getLocalBounds();
+    lose_text.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
+
+    bool game_over = false;
+
     sf::Clock clock;
     while (window.isOpen()) {
         sf::Event event;
@@ -88,34 +105,45 @@ int main() {
                 window.close();
         }
 
-        float dt = clock.restart().asSeconds();
+        if (!game_over) {
+            float dt = clock.restart().asSeconds();
 
-        auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(player);
-        vel.vx = 0;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
-            vel.vx = -400.0f;
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
-            vel.vx = 400.0f;
+            auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(player);
+            vel.vx = 0;
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+                vel.vx = -400.0f;
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+                vel.vx = 400.0f;
 
-        physics_system->update(registry, dt);
-        movement_system->update(registry, dt);
+            physics_system->update(registry, dt);
+            movement_system->update(registry, dt);
 
-        auto& pos = registry.getComponent<rtype::ecs::component::Position>(player);
-        auto& hitbox = registry.getComponent<rtype::ecs::component::HitBox>(player);
+            auto& pos = registry.getComponent<rtype::ecs::component::Position>(player);
+            auto& hitbox = registry.getComponent<rtype::ecs::component::HitBox>(player);
 
-        if (pos.x > 800) {
-            pos.x = -hitbox.width;
-        } else if (pos.x < -hitbox.width) {
-            pos.x = 800;
-        }
+            if (pos.x > 800) {
+                pos.x = -hitbox.width;
+            } else if (pos.x < -hitbox.width) {
+                pos.x = 800;
+            }
 
-        if (pos.y < view.getCenter().y) {
-            view.setCenter(400, pos.y);
-            window.setView(view);
+            if (pos.y < view.getCenter().y) {
+                view.setCenter(400, pos.y);
+                window.setView(view);
+            }
+
+            if (pos.y > view.getCenter().y + 300) {
+                game_over = true;
+            }
         }
 
         renderer_impl->clear();
-        render_system->update(registry, dt);
+        if (!game_over) {
+            render_system->update(registry, 0);
+        } else {
+            lose_text.setPosition(view.getCenter());
+            window.draw(lose_text);
+        }
         renderer_impl->display();
     }
 
