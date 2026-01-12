@@ -44,10 +44,13 @@ int main() {
         float x, y, width, height;
     };
 
-    std::vector<PlatformConfig> level_layout = {{0.0f, 550.0f, 800.0f, 50.0f},   {200.0f, 450.0f, 100.0f, 20.0f},
-                                                {400.0f, 350.0f, 100.0f, 20.0f}, {150.0f, 250.0f, 100.0f, 20.0f},
-                                                {500.0f, 150.0f, 100.0f, 20.0f}, {300.0f, 50.0f, 100.0f, 20.0f},
-                                                {100.0f, -50.0f, 100.0f, 20.0f}, {600.0f, -150.0f, 100.0f, 20.0f}};
+    std::vector<PlatformConfig> level_layout = {{0.0f, 550.0f, 800.0f, 50.0f}, // Ground Floor
+                                                                               // Floating platforms going up
+                                                {200.0f, 450.0f, 100.0f, 20.0f},
+                                                {500.0f, 150.0f, 100.0f, 20.0f},
+                                                {300.0f, 50.0f, 100.0f, 20.0f},
+                                                {100.0f, -50.0f, 100.0f, 20.0f},
+                                                {600.0f, -150.0f, 100.0f, 20.0f}};
 
     for (const auto& config : level_layout) {
         auto wall = registry.createEntity();
@@ -77,6 +80,15 @@ int main() {
 
         physics_system->update(registry, dt);
         movement_system->update(registry, dt);
+
+        auto& pos = registry.getComponent<rtype::ecs::component::Position>(player);
+        auto& hitbox = registry.getComponent<rtype::ecs::component::HitBox>(player);
+
+        if (pos.x > 800) {
+            pos.x = -hitbox.width;
+        } else if (pos.x < -hitbox.width) {
+            pos.x = 800;
+        }
 
         renderer_impl->clear();
         render_system->update(registry, dt);
