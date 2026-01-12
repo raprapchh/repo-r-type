@@ -121,6 +121,7 @@ class Renderer {
     AccessibilityManager accessibility_manager_;
 
     bool stage_cleared_ = false;
+    bool game_finished_ = false;
     uint8_t cleared_stage_number_ = 1;
     float stage_cleared_timer_ = 0.0f;
 
@@ -131,6 +132,10 @@ class Renderer {
     bool is_stage_cleared() const {
         return stage_cleared_;
     }
+    bool is_game_finished() const {
+        return game_finished_;
+    }
+    bool is_victory_back_to_menu_clicked(const sf::Vector2f& mouse_pos) const;
 };
 
 } // namespace rtype::client
