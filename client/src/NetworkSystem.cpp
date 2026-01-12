@@ -1,4 +1,5 @@
 #include "../include/NetworkSystem.hpp"
+#include "../../ecs/include/components/TextureAnimation.hpp"
 #include "../../shared/net/MessageData.hpp"
 #include "../../ecs/include/components/HitBox.hpp"
 #include "../../ecs/include/components/CollisionLayer.hpp"
@@ -191,7 +192,6 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 21, 20, 2.0f, 2.0f, 8,
                                                                        0.1f, true);
             } else if (data.sub_type == 30 || data.sub_type == 31) {
-                // Force Pod Projectile
                 if (data.sub_type == 31) {
                     sprite_name = "pod_projectile_red_0";
                     width = 36.0f;
@@ -201,7 +201,6 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                     width = 34.0f;
                     height = 19.0f;
                 }
-                // Use 1 frame for now to match other logic, or let Renderer handle animation if it overrides
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, width, height, 2.5f,
                                                                        2.5f, 1, 0.1f, false);
             } else {
@@ -240,9 +239,13 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             std::string sprite_name = "force_pod";
             std::string tag_name = (data.sub_type == 1) ? "ForcePodItem" : "ForcePod";
 
-            registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
+            registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name + "_0", static_cast<uint32_t>(0),
                                                                    static_cast<uint32_t>(0), static_cast<uint32_t>(0),
                                                                    static_cast<uint32_t>(0), 2.5f, 2.5f);
+            std::vector<std::string> frames;
+            for (int i = 0; i < 13; ++i)
+                frames.push_back(sprite_name + "_" + std::to_string(i));
+            registry.addComponent<rtype::ecs::component::TextureAnimation>(entity, frames, 0.04f, true);
             registry.addComponent<rtype::ecs::component::HitBox>(entity, 64.0f, 64.0f);
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::PowerUp);
@@ -274,9 +277,7 @@ void NetworkSystem::handle_move(GameEngine::Registry& registry, const rtype::net
             vx = data.velocity_x;
             vy = data.velocity_y;
 
-            // Check if entity was hit (bit 0 of flags)
             if (data.flags & 0x01) {
-                // Find entity and add HitFlash component
                 auto view = registry.view<rtype::ecs::component::NetworkId>();
                 for (auto entity : view) {
                     GameEngine::entity_t ecs_entity = static_cast<GameEngine::entity_t>(entity);
@@ -401,7 +402,6 @@ void NetworkSystem::handle_destroy(GameEngine::Registry& registry, const rtype::
                         explosion_drawable.current_state = "explosion";
                         explosion_drawable.animation_frame = 5;
 
-                        // Add audio event for explosion
                         registry.addComponent<rtype::ecs::component::AudioEvent>(
                             explosion_entity, rtype::ecs::component::AudioEventType::EXPLOSION);
                     }

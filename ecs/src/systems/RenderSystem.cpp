@@ -98,8 +98,8 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
         render_data.scale_y = drawable.scale_y;
         render_data.texture_name = drawable.texture_name;
         render_data.current_sprite = drawable.current_sprite;
-        render_data.sprite_index = drawable.sprite_index;
         render_data.frame_count = drawable.frame_count;
+        render_data.sprite_index = drawable.sprite_index;
         render_data.rect_x = drawable.rect_x;
         render_data.rect_y = drawable.rect_y;
         render_data.rect_width = drawable.rect_width;
@@ -131,16 +131,13 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
             render_data.color_a = 255;
         }
 
-        // Apply hit flash effect (override to red/pink tint when recently damaged)
         if (registry.hasComponent<component::HitFlash>(entity_id)) {
             auto& flash = registry.getComponent<component::HitFlash>(entity_id);
             if (flash.active) {
-                // Use red tint instead of white (white = original color in SFML)
                 render_data.color_r = 255;
                 render_data.color_g = 100;
                 render_data.color_b = 100;
                 render_data.color_a = 255;
-                // Decrement timer
                 flash.timer -= static_cast<float>(dt);
                 if (flash.timer <= 0.0f) {
                     flash.active = false;
