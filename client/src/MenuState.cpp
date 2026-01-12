@@ -150,7 +150,8 @@ void MenuState::handle_input(Renderer& renderer, StateManager& state_manager) {
                     } else if (selected_button_ == SelectedButton::SETTINGS) {
                         show_settings_ = true;
                         pending_mode_ = state_manager.get_renderer().get_accessibility_manager().get_current_mode();
-                        std::string mode_name = state_manager.get_renderer().get_accessibility_manager().get_mode_name();
+                        std::string mode_name =
+                            state_manager.get_renderer().get_accessibility_manager().get_mode_name();
                         accessibility_cycle_text_.setString("Mode: " + mode_name);
                         update_positions(state_manager.get_renderer().get_window_size());
                     } else if (selected_button_ == SelectedButton::QUIT) {
@@ -398,7 +399,6 @@ void MenuState::update_positions(const sf::Vector2u& window_size) {
         text.setPosition(left_column_x, solo_y);
         solo_y += score_spacing;
     }
-
 
     multi_scores_title_.setPosition(right_column_x, scoreboard_y);
     float multi_y = scoreboard_y + 35.0f;

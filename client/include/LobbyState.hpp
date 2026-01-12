@@ -7,12 +7,7 @@
 
 namespace rtype::client {
 
-enum class LobbyMode {
-    MAIN_MENU,
-    CREATE_ROOM,
-    BROWSE_ROOMS,
-    IN_ROOM
-};
+enum class LobbyMode { MAIN_MENU, CREATE_ROOM, BROWSE_ROOMS, IN_ROOM };
 
 class LobbyState : public IState {
   public:
@@ -65,7 +60,7 @@ class LobbyState : public IState {
     LobbyMode current_mode_;
     enum class MainMenuButton { CREATE, JOIN, BACK };
     MainMenuButton selected_main_menu_button_ = MainMenuButton::CREATE;
-    
+
     sf::RectangleShape create_button_;
     sf::Text create_button_text_;
     sf::RectangleShape join_button_;
