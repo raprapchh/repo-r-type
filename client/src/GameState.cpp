@@ -165,14 +165,14 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         }
                     }
                 }
-            } else if (event.key.code == sf::Keyboard::Space) {
+            } else if (event.key.code == renderer.get_key_binding(Renderer::Action::Shoot)) {
                 if (!is_charging_) {
                     is_charging_ = true;
                     charge_start_time_ = std::chrono::steady_clock::now();
                 }
             }
         } else if (event.type == sf::Event::KeyReleased) {
-            if (event.key.code == sf::Keyboard::Space) {
+            if (event.key.code == renderer.get_key_binding(Renderer::Action::Shoot)) {
                 if (is_charging_) {
                     auto now = std::chrono::steady_clock::now();
                     auto duration =

@@ -1,9 +1,10 @@
 #include "../include/MenuState.hpp"
 #include "../include/ModeSelectionState.hpp"
+#include <algorithm>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <sstream>
-#include <iomanip>
 
 namespace rtype::client {
 
@@ -96,11 +97,35 @@ void MenuState::setup_ui() {
     cancel_button_text_.setString("CANCEL");
     cancel_button_text_.setCharacterSize(20);
     cancel_button_text_.setFillColor(sf::Color::White);
+
+    std::vector<Renderer::Action> actions = {Renderer::Action::Up, Renderer::Action::Down, Renderer::Action::Left,
+                                             Renderer::Action::Right, Renderer::Action::Shoot};
+
+    for (auto action : actions) {
+        KeyBindingRow row{};
+        row.action = action;
+        row.box.setSize(sf::Vector2f(450.0f, 50.0f));
+        row.box.setFillColor(sf::Color(60, 60, 100));
+        row.box.setOutlineColor(sf::Color::White);
+        row.box.setOutlineThickness(2.0f);
+
+        row.action_text.setFont(font_);
+        row.action_text.setCharacterSize(20);
+        row.action_text.setFillColor(sf::Color::White);
+
+        row.key_text.setFont(font_);
+        row.key_text.setCharacterSize(20);
+        row.key_text.setFillColor(sf::Color(200, 200, 0));
+
+        key_binding_rows_.push_back(row);
+    }
 }
 
 void MenuState::on_enter(Renderer& renderer, Client& client) {
     client.get_scoreboard_manager().load();
     update_scoreboard_display(client);
+    sync_pending_key_bindings(renderer);
+    update_key_binding_texts(renderer);
     update_positions(renderer.get_window_size());
 }
 
@@ -120,14 +145,18 @@ void MenuState::handle_input(Renderer& renderer, StateManager& state_manager) {
         } else if (event.type == sf::Event::MouseButtonPressed) {
             if (event.mouseButton.button == sf::Mouse::Left) {
                 sf::Vector2f mouse_pos = renderer.get_mouse_position();
-                handle_button_click(mouse_pos, state_manager);
+                handle_button_click(mouse_pos, state_manager, renderer);
             }
         } else if (event.type == sf::Event::KeyPressed) {
             if (show_settings_) {
+                if (handle_rebinding_event(event, renderer)) {
+                    continue;
+                }
                 if (event.key.code == sf::Keyboard::Escape) {
                     pending_mode_ = state_manager.get_renderer().get_accessibility_manager().get_current_mode();
                     std::string mode_name = state_manager.get_renderer().get_accessibility_manager().get_mode_name();
                     accessibility_cycle_text_.setString("Mode: " + mode_name);
+                    rebind_target_.reset();
                     show_settings_ = false;
                     update_positions(state_manager.get_renderer().get_window_size());
                 }
@@ -153,6 +182,8 @@ void MenuState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         std::string mode_name =
                             state_manager.get_renderer().get_accessibility_manager().get_mode_name();
                         accessibility_cycle_text_.setString("Mode: " + mode_name);
+                        sync_pending_key_bindings(renderer);
+                        update_key_binding_texts(renderer);
                         update_positions(state_manager.get_renderer().get_window_size());
                     } else if (selected_button_ == SelectedButton::QUIT) {
                         renderer.close_window();
@@ -163,8 +194,16 @@ void MenuState::handle_input(Renderer& renderer, StateManager& state_manager) {
     }
 }
 
-void MenuState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager& state_manager) {
+void MenuState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager& state_manager, Renderer& renderer) {
     if (show_settings_) {
+        for (auto& row : key_binding_rows_) {
+            if (row.box.getGlobalBounds().contains(mouse_pos)) {
+                begin_rebinding(renderer, row.action);
+                update_positions(renderer.get_window_size());
+                return;
+            }
+        }
+
         if (accessibility_cycle_button_.getGlobalBounds().contains(mouse_pos)) {
             switch (pending_mode_) {
             case ColorBlindMode::None:
@@ -207,6 +246,12 @@ void MenuState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager&
                 state_manager.get_renderer().get_accessibility_manager().cycle_mode();
                 current = state_manager.get_renderer().get_accessibility_manager().get_current_mode();
             }
+
+            for (size_t i = 0; i < pending_key_bindings_.size(); i++) {
+                renderer.set_key_binding(static_cast<Renderer::Action>(i), pending_key_bindings_[i]);
+            }
+
+            rebind_target_.reset();
             show_settings_ = false;
             return;
         }
@@ -215,6 +260,9 @@ void MenuState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager&
             pending_mode_ = state_manager.get_renderer().get_accessibility_manager().get_current_mode();
             std::string mode_name = state_manager.get_renderer().get_accessibility_manager().get_mode_name();
             accessibility_cycle_text_.setString("Mode: " + mode_name);
+            sync_pending_key_bindings(renderer);
+            update_key_binding_texts(renderer);
+            rebind_target_.reset();
             show_settings_ = false;
             update_positions(state_manager.get_renderer().get_window_size());
             return;
@@ -229,6 +277,8 @@ void MenuState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager&
             pending_mode_ = state_manager.get_renderer().get_accessibility_manager().get_current_mode();
             std::string mode_name = state_manager.get_renderer().get_accessibility_manager().get_mode_name();
             accessibility_cycle_text_.setString("Mode: " + mode_name);
+            sync_pending_key_bindings(renderer);
+            update_key_binding_texts(renderer);
             update_positions(state_manager.get_renderer().get_window_size());
         }
     }
@@ -314,6 +364,21 @@ void MenuState::update(Renderer& renderer, Client& client, StateManager& state_m
     } else {
         quit_button_.setFillColor(quit_normal);
     }
+
+    if (show_settings_) {
+        sf::Color row_normal(60, 60, 100);
+        sf::Color row_hover(90, 90, 140);
+        sf::Color row_active(200, 180, 80);
+        for (auto& row : key_binding_rows_) {
+            if (rebind_target_.has_value() && rebind_target_.value() == row.action) {
+                row.box.setFillColor(row_active);
+            } else if (row.box.getGlobalBounds().contains(mouse_pos)) {
+                row.box.setFillColor(row_hover);
+            } else {
+                row.box.setFillColor(row_normal);
+            }
+        }
+    }
 }
 
 void MenuState::render(Renderer& renderer, Client& /* client */) {
@@ -344,6 +409,12 @@ void MenuState::render(Renderer& renderer, Client& /* client */) {
             sf::RectangleShape modal_bg(sf::Vector2f(renderer.get_window_size()));
             modal_bg.setFillColor(sf::Color(0, 0, 0, 200));
             renderer.draw_rectangle(modal_bg);
+
+            for (const auto& row : key_binding_rows_) {
+                renderer.draw_rectangle(row.box);
+                renderer.draw_text(row.action_text);
+                renderer.draw_text(row.key_text);
+            }
 
             renderer.draw_rectangle(accessibility_cycle_button_);
             renderer.draw_text(accessibility_cycle_text_);
@@ -409,9 +480,35 @@ void MenuState::update_positions(const sf::Vector2u& window_size) {
 
     if (show_settings_) {
         float center_x = window_size.x / 2.0f;
-        float center_y = window_size.y * 0.4f;
+        float start_y = window_size.y * 0.25f;
+        float box_width = std::min(500.0f, window_size.x * 0.7f);
+        float box_height = std::min(60.0f, window_size.y * 0.08f);
+        float row_spacing = 12.0f;
 
-        accessibility_cycle_button_.setPosition(center_x - accessibility_cycle_button_.getSize().x / 2.0f, center_y);
+        for (size_t i = 0; i < key_binding_rows_.size(); i++) {
+            auto& row = key_binding_rows_[i];
+            row.box.setSize(sf::Vector2f(box_width, box_height));
+            row.box.setPosition(center_x - box_width / 2.0f,
+                                start_y + static_cast<float>(i) * (box_height + row_spacing));
+
+            sf::FloatRect action_bounds = row.action_text.getLocalBounds();
+            row.action_text.setOrigin(action_bounds.left, action_bounds.top);
+            row.action_text.setPosition(row.box.getPosition().x + 12.0f,
+                                        row.box.getPosition().y + (box_height - action_bounds.height) / 2.0f - 5.0f);
+
+            sf::FloatRect key_bounds = row.key_text.getLocalBounds();
+            row.key_text.setOrigin(key_bounds.left, key_bounds.top);
+            row.key_text.setPosition(row.box.getPosition().x + box_width - key_bounds.width - 12.0f,
+                                     row.box.getPosition().y + (box_height - key_bounds.height) / 2.0f - 5.0f);
+        }
+
+        float after_rows_y =
+            start_y + static_cast<float>(key_binding_rows_.size()) * (box_height + row_spacing) + 10.0f;
+
+        float accessibility_width = std::min(400.0f, window_size.x * 0.6f);
+        accessibility_cycle_button_.setSize(sf::Vector2f(accessibility_width, accessibility_cycle_button_.getSize().y));
+        accessibility_cycle_button_.setPosition(center_x - accessibility_cycle_button_.getSize().x / 2.0f,
+                                                after_rows_y + 20.0f);
 
         sf::FloatRect cycle_text_bounds = accessibility_cycle_text_.getLocalBounds();
         accessibility_cycle_text_.setOrigin(cycle_text_bounds.left + cycle_text_bounds.width / 2.0f,
@@ -420,7 +517,7 @@ void MenuState::update_positions(const sf::Vector2u& window_size) {
             accessibility_cycle_button_.getPosition().x + accessibility_cycle_button_.getSize().x / 2.0f,
             accessibility_cycle_button_.getPosition().y + accessibility_cycle_button_.getSize().y / 2.0f);
 
-        float buttons_y = center_y + 100.0f;
+        float buttons_y = accessibility_cycle_button_.getPosition().y + accessibility_cycle_button_.getSize().y + 50.0f;
         confirm_button_.setPosition(center_x - 160.0f, buttons_y);
         cancel_button_.setPosition(center_x + 10.0f, buttons_y);
 
@@ -436,6 +533,59 @@ void MenuState::update_positions(const sf::Vector2u& window_size) {
         cancel_button_text_.setPosition(cancel_button_.getPosition().x + cancel_button_.getSize().x / 2.0f,
                                         cancel_button_.getPosition().y + cancel_button_.getSize().y / 2.0f);
     }
+}
+
+void MenuState::sync_pending_key_bindings(Renderer& renderer) {
+    for (size_t i = 0; i < pending_key_bindings_.size(); i++) {
+        pending_key_bindings_[i] = renderer.get_key_binding(static_cast<Renderer::Action>(i));
+    }
+}
+
+size_t MenuState::action_index(Renderer::Action action) const {
+    return static_cast<size_t>(action);
+}
+
+void MenuState::update_key_binding_texts(Renderer& renderer) {
+    for (auto& row : key_binding_rows_) {
+        row.action_text.setString(renderer.get_action_name(row.action) + ":");
+        row.key_text.setString(renderer.get_key_name(pending_key_bindings_[action_index(row.action)]));
+    }
+}
+
+void MenuState::begin_rebinding(Renderer& renderer, Renderer::Action action) {
+    rebind_target_ = action;
+    for (auto& row : key_binding_rows_) {
+        if (row.action == action) {
+            row.key_text.setString("Press a key");
+        }
+    }
+    update_positions(renderer.get_window_size());
+}
+
+bool MenuState::handle_rebinding_event(const sf::Event& event, Renderer& renderer) {
+    if (!rebind_target_.has_value()) {
+        return false;
+    }
+    if (event.type != sf::Event::KeyPressed) {
+        return false;
+    }
+
+    if (event.key.code == sf::Keyboard::Unknown) {
+        return true;
+    }
+
+    if (event.key.code == sf::Keyboard::Escape) {
+        rebind_target_.reset();
+        update_key_binding_texts(renderer);
+        update_positions(renderer.get_window_size());
+        return true;
+    }
+
+    pending_key_bindings_[action_index(rebind_target_.value())] = event.key.code;
+    rebind_target_.reset();
+    update_key_binding_texts(renderer);
+    update_positions(renderer.get_window_size());
+    return true;
 }
 
 void MenuState::update_scoreboard_display(Client& client) {

@@ -228,6 +228,10 @@ void LobbyState::on_enter(Renderer& renderer, Client& client) {
     });
 
     current_mode_ = LobbyMode::MAIN_MENU;
+    selected_main_menu_button_ = MainMenuButton::CREATE;
+    selected_create_room_button_ = CreateRoomButton::INPUT;
+    selected_browse_rooms_button_ = BrowseRoomsButton::REFRESH;
+    selected_in_room_button_ = InRoomButton::START;
     available_rooms_.clear();
     selected_room_index_ = -1;
 
@@ -293,6 +297,9 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         current_mode_ = LobbyMode::CREATE_ROOM;
                         current_room_name_input_.clear();
                         room_input_text_.setString("");
+                        selected_create_room_button_ = CreateRoomButton::INPUT;
+                        is_typing_room_name_ = true;
+                        room_input_background_.setOutlineColor(sf::Color::Cyan);
                         if (renderer_ref_) {
                             update_positions(renderer_ref_->get_window_size());
                         }
@@ -311,11 +318,14 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         current_mode_ = LobbyMode::BROWSE_ROOMS;
                         available_rooms_.clear();
                         selected_room_index_ = -1;
+                        selected_browse_rooms_button_ = BrowseRoomsButton::REFRESH;
                         state_manager.get_client().request_room_list();
                         if (renderer_ref_) {
                             update_positions(renderer_ref_->get_window_size());
                         }
                         update_room_list_display();
+                    } else if (back_button_.getGlobalBounds().contains(mouse_pos)) {
+                        renderer.close_window();
                     }
                 } else if (current_mode_ == LobbyMode::CREATE_ROOM) {
 
@@ -323,6 +333,7 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         current_mode_ = LobbyMode::MAIN_MENU;
                         is_typing_room_name_ = false;
                         room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                        selected_main_menu_button_ = MainMenuButton::CREATE;
                         if (renderer_ref_) {
                             update_positions(renderer_ref_->get_window_size());
                         }
@@ -330,6 +341,7 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         if (!current_room_name_input_.empty()) {
                             state_manager.get_client().create_room(current_room_name_input_);
                             current_mode_ = LobbyMode::IN_ROOM;
+                            selected_in_room_button_ = InRoomButton::START;
                             is_typing_room_name_ = false;
                             room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
                             if (renderer_ref_) {
@@ -347,6 +359,7 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
 
                     if (back_button_.getGlobalBounds().contains(mouse_pos)) {
                         current_mode_ = LobbyMode::MAIN_MENU;
+                        selected_main_menu_button_ = MainMenuButton::JOIN;
                         if (renderer_ref_) {
                             update_positions(renderer_ref_->get_window_size());
                         }
@@ -363,6 +376,7 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
 
                                     state_manager.get_client().join_room(available_rooms_[i].session_id);
                                     current_mode_ = LobbyMode::IN_ROOM;
+                                    selected_in_room_button_ = InRoomButton::START;
                                     if (renderer_ref_) {
                                         update_positions(renderer_ref_->get_window_size());
                                     }
@@ -421,26 +435,143 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
             }
         } else if (event.type == sf::Event::KeyPressed) {
 
-            if (current_mode_ == LobbyMode::CREATE_ROOM) {
-                if (is_typing_room_name_ && event.key.code == sf::Keyboard::Return) {
-                    if (!current_room_name_input_.empty()) {
-                        state_manager.get_client().create_room(current_room_name_input_);
-                        current_mode_ = LobbyMode::IN_ROOM;
+            if (current_mode_ == LobbyMode::MAIN_MENU) {
+                if (event.key.code == sf::Keyboard::Up) {
+                    if (selected_main_menu_button_ == MainMenuButton::JOIN) {
+                        selected_main_menu_button_ = MainMenuButton::CREATE;
+                    } else if (selected_main_menu_button_ == MainMenuButton::BACK) {
+                        selected_main_menu_button_ = MainMenuButton::JOIN;
                     }
-                    is_typing_room_name_ = false;
-                    room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
-                } else if (event.key.code == sf::Keyboard::Escape) {
-                    current_mode_ = LobbyMode::MAIN_MENU;
-                    is_typing_room_name_ = false;
-                    room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                } else if (event.key.code == sf::Keyboard::Down) {
+                    if (selected_main_menu_button_ == MainMenuButton::CREATE) {
+                        selected_main_menu_button_ = MainMenuButton::JOIN;
+                    } else if (selected_main_menu_button_ == MainMenuButton::JOIN) {
+                        selected_main_menu_button_ = MainMenuButton::BACK;
+                    }
+                } else if (event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) {
+                    if (selected_main_menu_button_ == MainMenuButton::CREATE) {
+                        if (!state_manager.get_client().is_connected()) {
+                            state_manager.get_client().connect();
+                            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                        }
+                        if (state_manager.get_client().is_connected()) {
+                            add_player(state_manager.get_client().get_player_id(),
+                                       state_manager.get_client().get_player_name());
+                            local_player_id_ = state_manager.get_client().get_player_id();
+                        }
+                        current_mode_ = LobbyMode::CREATE_ROOM;
+                        current_room_name_input_.clear();
+                        room_input_text_.setString("");
+                        selected_create_room_button_ = CreateRoomButton::INPUT;
+                        is_typing_room_name_ = true;
+                        room_input_background_.setOutlineColor(sf::Color::Cyan);
+                        if (renderer_ref_) {
+                            update_positions(renderer_ref_->get_window_size());
+                        }
+                    } else if (selected_main_menu_button_ == MainMenuButton::JOIN) {
+                        if (!state_manager.get_client().is_connected()) {
+                            state_manager.get_client().connect();
+                            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                        }
+                        if (state_manager.get_client().is_connected()) {
+                            add_player(state_manager.get_client().get_player_id(),
+                                       state_manager.get_client().get_player_name());
+                            local_player_id_ = state_manager.get_client().get_player_id();
+                        }
+                        current_mode_ = LobbyMode::BROWSE_ROOMS;
+                        available_rooms_.clear();
+                        selected_room_index_ = -1;
+                        selected_browse_rooms_button_ = BrowseRoomsButton::REFRESH;
+                        state_manager.get_client().request_room_list();
+                        if (renderer_ref_) {
+                            update_positions(renderer_ref_->get_window_size());
+                        }
+                        update_room_list_display();
+                    } else if (selected_main_menu_button_ == MainMenuButton::BACK) {
+                        renderer.close_window();
+                    }
+                }
+            } else if (current_mode_ == LobbyMode::CREATE_ROOM) {
+                if (is_typing_room_name_) {
+                    if (event.key.code == sf::Keyboard::Return) {
+                        if (!current_room_name_input_.empty()) {
+                            state_manager.get_client().create_room(current_room_name_input_);
+                            current_mode_ = LobbyMode::IN_ROOM;
+                        }
+                        is_typing_room_name_ = false;
+                        room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                    } else if (event.key.code == sf::Keyboard::Escape) {
+                        current_mode_ = LobbyMode::MAIN_MENU;
+                        is_typing_room_name_ = false;
+                        room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                        selected_main_menu_button_ = MainMenuButton::CREATE;
+                    }
+                } else {
+                    if (event.key.code == sf::Keyboard::Up) {
+                        if (selected_create_room_button_ == CreateRoomButton::CREATE) {
+                            selected_create_room_button_ = CreateRoomButton::INPUT;
+                        } else if (selected_create_room_button_ == CreateRoomButton::BACK) {
+                            selected_create_room_button_ = CreateRoomButton::CREATE;
+                        }
+                    } else if (event.key.code == sf::Keyboard::Down) {
+                        if (selected_create_room_button_ == CreateRoomButton::INPUT) {
+                            selected_create_room_button_ = CreateRoomButton::CREATE;
+                        } else if (selected_create_room_button_ == CreateRoomButton::CREATE) {
+                            selected_create_room_button_ = CreateRoomButton::BACK;
+                        }
+                    } else if (event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) {
+                        if (selected_create_room_button_ == CreateRoomButton::INPUT) {
+                            is_typing_room_name_ = true;
+                            room_input_background_.setOutlineColor(sf::Color::Cyan);
+                        } else if (selected_create_room_button_ == CreateRoomButton::CREATE) {
+                            if (!current_room_name_input_.empty()) {
+                                state_manager.get_client().create_room(current_room_name_input_);
+                                current_mode_ = LobbyMode::IN_ROOM;
+                                selected_in_room_button_ = InRoomButton::START;
+                                is_typing_room_name_ = false;
+                                room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                                if (renderer_ref_) {
+                                    update_positions(renderer_ref_->get_window_size());
+                                }
+                            }
+                        } else if (selected_create_room_button_ == CreateRoomButton::BACK) {
+                            current_mode_ = LobbyMode::MAIN_MENU;
+                            is_typing_room_name_ = false;
+                            room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                            selected_main_menu_button_ = MainMenuButton::CREATE;
+                            if (renderer_ref_) {
+                                update_positions(renderer_ref_->get_window_size());
+                            }
+                        }
+                    } else if (event.key.code == sf::Keyboard::Escape) {
+                        current_mode_ = LobbyMode::MAIN_MENU;
+                        is_typing_room_name_ = false;
+                        room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                        selected_main_menu_button_ = MainMenuButton::CREATE;
+                    }
                 }
             } else if (current_mode_ == LobbyMode::BROWSE_ROOMS) {
-                if (event.key.code == sf::Keyboard::Return && selected_room_index_ >= 0 &&
-                    selected_room_index_ < static_cast<int>(available_rooms_.size())) {
+                if (event.key.code == sf::Keyboard::Up) {
+                    if (selected_room_index_ > 0) {
+                        selected_room_index_--;
+                        update_room_list_display();
+                    } else if (selected_room_index_ == -1) {
+                        selected_room_index_ = static_cast<int>(available_rooms_.size()) - 1;
+                        update_room_list_display();
+                    }
+                } else if (event.key.code == sf::Keyboard::Down) {
+                    if (selected_room_index_ < static_cast<int>(available_rooms_.size()) - 1) {
+                        selected_room_index_++;
+                        update_room_list_display();
+                    }
+                } else if (event.key.code == sf::Keyboard::Return && selected_room_index_ >= 0 &&
+                           selected_room_index_ < static_cast<int>(available_rooms_.size())) {
                     state_manager.get_client().join_room(available_rooms_[selected_room_index_].session_id);
                     current_mode_ = LobbyMode::IN_ROOM;
+                    selected_in_room_button_ = InRoomButton::START;
                 } else if (event.key.code == sf::Keyboard::Escape) {
                     current_mode_ = LobbyMode::MAIN_MENU;
+                    selected_main_menu_button_ = MainMenuButton::JOIN;
                 }
             } else if (current_mode_ == LobbyMode::IN_ROOM) {
                 if (is_typing_name_) {
@@ -466,9 +597,32 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         }
                     }
                 } else {
-                    if ((event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) &&
-                        player_count_ >= 2) {
-                        state_manager.get_client().send_game_start_request();
+                    if (event.key.code == sf::Keyboard::Up) {
+                        selected_in_room_button_ = InRoomButton::START;
+                    } else if (event.key.code == sf::Keyboard::Down) {
+                        selected_in_room_button_ = InRoomButton::LEAVE;
+                    } else if ((event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space)) {
+                        if (selected_in_room_button_ == InRoomButton::START && local_player_id_ == 1) {
+                            state_manager.get_client().send_game_start_request();
+                        } else if (selected_in_room_button_ == InRoomButton::LEAVE) {
+                            state_manager.get_client().leave_room();
+                            current_mode_ = LobbyMode::BROWSE_ROOMS;
+                            connected_players_.clear();
+                            player_count_ = 0;
+                            chat_messages_.clear();
+                            chat_message_texts_.clear();
+                            available_rooms_.clear();
+                            selected_room_index_ = -1;
+
+                            if (!state_manager.get_client().is_connected()) {
+                                state_manager.get_client().connect();
+                            }
+                            state_manager.get_client().request_room_list();
+                            update_room_list_display();
+                            if (renderer_ref_) {
+                                update_positions(renderer_ref_->get_window_size());
+                            }
+                        }
                     }
                 }
             }
@@ -658,6 +812,64 @@ void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_
         start_button_.setFillColor(start_hover);
     } else {
         start_button_.setFillColor(start_normal);
+    }
+
+    if (current_mode_ == LobbyMode::MAIN_MENU) {
+        sf::Color create_normal(50, 150, 50);
+        sf::Color create_selected(100, 200, 100);
+        sf::Color join_normal(100, 100, 200);
+        sf::Color join_selected(150, 150, 255);
+        sf::Color back_normal(150, 50, 50);
+        sf::Color back_selected(200, 100, 100);
+
+        create_button_.setFillColor(selected_main_menu_button_ == MainMenuButton::CREATE ? create_selected
+                                                                                         : create_normal);
+        join_button_.setFillColor(selected_main_menu_button_ == MainMenuButton::JOIN ? join_selected : join_normal);
+        back_button_.setFillColor(selected_main_menu_button_ == MainMenuButton::BACK ? back_selected : back_normal);
+    } else if (current_mode_ == LobbyMode::CREATE_ROOM) {
+        sf::Color input_normal(30, 30, 30);
+        sf::Color input_selected(60, 60, 100);
+        sf::Color create_room_normal(50, 150, 50);
+        sf::Color create_room_selected(100, 200, 100);
+        sf::Color back_normal(150, 50, 50);
+        sf::Color back_selected(200, 100, 100);
+
+        room_input_background_.setFillColor(selected_create_room_button_ == CreateRoomButton::INPUT ? input_selected
+                                                                                                    : input_normal);
+        create_room_button_.setFillColor(selected_create_room_button_ == CreateRoomButton::CREATE ? create_room_selected
+                                                                                                  : create_room_normal);
+        back_button_.setFillColor(selected_create_room_button_ == CreateRoomButton::BACK ? back_selected : back_normal);
+    } else if (current_mode_ == LobbyMode::BROWSE_ROOMS) {
+        sf::Color refresh_normal(100, 100, 150);
+        sf::Color refresh_selected(150, 150, 200);
+        sf::Color back_normal(150, 50, 50);
+        sf::Color back_selected(200, 100, 100);
+
+        refresh_button_.setFillColor(selected_browse_rooms_button_ == BrowseRoomsButton::REFRESH ? refresh_selected
+                                                                                                 : refresh_normal);
+        back_button_.setFillColor(selected_browse_rooms_button_ == BrowseRoomsButton::BACK ? back_selected
+                                                                                           : back_normal);
+
+        for (size_t i = 0; i < room_buttons_.size(); i++) {
+            if (static_cast<int>(i) == selected_room_index_) {
+                room_buttons_[i].setFillColor(sf::Color(150, 180, 100));
+            } else {
+                room_buttons_[i].setFillColor(sf::Color(80, 80, 120));
+            }
+        }
+    } else if (current_mode_ == LobbyMode::IN_ROOM) {
+        sf::Color start_normal(100, 150, 200);
+        sf::Color start_selected(150, 200, 255);
+        sf::Color leave_normal(180, 80, 80);
+        sf::Color leave_selected(220, 120, 120);
+
+        if (local_player_id_ == 1) {
+            start_button_.setFillColor(selected_in_room_button_ == InRoomButton::START ? start_selected : start_normal);
+        } else {
+            start_button_.setFillColor(sf::Color(80, 80, 80));
+        }
+        leave_room_button_.setFillColor(selected_in_room_button_ == InRoomButton::LEAVE ? leave_selected
+                                                                                        : leave_normal);
     }
 }
 

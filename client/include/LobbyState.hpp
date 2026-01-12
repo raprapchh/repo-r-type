@@ -61,6 +61,15 @@ class LobbyState : public IState {
     enum class MainMenuButton { CREATE, JOIN, BACK };
     MainMenuButton selected_main_menu_button_ = MainMenuButton::CREATE;
 
+    enum class CreateRoomButton { INPUT, CREATE, BACK };
+    CreateRoomButton selected_create_room_button_ = CreateRoomButton::INPUT;
+
+    enum class BrowseRoomsButton { REFRESH, BACK };
+    BrowseRoomsButton selected_browse_rooms_button_ = BrowseRoomsButton::REFRESH;
+
+    enum class InRoomButton { START, LEAVE };
+    InRoomButton selected_in_room_button_ = InRoomButton::START;
+
     sf::RectangleShape create_button_;
     sf::Text create_button_text_;
     sf::RectangleShape join_button_;
