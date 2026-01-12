@@ -34,6 +34,7 @@ class Client {
 
     void send_move(float vx, float vy);
     void send_shoot(int32_t x, int32_t y, int chargeLevel = 0);
+    void send_ping(uint64_t timestamp);
 
     bool is_connected() const {
         return connected_.load();
