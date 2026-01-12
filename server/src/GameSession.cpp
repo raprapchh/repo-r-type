@@ -677,8 +677,14 @@ uint16_t GameSession::get_monster_subtype(const std::string& tag_name) {
         return 3;
     if (tag_name == "Monster_0_Right")
         return 4;
+    if (tag_name == "Monster_Wave_2_Left")
+        return 5;
+    if (tag_name == "Monster_Wave_2_Right")
+        return 6;
     if (tag_name == "Boss_1")
         return 100;
+    if (tag_name == "Boss_2")
+        return 101;
     return 0;
 }
 
@@ -697,8 +703,14 @@ uint16_t GameSession::get_projectile_subtype(const std::string& tag_name) {
         return 20;
     if (tag_name == "Boss_1_Attack")
         return 21;
+    if (tag_name == "Boss_2_Projectile")
+        return 22;
+    if (tag_name == "Boss_2_Projectile_2")
+        return 23;
     if (tag_name == "PodProjectile")
         return 30;
+    if (tag_name == "PodProjectileRed")
+        return 31;
     return 0;
 }
 
