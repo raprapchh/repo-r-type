@@ -227,6 +227,19 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                     score_saved_ = false;
                     state_manager.change_state(std::make_unique<MenuState>());
                 }
+            } else if (renderer.is_stage_cleared() && renderer.is_game_finished()) {
+                sf::Vector2f mouse_pos = renderer.get_window()->mapPixelToCoords(
+                    sf::Vector2i(event.mouseButton.x, event.mouseButton.y), renderer.get_window()->getDefaultView());
+
+                if (renderer.is_victory_back_to_menu_clicked(mouse_pos)) {
+                    if (client_) {
+                        client_->leave_room();
+                    }
+                    game_over_ = false;
+                    all_players_dead_ = false;
+                    score_saved_ = false;
+                    state_manager.change_state(std::make_unique<MenuState>());
+                }
             }
         }
     }
