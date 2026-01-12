@@ -40,6 +40,7 @@ class Renderer {
     void update_game_state(const rtype::net::GameStateData& state);
     void spawn_entity(const Entity& entity);
     void update_animations(float delta_time);
+    void update(float delta_time);
     void close_window();
 
     void draw_entities();

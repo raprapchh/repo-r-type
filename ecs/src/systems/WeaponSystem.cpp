@@ -11,6 +11,7 @@
 #include "../../include/components/AudioEvent.hpp"
 #include "../../shared/utils/GameConfig.hpp"
 #include <vector>
+#include <cmath>
 #include "../../../shared/utils/Logger.hpp"
 
 namespace rtype::ecs {
@@ -42,6 +43,47 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
 
         if (registry.hasComponent<component::Tag>(static_cast<std::size_t>(entity))) {
             const auto& tag = registry.getComponent<component::Tag>(static_cast<std::size_t>(entity));
+
+            if (tag.name == "Boss_2") {
+                if (weapon.timeSinceLastFire >= 0.1f) {
+                    float spawnX = pos.x + weapon.spawnOffsetX;
+                    float spawnY = pos.y + weapon.spawnOffsetY;
+
+                    float angle = weapon.projectileAmplitude;
+                    float rad = angle * 3.14159f / 180.0f;
+                    float vx = std::cos(rad) * 400.0f;
+                    float vy = std::sin(rad) * 400.0f;
+
+                    requests.push_back({spawnX, spawnY, vx, vy, 10.0f, 5.0f, "Boss_2_Projectile", 60.0f, 60.0f,
+                                        component::CollisionLayer::EnemyProjectile, static_cast<std::size_t>(entity),
+                                        component::MovementPatternType::None, 0.0f, 0.0f});
+
+                    weapon.projectileAmplitude += 15.0f;
+                    if (weapon.projectileAmplitude >= 360.0f)
+                        weapon.projectileAmplitude -= 360.0f;
+
+                    int shotCount = static_cast<int>(weapon.projectileFrequency);
+                    if (shotCount >= 20) {
+                        float spreadSpeed = 500.0f;
+                        requests.push_back({spawnX, spawnY, -spreadSpeed, 0.0f, 30.0f, 5.0f, "Boss_2_Projectile_2",
+                                            160.0f, 160.0f, component::CollisionLayer::EnemyProjectile,
+                                            static_cast<std::size_t>(entity), component::MovementPatternType::None,
+                                            0.0f, 0.0f});
+                        requests.push_back(
+                            {spawnX, spawnY, -spreadSpeed * 0.9f, -150.0f, 30.0f, 5.0f, "Boss_2_Projectile_2", 160.0f,
+                             160.0f, component::CollisionLayer::EnemyProjectile, static_cast<std::size_t>(entity),
+                             component::MovementPatternType::None, 0.0f, 0.0f});
+                        requests.push_back(
+                            {spawnX, spawnY, -spreadSpeed * 0.9f, 150.0f, 30.0f, 5.0f, "Boss_2_Projectile_2", 160.0f,
+                             160.0f, component::CollisionLayer::EnemyProjectile, static_cast<std::size_t>(entity),
+                             component::MovementPatternType::None, 0.0f, 0.0f});
+                        shotCount = 0;
+                    }
+                    weapon.projectileFrequency = static_cast<float>(shotCount);
+                    weapon.timeSinceLastFire = 0.0f;
+                }
+                return;
+            }
 
             if (tag.name == "Monster_Wave_2_Left" || tag.name == "Monster_Wave_2_Right") {
                 if (registry.hasComponent<component::Velocity>(static_cast<std::size_t>(entity))) {

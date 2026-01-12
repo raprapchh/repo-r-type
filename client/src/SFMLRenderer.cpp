@@ -21,6 +21,11 @@ void SFMLRenderer::draw_sprite(const RenderData& data) {
     sf::Sprite sprite(texture, texture_rect);
     sprite.setPosition(data.x, data.y);
     sprite.setScale(data.scale_x, data.scale_y);
+    sprite.setRotation(data.rotation);
+    if (data.rotation != 0.0f) {
+        sf::FloatRect bounds = sprite.getLocalBounds();
+        sprite.setOrigin(bounds.width, 0.0f);
+    }
     sprite.setColor(sf::Color(data.color_r, data.color_g, data.color_b, data.color_a));
 
     window_.draw(sprite);

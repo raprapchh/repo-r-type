@@ -104,6 +104,7 @@ void RenderSystem::update(GameEngine::Registry& registry, double dt) {
         render_data.rect_y = drawable.rect_y;
         render_data.rect_width = drawable.rect_width;
         render_data.rect_height = drawable.rect_height;
+        render_data.rotation = drawable.rotation;
         render_data.visible = true;
 
         if (accessibility_manager_) {

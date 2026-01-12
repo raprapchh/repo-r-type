@@ -23,6 +23,7 @@
 #include "../../ecs/include/components/Weapon.hpp"
 #include "../../ecs/include/components/Score.hpp"
 #include "../../ecs/include/components/Projectile.hpp"
+#include <iostream>
 #include <thread>
 #include <chrono>
 
@@ -226,6 +227,7 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
     }
 
     client.update(delta_time);
+    renderer.update(delta_time);
 
     GameEngine::Registry& registry = client.get_registry();
     std::mutex& registry_mutex = client.get_registry_mutex();

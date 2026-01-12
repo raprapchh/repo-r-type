@@ -113,6 +113,8 @@ void BroadcastSystem::broadcast_spawns(const std::map<std::string, ClientInfo>& 
                         sub_type = 4;
                     else if (tag.name == "Boss_1")
                         sub_type = 100;
+                    else if (tag.name == "Boss_2")
+                        sub_type = 101;
                     else if (tag.name == "Monster_Wave_2_Left")
                         sub_type = 5;
                     else if (tag.name == "Monster_Wave_2_Right")
@@ -132,6 +134,10 @@ void BroadcastSystem::broadcast_spawns(const std::map<std::string, ClientInfo>& 
                         sub_type = 20;
                     else if (tag.name == "Boss_1_Attack")
                         sub_type = 21;
+                    else if (tag.name == "Boss_2_Projectile")
+                        sub_type = 22;
+                    else if (tag.name == "Boss_2_Projectile_2")
+                        sub_type = 23;
                     else if (tag.name == "PodProjectile")
                         sub_type = 30;
                     else if (tag.name == "PodProjectileRed") {
@@ -338,6 +344,9 @@ void BroadcastSystem::send_initial_state(const std::string& ip, uint16_t port) {
             } else if (tag.name == "Boss_1") {
                 type = rtype::net::EntityType::ENEMY;
                 sub_type = 100;
+            } else if (tag.name == "Boss_2") {
+                type = rtype::net::EntityType::ENEMY;
+                sub_type = 101;
             } else if (tag.name == "Monster_Wave_2_Left") {
                 type = rtype::net::EntityType::ENEMY;
                 sub_type = 5;
@@ -350,6 +359,9 @@ void BroadcastSystem::send_initial_state(const std::string& ip, uint16_t port) {
             } else if (tag.name == "Boss_1_Attack") {
                 type = rtype::net::EntityType::PROJECTILE;
                 sub_type = 21;
+            } else if (tag.name == "Boss_2_Projectile") {
+                type = rtype::net::EntityType::PROJECTILE;
+                sub_type = 22;
             } else if (tag.name == "PodProjectile") {
                 type = rtype::net::EntityType::PROJECTILE;
                 sub_type = 30;

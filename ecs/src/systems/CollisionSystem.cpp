@@ -1,5 +1,6 @@
 #include "../../include/systems/CollisionSystem.hpp"
 #include "../../include/components/TextureAnimation.hpp"
+#include "../../include/components/EnemySpawner.hpp"
 #include <vector>
 #include <iostream>
 #include <cstdlib>
@@ -200,6 +201,24 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
                         auto world_entity = registry.createEntity();
                         registry.addComponent<component::StageCleared>(world_entity, 1);
                         std::cout << "[STAGE CLEARED] Boss_1 defeated!" << std::endl;
+
+                        auto spawnerView = registry.view<component::EnemySpawner>();
+                        for (auto spawnerEntity : spawnerView) {
+                            auto& spawner = registry.getComponent<component::EnemySpawner>(spawnerEntity);
+                            spawner.currentLevel++;
+                            spawner.currentWave = 0;
+                            spawner.waveTimer = 0;
+                            spawner.currentEnemyIndex = 0;
+                            spawner.bossWarningActive = false;
+                            spawner.bossWarningTimer = 0.0f;
+                            std::cout << "Advancing to Level " << spawner.currentLevel + 1 << std::endl;
+                            break;
+                        }
+                    } else if (enemyTag.name == "Boss_2") {
+                        is_boss = true;
+                        auto world_entity = registry.createEntity();
+                        registry.addComponent<component::StageCleared>(world_entity, 2);
+                        std::cout << "[STAGE CLEARED] Boss_2 defeated!" << std::endl;
                     }
                 }
 
