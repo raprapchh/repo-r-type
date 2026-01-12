@@ -26,18 +26,28 @@ int main() {
 
     sf::View view(sf::FloatRect(0, 0, 800, 600));
 
-    auto renderer_impl =
-        std::make_shared<rtype::rendering::SFMLRenderer>(window, *(new std::unordered_map<std::string, sf::Texture>()));
+    std::unordered_map<std::string, sf::Texture> textures;
+    sf::Texture player_texture;
+    if (!player_texture.loadFromFile("platformer/assets/player.png") &&
+        !player_texture.loadFromFile("assets/player.png") &&
+        !player_texture.loadFromFile("../platformer/assets/player.png") &&
+        !player_texture.loadFromFile("../assets/player.png")) {
+        std::cerr << "Failed to load player texture!" << std::endl;
+    } else {
+        textures["player"] = player_texture;
+    }
+
+    auto renderer_impl = std::make_shared<rtype::rendering::SFMLRenderer>(window, textures);
     auto render_system = std::make_shared<rtype::ecs::RenderSystem>(renderer_impl, nullptr);
 
     auto movement_system = std::make_shared<rtype::ecs::MovementSystem>();
     auto physics_system = std::make_shared<rtype::ecs::PlatformerPhysicsSystem>();
 
     auto player = registry.createEntity();
-    registry.addComponent<rtype::ecs::component::Position>(player, 200.0f, 500.0f);
+    registry.addComponent<rtype::ecs::component::Position>(player, 200.0f, 400.0f);
     registry.addComponent<rtype::ecs::component::Velocity>(player, 0.0f, 0.0f);
-    registry.addComponent<rtype::ecs::component::HitBox>(player, 50.0f, 50.0f);
-    registry.addComponent<rtype::ecs::component::Drawable>(player, "__RECTANGLE__", 100, 100, 50, 50);
+    registry.addComponent<rtype::ecs::component::HitBox>(player, 124.0f, 120.0f);
+    registry.addComponent<rtype::ecs::component::Drawable>(player, "player", 0, 0, 0, 0);
     registry.addComponent<rtype::ecs::component::Controllable>(player);
     registry.addComponent<rtype::ecs::component::Gravity>(player);
     registry.addComponent<rtype::ecs::component::Jump>(player);
@@ -47,8 +57,7 @@ int main() {
         float x, y, width, height;
     };
 
-    std::vector<PlatformConfig> level_layout = {{0.0f, 550.0f, 800.0f, 50.0f}, // Ground Floor
-                                                                               // Floating platforms going up
+    std::vector<PlatformConfig> level_layout = {{0.0f, 550.0f, 800.0f, 50.0f},
                                                 {200.0f, 450.0f, 100.0f, 20.0f},
                                                 {500.0f, 350.0f, 100.0f, 20.0f},
                                                 {100.0f, 250.0f, 100.0f, 20.0f},

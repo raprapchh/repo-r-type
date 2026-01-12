@@ -49,12 +49,6 @@ void PlatformerPhysicsSystem::update(GameEngine::Registry& registry, double dt) 
         }
 
         jump.can_jump = on_ground;
-
-        if (pos.y > 500) {
-            pos.y = 500;
-            vel.vy = 0;
-            jump.can_jump = true;
-        }
     }
 }
 
