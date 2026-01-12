@@ -710,9 +710,12 @@ void Client::request_room_list() {
     udp_client_->send(packet_data);
 }
 
-void Client::create_room(const std::string& room_name, uint8_t max_players) {
+void Client::create_room(const std::string& room_name, uint8_t max_players, rtype::config::GameMode mode,
+                         rtype::config::Difficulty difficulty, bool friendly_fire) {
     rtype::net::MessageSerializer serializer;
-    rtype::net::CreateRoomData create_data(room_name, max_players);
+    rtype::net::CreateRoomData create_data(room_name, max_players, static_cast<uint8_t>(mode),
+                                           static_cast<uint8_t>(difficulty),
+                                           friendly_fire ? static_cast<uint8_t>(1) : static_cast<uint8_t>(0));
     rtype::net::Packet create_packet = serializer.serialize_create_room(create_data);
     std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(create_packet);
     udp_client_->send(packet_data);

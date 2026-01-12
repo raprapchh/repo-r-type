@@ -15,7 +15,9 @@ LobbyState::LobbyState()
       lobby_update_pending_(false), pending_player_count_(0), pending_your_player_id_(-1), selected_room_index_(-1),
       is_typing_room_name_(false), was_room_backspace_pressed_(false), room_backspace_timer_(0.0f),
       room_backspace_delay_(INITIAL_BACKSPACE_DELAY), is_typing_chat_(false), chat_backspace_timer_(0.0f),
-      chat_backspace_delay_(INITIAL_BACKSPACE_DELAY), was_chat_backspace_pressed_(false) {
+      chat_backspace_delay_(INITIAL_BACKSPACE_DELAY), was_chat_backspace_pressed_(false),
+      selected_game_mode_(rtype::config::GameMode::COOP), selected_difficulty_(rtype::config::Difficulty::NORMAL),
+      selected_friendly_fire_(false) {
     setup_ui();
 }
 
@@ -183,6 +185,51 @@ void LobbyState::setup_ui() {
     leave_room_button_text_.setString("LEAVE ROOM");
     leave_room_button_text_.setCharacterSize(18);
     leave_room_button_text_.setFillColor(sf::Color::White);
+
+    game_mode_label_.setFont(font_);
+    game_mode_label_.setString("MODE:");
+    game_mode_label_.setCharacterSize(16);
+    game_mode_label_.setFillColor(sf::Color(200, 200, 200));
+
+    game_mode_button_.setSize(sf::Vector2f(150, 35));
+    game_mode_button_.setFillColor(sf::Color(60, 120, 180));
+    game_mode_button_.setOutlineColor(sf::Color::White);
+    game_mode_button_.setOutlineThickness(2);
+
+    game_mode_text_.setFont(font_);
+    game_mode_text_.setString("COOP");
+    game_mode_text_.setCharacterSize(16);
+    game_mode_text_.setFillColor(sf::Color::White);
+
+    difficulty_label_.setFont(font_);
+    difficulty_label_.setString("DIFFICULTY:");
+    difficulty_label_.setCharacterSize(16);
+    difficulty_label_.setFillColor(sf::Color(200, 200, 200));
+
+    difficulty_button_.setSize(sf::Vector2f(150, 35));
+    difficulty_button_.setFillColor(sf::Color(180, 140, 60));
+    difficulty_button_.setOutlineColor(sf::Color::White);
+    difficulty_button_.setOutlineThickness(2);
+
+    difficulty_text_.setFont(font_);
+    difficulty_text_.setString("NORMAL");
+    difficulty_text_.setCharacterSize(16);
+    difficulty_text_.setFillColor(sf::Color::White);
+
+    friendly_fire_label_.setFont(font_);
+    friendly_fire_label_.setString("FRIENDLY FIRE:");
+    friendly_fire_label_.setCharacterSize(16);
+    friendly_fire_label_.setFillColor(sf::Color(200, 200, 200));
+
+    friendly_fire_button_.setSize(sf::Vector2f(150, 35));
+    friendly_fire_button_.setFillColor(sf::Color(150, 50, 50));
+    friendly_fire_button_.setOutlineColor(sf::Color::White);
+    friendly_fire_button_.setOutlineThickness(2);
+
+    friendly_fire_text_.setFont(font_);
+    friendly_fire_text_.setString("OFF");
+    friendly_fire_text_.setCharacterSize(16);
+    friendly_fire_text_.setFillColor(sf::Color::White);
 }
 
 void LobbyState::on_enter(Renderer& renderer, Client& client) {
@@ -339,7 +386,8 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         }
                     } else if (create_room_button_.getGlobalBounds().contains(mouse_pos)) {
                         if (!current_room_name_input_.empty()) {
-                            state_manager.get_client().create_room(current_room_name_input_);
+                            state_manager.get_client().create_room(current_room_name_input_, 4, selected_game_mode_,
+                                                                   selected_difficulty_, selected_friendly_fire_);
                             current_mode_ = LobbyMode::IN_ROOM;
                             selected_in_room_button_ = InRoomButton::START;
                             is_typing_room_name_ = false;
@@ -351,6 +399,25 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                     } else if (room_input_background_.getGlobalBounds().contains(mouse_pos)) {
                         is_typing_room_name_ = true;
                         room_input_background_.setOutlineColor(sf::Color::Cyan);
+                    } else if (game_mode_button_.getGlobalBounds().contains(mouse_pos)) {
+                        int current = static_cast<int>(selected_game_mode_);
+                        current = (current + 1) % 3;
+                        selected_game_mode_ = static_cast<rtype::config::GameMode>(current);
+                        const char* mode_names[] = {"COOP", "PVP", "PVE"};
+                        game_mode_text_.setString(mode_names[current]);
+                        if (selected_game_mode_ == rtype::config::GameMode::PVP) {
+                            selected_friendly_fire_ = true;
+                            friendly_fire_text_.setString("ON");
+                        }
+                    } else if (difficulty_button_.getGlobalBounds().contains(mouse_pos)) {
+                        int current = static_cast<int>(selected_difficulty_);
+                        current = (current + 1) % 3;
+                        selected_difficulty_ = static_cast<rtype::config::Difficulty>(current);
+                        const char* diff_names[] = {"EASY", "NORMAL", "HARD"};
+                        difficulty_text_.setString(diff_names[current]);
+                    } else if (friendly_fire_button_.getGlobalBounds().contains(mouse_pos)) {
+                        selected_friendly_fire_ = !selected_friendly_fire_;
+                        friendly_fire_text_.setString(selected_friendly_fire_ ? "ON" : "OFF");
                     } else {
                         is_typing_room_name_ = false;
                         room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
@@ -890,6 +957,15 @@ void LobbyState::render(Renderer& renderer, Client& /* client */) {
             renderer.draw_rectangle(room_input_background_);
             renderer.draw_text(room_input_label_);
             renderer.draw_text(room_input_text_);
+            renderer.draw_text(game_mode_label_);
+            renderer.draw_rectangle(game_mode_button_);
+            renderer.draw_text(game_mode_text_);
+            renderer.draw_text(difficulty_label_);
+            renderer.draw_rectangle(difficulty_button_);
+            renderer.draw_text(difficulty_text_);
+            renderer.draw_text(friendly_fire_label_);
+            renderer.draw_rectangle(friendly_fire_button_);
+            renderer.draw_text(friendly_fire_text_);
             renderer.draw_rectangle(create_room_button_);
             renderer.draw_text(create_room_button_text_);
             renderer.draw_rectangle(back_button_);
@@ -1017,10 +1093,28 @@ void LobbyState::update_positions(const sf::Vector2u& window_size) {
     room_input_background_.setPosition(center_x - input_width / 2, center_y - 50);
     room_input_text_.setPosition(center_x - input_width / 2 + 10, center_y - 45);
 
+    game_mode_label_.setPosition(center_x - input_width / 2, center_y + 10);
+    game_mode_button_.setPosition(center_x - input_width / 2 + 100, center_y + 5);
+    game_mode_text_.setPosition(game_mode_button_.getPosition().x +
+                                    (150 - game_mode_text_.getLocalBounds().width) / 2.0f,
+                                game_mode_button_.getPosition().y + 10);
+
+    difficulty_label_.setPosition(center_x - input_width / 2, center_y + 55);
+    difficulty_button_.setPosition(center_x - input_width / 2 + 140, center_y + 50);
+    difficulty_text_.setPosition(difficulty_button_.getPosition().x +
+                                     (150 - difficulty_text_.getLocalBounds().width) / 2.0f,
+                                 difficulty_button_.getPosition().y + 10);
+
+    friendly_fire_label_.setPosition(center_x - input_width / 2, center_y + 100);
+    friendly_fire_button_.setPosition(center_x - input_width / 2 + 170, center_y + 95);
+    friendly_fire_text_.setPosition(friendly_fire_button_.getPosition().x +
+                                        (150 - friendly_fire_text_.getLocalBounds().width) / 2.0f,
+                                    friendly_fire_button_.getPosition().y + 10);
+
     create_room_button_.setSize(sf::Vector2f(250, 50));
-    create_room_button_.setPosition(center_x - 125, center_y + 20);
+    create_room_button_.setPosition(center_x - 125, center_y + 150);
     create_room_button_text_.setPosition(center_x - create_room_button_text_.getLocalBounds().width / 2.0f,
-                                         center_y + 35);
+                                         center_y + 165);
 
     refresh_button_.setPosition(window_size.x - 270, 80);
     refresh_button_text_.setPosition(refresh_button_.getPosition().x +
