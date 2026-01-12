@@ -24,6 +24,9 @@ class ModeSelectionState : public IState {
     void handle_button_click(const sf::Vector2f& mouse_pos, StateManager& state_manager);
     void update_positions(const sf::Vector2u& window_size);
 
+    enum class SelectedButton { SOLO, MULTIPLAYER, BACK };
+    SelectedButton selected_button_ = SelectedButton::SOLO;
+
     sf::Font font_;
     sf::Text title_text_;
     sf::Text solo_button_text_;

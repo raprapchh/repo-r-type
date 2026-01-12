@@ -9,6 +9,7 @@
 #include "../../../shared/net/MessageData.hpp"
 #include <algorithm>
 #include <vector>
+#include <iostream>
 
 namespace rtype::ecs {
 
