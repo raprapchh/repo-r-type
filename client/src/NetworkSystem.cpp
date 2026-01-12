@@ -272,8 +272,13 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 frames.push_back(sprite_name + "_" + std::to_string(i));
             registry.addComponent<rtype::ecs::component::TextureAnimation>(entity, frames, 0.04f, true);
             registry.addComponent<rtype::ecs::component::HitBox>(entity, 64.0f, 64.0f);
-            registry.addComponent<rtype::ecs::component::Collidable>(entity,
-                                                                     rtype::ecs::component::CollisionLayer::PowerUp);
+            if (data.sub_type == 1) {
+                registry.addComponent<rtype::ecs::component::Collidable>(
+                    entity, rtype::ecs::component::CollisionLayer::PowerUp);
+            } else {
+                registry.addComponent<rtype::ecs::component::Collidable>(
+                    entity, rtype::ecs::component::CollisionLayer::Companion);
+            }
             registry.addComponent<rtype::ecs::component::Tag>(entity, tag_name);
         }
 
