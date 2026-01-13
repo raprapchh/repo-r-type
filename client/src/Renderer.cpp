@@ -13,7 +13,8 @@ Renderer::Renderer(uint32_t width, uint32_t height)
     view_.setSize(rtype::constants::SCREEN_WIDTH, rtype::constants::SCREEN_HEIGHT);
     view_.setCenter(rtype::constants::SCREEN_WIDTH / 2.0f, rtype::constants::SCREEN_HEIGHT / 2.0f);
     window_->setView(view_);
-    std::fill(std::begin(keys_), std::end(keys_), false);
+    initialize_key_bindings();
+    action_states_.fill(false);
     load_sprites();
     load_fonts();
 }
@@ -59,19 +60,98 @@ void Renderer::display() {
 
 void Renderer::handle_input() {
     if (!window_ || !window_->hasFocus()) {
-        std::fill(std::begin(keys_), std::end(keys_), false);
+        action_states_.fill(false);
         return;
     }
 
-    keys_[sf::Keyboard::Up] =
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Up) || sf::Keyboard::isKeyPressed(sf::Keyboard::Z);
-    keys_[sf::Keyboard::Down] =
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Down) || sf::Keyboard::isKeyPressed(sf::Keyboard::S);
-    keys_[sf::Keyboard::Left] =
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Left) || sf::Keyboard::isKeyPressed(sf::Keyboard::Q);
-    keys_[sf::Keyboard::Right] =
-        sf::Keyboard::isKeyPressed(sf::Keyboard::Right) || sf::Keyboard::isKeyPressed(sf::Keyboard::D);
-    keys_[sf::Keyboard::Space] = sf::Keyboard::isKeyPressed(sf::Keyboard::Space);
+    refresh_action_states();
+}
+
+void Renderer::initialize_key_bindings() {
+    key_bindings_[action_index(Action::Up)] = sf::Keyboard::Up;
+    key_bindings_[action_index(Action::Down)] = sf::Keyboard::Down;
+    key_bindings_[action_index(Action::Left)] = sf::Keyboard::Left;
+    key_bindings_[action_index(Action::Right)] = sf::Keyboard::Right;
+    key_bindings_[action_index(Action::Shoot)] = sf::Keyboard::Space;
+}
+
+void Renderer::refresh_action_states() {
+    for (size_t i = 0; i < static_cast<size_t>(Action::Count); i++) {
+        action_states_[i] = sf::Keyboard::isKeyPressed(key_bindings_[i]);
+    }
+}
+
+void Renderer::set_key_binding(Action action, sf::Keyboard::Key key) {
+    key_bindings_[action_index(action)] = key;
+    refresh_action_states();
+}
+
+sf::Keyboard::Key Renderer::get_key_binding(Action action) const {
+    return key_bindings_[action_index(action)];
+}
+
+std::string Renderer::key_to_string(sf::Keyboard::Key key) const {
+    if (key >= sf::Keyboard::A && key <= sf::Keyboard::Z) {
+        char letter = static_cast<char>('A' + static_cast<int>(key) - static_cast<int>(sf::Keyboard::A));
+        return std::string(1, letter);
+    }
+    if (key >= sf::Keyboard::Num0 && key <= sf::Keyboard::Num9) {
+        char digit = static_cast<char>('0' + static_cast<int>(key) - static_cast<int>(sf::Keyboard::Num0));
+        return std::string(1, digit);
+    }
+    switch (key) {
+    case sf::Keyboard::Space:
+        return "Space";
+    case sf::Keyboard::Enter:
+        return "Enter";
+    case sf::Keyboard::Tab:
+        return "Tab";
+    case sf::Keyboard::Escape:
+        return "Escape";
+    case sf::Keyboard::LShift:
+        return "Left Shift";
+    case sf::Keyboard::RShift:
+        return "Right Shift";
+    case sf::Keyboard::LControl:
+        return "Left Ctrl";
+    case sf::Keyboard::RControl:
+        return "Right Ctrl";
+    case sf::Keyboard::LAlt:
+        return "Left Alt";
+    case sf::Keyboard::RAlt:
+        return "Right Alt";
+    case sf::Keyboard::Left:
+        return "Left";
+    case sf::Keyboard::Right:
+        return "Right";
+    case sf::Keyboard::Up:
+        return "Up";
+    case sf::Keyboard::Down:
+        return "Down";
+    default:
+        return "Key " + std::to_string(static_cast<int>(key));
+    }
+}
+
+std::string Renderer::get_key_name(sf::Keyboard::Key key) const {
+    return key_to_string(key);
+}
+
+std::string Renderer::get_action_name(Action action) const {
+    switch (action) {
+    case Action::Up:
+        return "Up";
+    case Action::Down:
+        return "Down";
+    case Action::Left:
+        return "Left";
+    case Action::Right:
+        return "Right";
+    case Action::Shoot:
+        return "Shoot";
+    default:
+        return "Unknown";
+    }
 }
 
 void Renderer::update_entity(const Entity& entity) {
@@ -91,9 +171,37 @@ void Renderer::update_animations(float delta_time) {
     for (auto& [id, entity] : entities_) {
         if (entity.type == rtype::net::EntityType::PROJECTILE) {
             entity.animation_timer += delta_time;
-            if (entity.animation_timer >= 0.1f) {
-                entity.animation_timer = 0.0f;
-                entity.animation_frame = (entity.animation_frame + 1) % 4;
+            if (entity.sub_type == 20) { // Bayblade
+                if (entity.animation_timer >= 0.1f) {
+                    entity.animation_timer = 0.0f;
+                    entity.animation_frame = (entity.animation_frame + 1) % 4;
+                }
+            } else if (entity.sub_type == 21) { // Attack
+                if (entity.animation_timer >= 0.1f) {
+                    entity.animation_timer = 0.0f;
+                    entity.animation_frame = (entity.animation_frame + 1) % 9;
+                }
+            } else {
+                if (entity.animation_timer >= 0.1f) {
+                    entity.animation_timer = 0.0f;
+                    entity.animation_frame = (entity.animation_frame + 1) % 4;
+                }
+            }
+        }
+        if (entity.type == rtype::net::EntityType::ENEMY) {
+            if (entity.sub_type == 100) { // Boss
+                entity.animation_timer += delta_time;
+                if (entity.animation_timer >= 0.1f) {
+                    entity.animation_timer = 0.0f;
+                    entity.animation_frame = (entity.animation_frame + 1) % 4;
+                }
+            } else if (entity.sub_type == 101) { // Boss_2
+            } else if (entity.sub_type == 5 || entity.sub_type == 6) {
+                entity.animation_timer += delta_time;
+                if (entity.animation_timer >= 0.1f) {
+                    entity.animation_timer = 0.0f;
+                    entity.animation_frame = (entity.animation_frame + 1) % 8;
+                }
             }
         }
         if (entity.type == rtype::net::EntityType::PLAYER) {
@@ -107,6 +215,31 @@ void Renderer::update_animations(float delta_time) {
             } else {
                 entity.animation_frame = 2;
                 entity.player_state = 0;
+            }
+        }
+
+        // Force Pod animation (13 frames)
+        if (entity.type == rtype::net::EntityType::POWERUP) {
+            entity.animation_timer += delta_time;
+            if (entity.animation_timer >= 0.04f) {
+                entity.animation_timer = 0.0f;
+                entity.animation_frame = (entity.animation_frame + 1) % 13;
+            }
+        }
+        // Force Pod Projectile animation (2 frames)
+        if (entity.type == rtype::net::EntityType::PROJECTILE && (entity.sub_type == 30 || entity.sub_type == 31)) {
+            entity.animation_timer += delta_time;
+            if (entity.animation_timer >= 0.1f) {
+                entity.animation_timer = 0.0f;
+                entity.animation_frame = (entity.animation_frame + 1) % 2;
+            }
+        }
+
+        // Decrement hit flash timer
+        if (entity.hit_flash_timer > 0.0f) {
+            entity.hit_flash_timer -= delta_time;
+            if (entity.hit_flash_timer < 0.0f) {
+                entity.hit_flash_timer = 0.0f;
             }
         }
     }
@@ -128,9 +261,15 @@ void Renderer::draw_entities() {
         logged = false;
     }
 
-    for (const auto& pair : entities_) {
+    for (auto& pair : entities_) {
         sf::Sprite sprite = create_sprite(pair.second);
         sf::Color color = accessibility_manager_.get_entity_color(pair.second.type);
+
+        // Apply hit flash effect (white overlay when recently damaged)
+        if (pair.second.hit_flash_timer > 0.0f) {
+            color = sf::Color::White;
+        }
+
         sprite.setColor(color);
         window_->draw(sprite);
     }
@@ -145,11 +284,46 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
         texture_name = "player_ships";
         break;
     case rtype::net::EntityType::ENEMY:
-        texture_name = "enemy_basic";
-        sprite.setScale(6.0f, 6.0f);
+        if (entity.sub_type == 100) {
+            texture_name = "boss_1";
+            sprite.setScale(4.0f, 4.0f); // Adjust scale as needed
+        } else if (entity.sub_type == 101) {
+            texture_name = "boss_2";
+            sprite.setScale(2.0f, 2.0f);
+        } else if (entity.sub_type == 5) {
+            texture_name = "monster-wave-2-left";
+            sprite.setScale(3.0f, 3.0f);
+        } else if (entity.sub_type == 6) {
+            texture_name = "monster-wave-2-right";
+            sprite.setScale(3.0f, 3.0f);
+        } else {
+            texture_name = "enemy_basic";
+            sprite.setScale(6.0f, 6.0f);
+        }
         break;
     case rtype::net::EntityType::PROJECTILE:
-        texture_name = "shot";
+        if (entity.sub_type == 20) {
+            texture_name = "boss_1_bayblade";
+            sprite.setScale(2.0f, 2.0f);
+        } else if (entity.sub_type == 21) {
+            texture_name = "boss_1_attack";
+            sprite.setScale(2.0f, 2.0f);
+        } else if (entity.sub_type == 22) { // Boss_2_Projectile
+            texture_name = "monster_0-ball";
+            sprite.setScale(2.0f, 2.0f);
+        } else if (entity.sub_type == 30) {
+            texture_name = "pod_projectile_" + std::to_string(entity.animation_frame % 2);
+            sprite.setScale(2.5f, 2.5f);
+        } else if (entity.sub_type == 31) {
+            texture_name = "pod_projectile_red_" + std::to_string(entity.animation_frame % 2);
+            sprite.setScale(2.5f, 2.5f);
+        } else {
+            texture_name = "shot";
+        }
+        break;
+    case rtype::net::EntityType::POWERUP:
+        texture_name = "force_pod_" + std::to_string(entity.animation_frame % 13);
+        sprite.setScale(2.5f, 2.5f);
         break;
     default:
         texture_name = "default";
@@ -163,7 +337,27 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
     }
 
     if (entity.type == rtype::net::EntityType::PROJECTILE) {
-        sprite.setTextureRect(sf::IntRect(entity.animation_frame * 29, 0, 29, 33));
+        if (entity.sub_type == 20) {
+            sprite.setTextureRect(sf::IntRect(entity.animation_frame * 34, 0, 34, 34));
+        } else if (entity.sub_type == 21) {
+            sprite.setTextureRect(sf::IntRect(entity.animation_frame * 64, 0, 64, 64));
+        } else if (entity.sub_type == 30 || entity.sub_type == 31) {
+            if (entity.sub_type == 31) {
+                texture_name = "pod_projectile_red_" + std::to_string(entity.animation_frame % 2);
+                sprite.setTextureRect(sf::IntRect(entity.animation_frame % 2 * 36, 0, 36, 13));
+            } else {
+                texture_name = "pod_projectile_" + std::to_string(entity.animation_frame % 2);
+                sprite.setTextureRect(sf::IntRect(0, 0, 34, 19));
+            }
+        } else {
+            texture_name = "shot";
+        }
+    } else if (entity.type == rtype::net::EntityType::ENEMY) {
+        if (entity.sub_type == 100) {
+            sprite.setTextureRect(sf::IntRect(entity.animation_frame * 100, 0, 100, 100));
+        } else if (entity.sub_type == 5 || entity.sub_type == 6) {
+            sprite.setTextureRect(sf::IntRect(entity.animation_frame * 33, 0, 33, 36));
+        }
     } else if (entity.type == rtype::net::EntityType::PLAYER) {
         if (textures_.count("player_ships")) {
             sf::Vector2u texture_size = textures_["player_ships"].getSize();
@@ -181,6 +375,12 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
         }
     }
 
+    if (entity.type == rtype::net::EntityType::ENEMY && entity.sub_type == 101) {
+        sprite.setRotation(270.0f);
+        sf::FloatRect bounds = sprite.getLocalBounds();
+        sprite.setOrigin(bounds.width, 0.0f);
+    }
+
     sprite.setPosition(entity.x, entity.y);
     return sprite;
 }
@@ -196,11 +396,6 @@ void Renderer::draw_ui() {
     window_->draw(score_text_);
     window_->draw(lives_text_);
 
-    int level = game_state_.wave_number / 100;
-    int wave = game_state_.wave_number % 100;
-    wave_text_.setString("Level " + std::to_string(level + 1) + " - Wave " + std::to_string(wave));
-    window_->draw(wave_text_);
-
     if (charge_percentage_ > 0.0f) {
         sf::RectangleShape charge_bar_bg(sf::Vector2f(200.0f, 20.0f));
         charge_bar_bg.setFillColor(sf::Color(50, 50, 50));
@@ -214,6 +409,36 @@ void Renderer::draw_ui() {
     }
 
     window_->setView(current_view);
+
+    if (game_state_.game_state == rtype::net::GameState::BOSS_WARNING) {
+        static float blink_timer = 0.0f;
+        static bool visible = true;
+        blink_timer += 0.016f;
+        if (blink_timer >= 0.5f) {
+            blink_timer = 0.0f;
+            visible = !visible;
+        }
+
+        if (visible) {
+            sf::View default_view = window_->getDefaultView();
+            window_->setView(default_view);
+
+            sf::Text warning_text;
+            warning_text.setFont(font_);
+            warning_text.setString("BOSS INCOMING");
+            warning_text.setCharacterSize(60);
+            warning_text.setFillColor(sf::Color::Red);
+            warning_text.setStyle(sf::Text::Bold);
+
+            sf::FloatRect text_bounds = warning_text.getLocalBounds();
+            warning_text.setOrigin(text_bounds.left + text_bounds.width / 2.0f,
+                                   text_bounds.top + text_bounds.height / 2.0f);
+            warning_text.setPosition(default_view.getSize().x / 2.0f, default_view.getSize().y / 2.0f);
+
+            window_->draw(warning_text);
+            window_->setView(current_view);
+        }
+    }
 }
 
 void Renderer::draw_game_over(bool all_players_dead) {
@@ -352,6 +577,7 @@ void Renderer::render_frame() {
     draw_background();
     draw_entities();
     draw_ui();
+    draw_stage_cleared(); // Victory screen overlay
     display();
 }
 
@@ -385,6 +611,24 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/shot_death-charge4.gif", "shot_death-charge4");
     load_texture("client/sprites/shot_death-charge-paricule.gif", "charge_particle");
     load_texture("client/sprites/explosion.gif", "explosion");
+    load_texture("client/sprites/boss_1-ezgif.com-crop.gif", "boss_1");
+    load_texture("client/sprites/boss_1-attack.gif", "boss_1_attack");
+    load_texture("client/sprites/boss_1-bayblade.gif", "boss_1_bayblade");
+    load_texture("client/sprites/monster-wave-2-left.gif", "monster-wave-2-left");
+    load_texture("client/sprites/monster-wave-2-right.gif", "monster-wave-2-right");
+    load_texture("client/sprites/r-typesheet32-ezgif.com-crop.gif", "boss_2");
+    load_texture("client/sprites/r-typesheet14-boss-2-proj.gif", "boss_2_projectile");
+    load_texture("client/sprites/monster_3-boss2-proj-2.gif", "boss_2_projectile_2");
+    for (int i = 0; i < 13; i++) {
+        std::string path =
+            "client/sprites/force_pod/tile" + std::string(i < 10 ? "00" : "0") + std::to_string(i) + ".png";
+        load_texture(path, "force_pod_" + std::to_string(i));
+    }
+    load_texture("client/sprites/force_pod/tile000.png", "force_pod"); // Default
+    load_texture("client/sprites/force_pod/tile013.png", "pod_projectile_0");
+    load_texture("client/sprites/force_pod/tile014.png", "pod_projectile_1");
+    load_texture("client/sprites/force_pod/tile015.png", "pod_projectile_red_0");
+    load_texture("client/sprites/force_pod/tile016.png", "pod_projectile_red_1");
     load_texture("client/sprites/players_ship.png", "default");
 }
 
@@ -454,6 +698,117 @@ void Renderer::handle_resize(uint32_t width, uint32_t height) {
 }
 
 bool Renderer::is_game_over_back_to_menu_clicked(const sf::Vector2f& mouse_pos) const {
+    return back_to_menu_button_.getGlobalBounds().contains(mouse_pos);
+}
+
+void Renderer::show_stage_cleared(uint8_t stage_number) {
+    stage_cleared_ = true;
+    cleared_stage_number_ = stage_number;
+    if (stage_number == 2) {
+        game_finished_ = true;
+        stage_cleared_timer_ = 999999.0f;
+    } else {
+        game_finished_ = false;
+        stage_cleared_timer_ = 5.0f;
+    }
+}
+
+void Renderer::update(float delta_time) {
+    if (stage_cleared_ && !game_finished_) {
+        stage_cleared_timer_ -= delta_time;
+        if (stage_cleared_timer_ <= 0.0f) {
+            stage_cleared_ = false;
+        }
+    }
+    update_animations(delta_time);
+}
+
+void Renderer::draw_stage_cleared() {
+    if (!stage_cleared_)
+        return;
+
+    sf::RectangleShape overlay;
+    overlay.setSize(sf::Vector2f(rtype::constants::SCREEN_WIDTH, rtype::constants::SCREEN_HEIGHT));
+    overlay.setPosition(0, 0);
+    overlay.setFillColor(sf::Color(0, 50, 0, 180));
+    window_->draw(overlay);
+
+    float alpha = 255.0f;
+    float y_offset = 0.0f;
+
+    if (!game_finished_) {
+        if (stage_cleared_timer_ > 4.5f) {
+            float progress = (5.0f - stage_cleared_timer_) / 0.5f;
+            y_offset = -100.0f * (1.0f - progress);
+        } else if (stage_cleared_timer_ < 0.5f) {
+            float progress = stage_cleared_timer_ / 0.5f;
+            alpha = 255.0f * progress;
+        }
+    }
+
+    sf::Text title_text;
+    title_text.setFont(font_);
+    title_text.setCharacterSize(64);
+    title_text.setFillColor(sf::Color(255, 255, 0, static_cast<uint8_t>(alpha)));
+    title_text.setOutlineColor(sf::Color(0, 0, 0, static_cast<uint8_t>(alpha)));
+    title_text.setOutlineThickness(3);
+
+    if (game_finished_) {
+        title_text.setString("GAME COMPLETED!");
+    } else {
+        title_text.setString("STAGE " + std::to_string(cleared_stage_number_) + " - CLEARED!");
+    }
+
+    sf::FloatRect textBounds = title_text.getLocalBounds();
+    title_text.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
+    title_text.setPosition(rtype::constants::SCREEN_WIDTH / 2.0f,
+                           rtype::constants::SCREEN_HEIGHT / 2.0f - 50.0f + y_offset);
+    window_->draw(title_text);
+
+    sf::Text victory_text;
+    victory_text.setFont(font_);
+    victory_text.setCharacterSize(32);
+    victory_text.setFillColor(sf::Color(255, 255, 255, static_cast<uint8_t>(alpha)));
+    victory_text.setString("CONGRATULATIONS!");
+    sf::FloatRect victoryBounds = victory_text.getLocalBounds();
+    victory_text.setOrigin(victoryBounds.left + victoryBounds.width / 2.0f,
+                           victoryBounds.top + victoryBounds.height / 2.0f);
+    victory_text.setPosition(rtype::constants::SCREEN_WIDTH / 2.0f,
+                             rtype::constants::SCREEN_HEIGHT / 2.0f + 50.0f + y_offset);
+    window_->draw(victory_text);
+
+    if (game_finished_) {
+        sf::Color button_color = sf::Color(70, 130, 180);
+
+        back_to_menu_button_.setSize(sf::Vector2f(280.0f, 65.0f));
+        back_to_menu_button_.setFillColor(button_color);
+        back_to_menu_button_.setOutlineThickness(2);
+        back_to_menu_button_.setOutlineColor(sf::Color::White);
+
+        sf::FloatRect button_bounds = back_to_menu_button_.getLocalBounds();
+        back_to_menu_button_.setOrigin(button_bounds.width / 2.0f, button_bounds.height / 2.0f);
+        back_to_menu_button_.setPosition(rtype::constants::SCREEN_WIDTH / 2.0f,
+                                         rtype::constants::SCREEN_HEIGHT / 2.0f + 150.0f);
+
+        back_to_menu_text_.setFont(font_);
+        back_to_menu_text_.setString("BACK TO MENU");
+        back_to_menu_text_.setCharacterSize(23);
+        back_to_menu_text_.setFillColor(sf::Color::White);
+
+        sf::FloatRect text_bounds_btn = back_to_menu_text_.getLocalBounds();
+        back_to_menu_text_.setOrigin(text_bounds_btn.left + text_bounds_btn.width / 2.0f,
+                                     text_bounds_btn.top + text_bounds_btn.height / 2.0f);
+        back_to_menu_text_.setPosition(rtype::constants::SCREEN_WIDTH / 2.0f,
+                                       rtype::constants::SCREEN_HEIGHT / 2.0f + 150.0f);
+
+        window_->draw(back_to_menu_button_);
+        window_->draw(back_to_menu_text_);
+    }
+}
+
+bool Renderer::is_victory_back_to_menu_clicked(const sf::Vector2f& mouse_pos) const {
+    if (!game_finished_)
+        return false;
     return back_to_menu_button_.getGlobalBounds().contains(mouse_pos);
 }
 

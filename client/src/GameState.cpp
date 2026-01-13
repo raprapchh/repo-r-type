@@ -1,37 +1,121 @@
 #include "../include/GameState.hpp"
 #include "../include/MenuState.hpp"
+#include "../include/SFMLRenderer.hpp"
+#include "../../shared/GameConstants.hpp"
 #include "../../ecs/include/systems/InputSystem.hpp"
 #include "../../ecs/include/systems/RenderSystem.hpp"
+#include "../../ecs/include/systems/TextureAnimationSystem.hpp"
 #include "../../ecs/include/systems/MovementSystem.hpp"
 #include "../../ecs/include/systems/CollisionSystem.hpp"
 #include "../../ecs/include/systems/BoundarySystem.hpp"
+#include "../../ecs/include/systems/SpawnEffectSystem.hpp"
+#include "../../ecs/include/systems/ProjectileSystem.hpp"
+#include "../../ecs/include/systems/ForcePodSystem.hpp"
+#include "../../ecs/include/systems/FpsSystem.hpp"
+#include "../../ecs/include/systems/DevToolsSystem.hpp"
+#include "../../ecs/include/systems/UIRenderSystem.hpp"
 #include "../../ecs/include/components/MapBounds.hpp"
 #include "../../ecs/include/components/NetworkId.hpp"
+#include "../../ecs/include/components/NetworkInterpolation.hpp"
+#include "../../ecs/include/components/Tag.hpp"
 #include "../../ecs/include/components/Lives.hpp"
 #include "../../ecs/include/components/Health.hpp"
+#include "../../ecs/include/components/HitBox.hpp"
+#include "../../ecs/include/components/CollisionLayer.hpp"
+#include "../../ecs/include/components/Controllable.hpp"
 #include "../../ecs/include/components/Weapon.hpp"
+#include "../../ecs/include/components/Score.hpp"
+#include "../../ecs/include/components/Projectile.hpp"
+#include "../../ecs/include/components/TextDrawable.hpp"
+#include "../../ecs/include/components/UITag.hpp"
+#include "../../ecs/include/components/FpsCounter.hpp"
+#include "../../ecs/include/components/PingStats.hpp"
+#include "../../ecs/include/components/CpuStats.hpp"
+#include "../../ecs/include/systems/PingSystem.hpp"
+#include "../../ecs/include/systems/CpuMetricSystem.hpp"
+#include <iostream>
 #include <thread>
 #include <chrono>
 
 namespace rtype::client {
 
-GameState::GameState() {
+GameState::GameState(bool multiplayer) : multiplayer_(multiplayer) {
     setup_pause_ui();
 }
 
 void GameState::on_enter(Renderer& renderer, Client& client) {
     (void)renderer;
     client_ = &client;
-    if (!client.is_connected()) {
-        client.connect();
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    score_saved_ = false;
+    initial_player_count_ = 0;
+    max_score_reached_ = 0;
+    score_saved_ = false;
+    initial_player_count_ = 0;
+    max_score_reached_ = 0;
+
+    if (multiplayer_) {
+        if (!client.is_connected()) {
+            client.connect();
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+        client.send_game_start_request();
+    } else {
+        if (!client.is_connected()) {
+            client.connect();
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        }
+        {
+            auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                              std::chrono::system_clock::now().time_since_epoch())
+                              .count();
+            client.create_room("SOLO-" + std::to_string(now_ms));
+        }
+        game_start_sent_ = false;
+
+        GameEngine::SystemManager& system_manager = client.get_system_manager();
+        system_manager.clear();
+        system_manager.addSystem<rtype::ecs::MovementSystem>();
+        system_manager.addSystem<rtype::ecs::TextureAnimationSystem>();
+        system_manager.addSystem<rtype::ecs::SpawnEffectSystem>();
+        system_manager.addSystem<rtype::ecs::CollisionSystem>();
+        system_manager.addSystem<rtype::ecs::BoundarySystem>();
+        system_manager.addSystem<rtype::ecs::ProjectileSystem>();
+        system_manager.addSystem<rtype::ecs::ForcePodSystem>();
     }
-    client.send_game_start_request();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    GameEngine::Registry& registry = client_->get_registry();
+
+    std::mutex& registry_mutex = client_->get_registry_mutex();
+    std::lock_guard<std::mutex> lock(registry_mutex);
+    auto view = registry.view<rtype::ecs::component::Tag>();
+    for (auto entity : view) {
+        auto& tag = registry.getComponent<rtype::ecs::component::Tag>(static_cast<GameEngine::entity_t>(entity));
+        if (tag.name == "Player") {
+            initial_player_count_++;
+        }
+    }
+
+    std::cout << "GameState: Counted " << initial_player_count_ << " player(s) in game" << std::endl;
+
+    // FPS Counter: Only spawn in Multiplayer Mode
+    if (multiplayer_) {
+        sf::Vector2u windowSize = renderer.get_window_size();
+        createFpsCounter(registry, static_cast<float>(windowSize.x));
+        createDevMetrics(registry, static_cast<float>(windowSize.x));
+    }
+
+    client.get_audio_system().startBackgroundMusic();
 }
 
 void GameState::on_exit(Renderer& renderer, Client& client) {
     (void)renderer;
     (void)client;
+
+    if (client_) {
+        client_->get_audio_system().stopBackgroundMusic();
+    }
+
     client_ = nullptr;
 }
 
@@ -43,8 +127,6 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
         } else if (event.type == sf::Event::Resized) {
             renderer.handle_resize(event.size.width, event.size.height);
             if (client_) {
-                // client_->send_map_resize(static_cast<float>(event.size.width),
-                // static_cast<float>(event.size.height));
 
                 GameEngine::Registry& registry = client_->get_registry();
                 std::mutex& registry_mutex = client_->get_registry_mutex();
@@ -93,14 +175,14 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         }
                     }
                 }
-            } else if (event.key.code == sf::Keyboard::Space) {
+            } else if (event.key.code == renderer.get_key_binding(Renderer::Action::Shoot)) {
                 if (!is_charging_) {
                     is_charging_ = true;
                     charge_start_time_ = std::chrono::steady_clock::now();
                 }
             }
         } else if (event.type == sf::Event::KeyReleased) {
-            if (event.key.code == sf::Keyboard::Space) {
+            if (event.key.code == renderer.get_key_binding(Renderer::Action::Shoot)) {
                 if (is_charging_) {
                     auto now = std::chrono::steady_clock::now();
                     auto duration =
@@ -123,6 +205,17 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         client_->send_shoot(0, 0, chargeLevel);
                     }
                 }
+            } else if (event.key.code == sf::Keyboard::F3) {
+                // Toggle Dev Tools (FPS Counter) visibility - Multiplayer only
+                if (multiplayer_ && client_) {
+                    GameEngine::Registry& registry = client_->get_registry();
+                    std::mutex& registry_mutex = client_->get_registry_mutex();
+                    std::lock_guard<std::mutex> lock(registry_mutex);
+
+                    rtype::ecs::DevToolsSystem dev_tools_system;
+                    dev_tools_system.setTogglePressed(true);
+                    dev_tools_system.update(registry, 0.0);
+                }
             }
         } else if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
             if (is_paused_) {
@@ -141,6 +234,20 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                     }
                     game_over_ = false;
                     all_players_dead_ = false;
+                    score_saved_ = false;
+                    state_manager.change_state(std::make_unique<MenuState>());
+                }
+            } else if (renderer.is_stage_cleared() && renderer.is_game_finished()) {
+                sf::Vector2f mouse_pos = renderer.get_window()->mapPixelToCoords(
+                    sf::Vector2i(event.mouseButton.x, event.mouseButton.y), renderer.get_window()->getDefaultView());
+
+                if (renderer.is_victory_back_to_menu_clicked(mouse_pos)) {
+                    if (client_) {
+                        client_->leave_room();
+                    }
+                    game_over_ = false;
+                    all_players_dead_ = false;
+                    score_saved_ = false;
                     state_manager.change_state(std::make_unique<MenuState>());
                 }
             }
@@ -166,6 +273,7 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
     }
 
     client.update(delta_time);
+    renderer.update(delta_time);
 
     GameEngine::Registry& registry = client.get_registry();
     std::mutex& registry_mutex = client.get_registry_mutex();
@@ -173,8 +281,7 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
     {
         std::lock_guard<std::mutex> lock(registry_mutex);
 
-        if (!client.is_connected()) {
-            return;
+        if (!multiplayer_) {
         }
 
         uint32_t player_id = client.get_player_id();
@@ -187,6 +294,13 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
                 registry.getComponent<rtype::ecs::component::NetworkId>(static_cast<GameEngine::entity_t>(entity));
             if (net_id.id == player_id) {
                 player_exists = true;
+                if (registry.hasComponent<rtype::ecs::component::Score>(static_cast<GameEngine::entity_t>(entity))) {
+                    auto& score =
+                        registry.getComponent<rtype::ecs::component::Score>(static_cast<GameEngine::entity_t>(entity));
+                    if (static_cast<uint32_t>(score.value) > max_score_reached_) {
+                        max_score_reached_ = static_cast<uint32_t>(score.value);
+                    }
+                }
                 if (registry.hasComponent<rtype::ecs::component::Lives>(static_cast<GameEngine::entity_t>(entity))) {
                     auto& lives =
                         registry.getComponent<rtype::ecs::component::Lives>(static_cast<GameEngine::entity_t>(entity));
@@ -205,9 +319,29 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
             }
         }
 
-        if (!player_exists || player_dead) {
+        if (client.is_connected() && player_id != 0 && (!player_exists || player_dead)) {
             if (!game_over_) {
                 game_over_ = true;
+
+                if (!score_saved_) {
+                    score_saved_ = true;
+                    uint32_t final_score = max_score_reached_;
+                    std::string player_name = client.get_player_name();
+                    if (player_name.empty() || player_name == "Player") {
+                        player_name = "Player" + std::to_string(client.get_player_id());
+                    }
+
+                    std::cout << "Saving score: " << final_score << " for player '" << player_name << "' ("
+                              << initial_player_count_ << " player(s) detected)" << std::endl;
+
+                    if (initial_player_count_ <= 1) {
+                        std::cout << "-> Solo mode" << std::endl;
+                        client.get_scoreboard_manager().add_solo_score(player_name, final_score);
+                    } else {
+                        std::cout << "-> Multi mode" << std::endl;
+                        client.get_scoreboard_manager().add_multi_score(player_name, final_score);
+                    }
+                }
 
                 auto player_view = registry.view<rtype::ecs::component::NetworkId>();
                 for (auto entity : player_view) {
@@ -252,57 +386,85 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
             }
             all_players_dead_ = (alive_players == 0);
         }
-    }
 
-    if (game_over_ && all_players_dead_) {
-        return;
-    }
-
-    bool window_has_focus = renderer.get_window() && renderer.get_window()->hasFocus();
-
-    if (window_has_focus && !game_over_) {
-        {
-            std::lock_guard<std::mutex> lock(registry_mutex);
-            rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(),
-                                                 renderer.is_moving_left(), renderer.is_moving_right(), 200.0f);
-            input_system.update(registry, delta_time);
+        if (game_over_ && all_players_dead_) {
+            return;
         }
 
-        {
-            std::lock_guard<std::mutex> lock(registry_mutex);
-            rtype::ecs::MovementSystem movement_system;
-            movement_system.update(registry, delta_time);
-        }
+        bool window_has_focus = renderer.get_window() && renderer.get_window()->hasFocus();
 
-        {
-            std::lock_guard<std::mutex> lock(registry_mutex);
-            rtype::ecs::BoundarySystem boundary_system;
-            boundary_system.update(registry, delta_time);
-            rtype::ecs::CollisionSystem collision_system;
-            collision_system.update(registry, delta_time);
-        }
-
-        {
-            std::lock_guard<std::mutex> lock(registry_mutex);
-            auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
-            for (auto entity : view) {
-                auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
-                client.send_move(vel.vx, vel.vy);
+        if (window_has_focus && !game_over_) {
+            if (!multiplayer_ && !game_start_sent_ && client.is_connected()) {
+                client.send_game_start_request();
+                game_start_sent_ = true;
             }
-        }
+            {
+                rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(),
+                                                     renderer.is_moving_left(), renderer.is_moving_right(), 400.0f);
+                input_system.update(registry, delta_time);
+            }
 
-        if (shoot_requested_) {
-            client.send_shoot(0, 0);
-            shoot_requested_ = false;
-        }
-    } else {
-        std::lock_guard<std::mutex> lock(registry_mutex);
-        auto controllable_view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
-        for (auto entity : controllable_view) {
-            GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
-            auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(entity_id);
-            vel.vx = 0.0f;
-            vel.vy = 0.0f;
+            {
+                rtype::ecs::InputSystem input_system(renderer.is_moving_up(), renderer.is_moving_down(),
+                                                     renderer.is_moving_left(), renderer.is_moving_right(), 400.0f);
+                input_system.update(registry, delta_time);
+            }
+
+            {
+                auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Position>();
+                for (auto entity : view) {
+                    auto& pos = registry.getComponent<rtype::ecs::component::Position>(static_cast<size_t>(entity));
+                    if (pos.x < 0)
+                        pos.x = 0;
+                    if (pos.x > 1920 - 100)
+                        pos.x = 1920 - 100;
+                    if (pos.y < 0)
+                        pos.y = 0;
+                    if (pos.y > 1080 - 100)
+                        pos.y = 1080 - 100;
+                }
+            }
+
+            {
+                auto view = registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
+                for (auto entity : view) {
+                    auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(static_cast<size_t>(entity));
+                    if (client.is_connected()) {
+                        client.send_move(vel.vx, vel.vy);
+                    }
+                }
+            }
+
+            if (shoot_requested_) {
+                if (client.is_connected()) {
+                    client.send_shoot(0, 0);
+                }
+                shoot_requested_ = false;
+            }
+
+            // Send ping if requested by PingSystem
+            if (multiplayer_ && client.is_connected()) {
+                auto ping_view = registry.view<rtype::ecs::component::PingStats>();
+                for (auto entity : ping_view) {
+                    auto& stats = registry.getComponent<rtype::ecs::component::PingStats>(entity);
+                    if (stats.pingRequested) {
+                        auto now = std::chrono::steady_clock::now();
+                        uint64_t timestamp =
+                            std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
+                        client.send_ping(timestamp);
+                        stats.pingRequested = false;
+                    }
+                }
+            }
+        } else {
+            auto controllable_view =
+                registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
+            for (auto entity : controllable_view) {
+                GameEngine::entity_t entity_id = static_cast<GameEngine::entity_t>(entity);
+                auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(entity_id);
+                vel.vx = 0.0f;
+                vel.vy = 0.0f;
+            }
         }
     }
 }
@@ -318,8 +480,11 @@ void GameState::render(Renderer& renderer, Client& client) {
         GameEngine::Registry& registry = client.get_registry();
         std::mutex& registry_mutex = client.get_registry_mutex();
         std::lock_guard<std::mutex> lock(registry_mutex);
-        rtype::ecs::RenderSystem render_system(*renderer.get_window(), renderer.get_textures(),
-                                               &renderer.get_accessibility_manager());
+
+        auto sfml_renderer =
+            std::make_shared<rtype::rendering::SFMLRenderer>(*renderer.get_window(), renderer.get_textures());
+
+        rtype::ecs::RenderSystem render_system(sfml_renderer, &renderer.get_accessibility_manager());
         render_system.update(registry, 0.016f);
 
         if (is_charging_) {
@@ -339,7 +504,35 @@ void GameState::render(Renderer& renderer, Client& client) {
 
     renderer.draw_ui();
 
-    if (game_over_) {
+    // FPS Counter: Update FPS calculation and render UI overlay (Multiplayer only)
+    if (multiplayer_ && renderer.get_window()) {
+        float fps_dt = fps_clock_.restart().asSeconds();
+
+        GameEngine::Registry& registry = client.get_registry();
+        std::mutex& registry_mutex = client.get_registry_mutex();
+        std::lock_guard<std::mutex> lock(registry_mutex);
+
+        // Update FPS calculation with REAL delta time
+        rtype::ecs::FpsSystem fps_system;
+        fps_system.update(registry, static_cast<double>(fps_dt));
+
+        // Update Dev Metrics with REAL delta time
+        rtype::ecs::PingSystem ping_system;
+        ping_system.update(registry, static_cast<double>(fps_dt));
+
+        rtype::ecs::CpuMetricSystem cpu_metric_system;
+        cpu_metric_system.update(registry, static_cast<double>(fps_dt));
+
+        // Render UI overlay (FPS counter, Ping, CPU)
+        rtype::ecs::UIRenderSystem ui_render_system(renderer.get_window());
+        ui_render_system.update(registry, static_cast<double>(fps_dt));
+    }
+
+    // Stage cleared victory screen
+    renderer.draw_stage_cleared();
+
+    // Only show game over if victory screen is NOT displayed
+    if (game_over_ && !renderer.is_stage_cleared()) {
         renderer.draw_game_over(all_players_dead_);
     }
 
@@ -451,6 +644,110 @@ void GameState::render_pause_overlay(Renderer& renderer) {
         renderer.draw_rectangle(settings_button_);
         renderer.draw_text(settings_button_text_);
     }
+}
+
+void GameState::spawn_enemy_solo(GameEngine::Registry& registry) {
+    auto entity = registry.createEntity();
+    float x = 1400.0f + (rand() % 400);
+    float y = 100.0f + (rand() % 800);
+
+    registry.addComponent<rtype::ecs::component::NetworkId>(entity, next_enemy_id_++);
+    registry.addComponent<rtype::ecs::component::Position>(entity, x, y);
+    registry.addComponent<rtype::ecs::component::Velocity>(entity, -200.0f, 0.0f);
+
+    int sub_type = 1 + (rand() % 4);
+    std::string sprite_name;
+    if (sub_type == 1)
+        sprite_name = "monster_0-top";
+    else if (sub_type == 2)
+        sprite_name = "monster_0-bot";
+    else if (sub_type == 3)
+        sprite_name = "monster_0-left";
+    else
+        sprite_name = "monster_0-right";
+
+    registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 0, 0, 4.0f, 4.0f, 1, 0.1f, true);
+
+    registry.addComponent<rtype::ecs::component::Health>(entity, 100.0f, 100.0f);
+    registry.addComponent<rtype::ecs::component::HitBox>(entity, 100.0f, 100.0f);
+    registry.addComponent<rtype::ecs::component::Collidable>(entity, rtype::ecs::component::CollisionLayer::Enemy);
+    registry.addComponent<rtype::ecs::component::Tag>(entity, "EnemyMonster");
+    registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, x, y, -200.0f, 0.0f);
+}
+
+void GameState::spawn_player_projectile(GameEngine::Registry& registry, GameEngine::entity_t player_entity) {
+    if (!registry.hasComponent<rtype::ecs::component::Position>(player_entity) ||
+        !registry.hasComponent<rtype::ecs::component::Weapon>(player_entity)) {
+        return;
+    }
+
+    auto& pos = registry.getComponent<rtype::ecs::component::Position>(player_entity);
+    auto& weapon = registry.getComponent<rtype::ecs::component::Weapon>(player_entity);
+
+    auto projectile = registry.createEntity();
+    registry.addComponent<rtype::ecs::component::NetworkId>(projectile, next_projectile_id_++);
+    float spawn_x = pos.x + weapon.spawnOffsetX;
+    float spawn_y = pos.y + weapon.spawnOffsetY;
+    registry.addComponent<rtype::ecs::component::Position>(projectile, spawn_x, spawn_y);
+    registry.addComponent<rtype::ecs::component::Velocity>(projectile, weapon.projectileSpeed, 0.0f);
+    registry.addComponent<rtype::ecs::component::Projectile>(projectile, weapon.damage, weapon.projectileLifetime,
+                                                             static_cast<std::size_t>(player_entity));
+    registry.addComponent<rtype::ecs::component::HitBox>(projectile, 32.0f, 32.0f);
+    registry.addComponent<rtype::ecs::component::Collidable>(projectile,
+                                                             rtype::ecs::component::CollisionLayer::PlayerProjectile);
+    registry.addComponent<rtype::ecs::component::Tag>(projectile, "PlayerProjectile");
+    registry.addComponent<rtype::ecs::component::Drawable>(projectile, "shot", 0, 0, 29, 33, 3.0f, 3.0f, 4, 0.05f,
+                                                           true);
+    registry.addComponent<rtype::ecs::component::NetworkInterpolation>(projectile, spawn_x, spawn_y,
+                                                                       weapon.projectileSpeed, 0.0f);
+}
+
+void GameState::createFpsCounter(GameEngine::Registry& registry, float windowWidth) {
+    if (!dev_font_) {
+        dev_font_ = std::make_shared<sf::Font>();
+        if (!dev_font_->loadFromFile("client/fonts/Ethnocentric-Regular.otf")) {
+            std::cerr << "Warning: Could not load client/fonts/Ethnocentric-Regular.otf for FPS Counter" << std::endl;
+            // Fallback to default arial if possible, or just don't crash
+        }
+    }
+
+    fps_counter_entity_ = registry.createEntity();
+
+    float x = windowWidth - 230.0f;
+    float y = 10.0f;
+
+    registry.addComponent<rtype::ecs::component::Position>(fps_counter_entity_, x, y);
+    registry.addComponent<rtype::ecs::component::UITag>(fps_counter_entity_);
+    registry.addComponent<rtype::ecs::component::FpsCounter>(fps_counter_entity_);
+
+    // Text Setup
+    // Using green color for high visibility
+    sf::Color textColor = sf::Color::Green;
+    registry.addComponent<rtype::ecs::component::TextDrawable>(fps_counter_entity_, dev_font_, "FPS: --", 20,
+                                                               textColor);
+}
+
+void GameState::createDevMetrics(GameEngine::Registry& registry, float windowWidth) {
+    // Ping Entity
+    auto ping_entity = registry.createEntity();
+    float x = windowWidth - 230.0f;
+    float y_ping = 40.0f;
+
+    registry.addComponent<rtype::ecs::component::Position>(ping_entity, x, y_ping);
+    registry.addComponent<rtype::ecs::component::UITag>(ping_entity);
+    registry.addComponent<rtype::ecs::component::PingStats>(ping_entity);
+    registry.addComponent<rtype::ecs::component::TextDrawable>(ping_entity, dev_font_, "PING: -- ms", 20,
+                                                               sf::Color::Green);
+
+    // CPU Entity
+    auto cpu_entity = registry.createEntity();
+    float y_cpu = 70.0f;
+
+    registry.addComponent<rtype::ecs::component::Position>(cpu_entity, x, y_cpu);
+    registry.addComponent<rtype::ecs::component::UITag>(cpu_entity);
+    registry.addComponent<rtype::ecs::component::CpuStats>(cpu_entity);
+    registry.addComponent<rtype::ecs::component::TextDrawable>(cpu_entity, dev_font_, "CPU: -- ms", 20,
+                                                               sf::Color::Green);
 }
 
 } // namespace rtype::client

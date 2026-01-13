@@ -38,7 +38,6 @@ void MobSystem::update(GameEngine::Registry& registry, double dt) {
         registry.removeComponent<component::ScreenMode>(entity);
     }
 
-    // Now handle projectiles
     auto proj_view = registry.view<component::ScreenMode, component::Projectile, component::Velocity>();
     std::vector<GameEngine::entity_t> projs_to_switch;
 

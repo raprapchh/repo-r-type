@@ -36,6 +36,7 @@ void UdpServer::send(const std::string& client_ip, uint16_t client_port, const s
         return;
     }
 
+    std::lock_guard<std::mutex> lock(send_mutex_);
     try {
         asio::ip::udp::endpoint endpoint(asio::ip::make_address(client_ip), client_port);
         socket_->send_to(asio::buffer(data), endpoint);

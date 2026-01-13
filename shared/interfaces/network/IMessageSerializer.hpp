@@ -45,6 +45,24 @@ class IMessageSerializer {
 
     virtual Packet serialize_map_resize(const MapResizeData& data) = 0;
     virtual MapResizeData deserialize_map_resize(const Packet& packet) = 0;
+
+    virtual Packet serialize_chat_message(const ChatMessageData& data) = 0;
+    virtual ChatMessageData deserialize_chat_message(const Packet& packet) = 0;
+
+    virtual Packet serialize_list_rooms(const ListRoomsData& data) = 0;
+    virtual ListRoomsData deserialize_list_rooms(const Packet& packet) = 0;
+
+    virtual Packet serialize_room_info(const RoomInfoData& data) = 0;
+    virtual RoomInfoData deserialize_room_info(const Packet& packet) = 0;
+
+    virtual Packet serialize_create_room(const CreateRoomData& data) = 0;
+    virtual CreateRoomData deserialize_create_room(const Packet& packet) = 0;
+
+    virtual Packet serialize_join_room(const JoinRoomData& data) = 0;
+    virtual JoinRoomData deserialize_join_room(const Packet& packet) = 0;
+
+    virtual Packet serialize_lobby_update(const LobbyUpdateData& data) = 0;
+    virtual LobbyUpdateData deserialize_lobby_update(const Packet& packet) = 0;
 };
 
 } // namespace rtype::net
