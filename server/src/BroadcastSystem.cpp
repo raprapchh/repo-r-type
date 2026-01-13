@@ -90,10 +90,14 @@ void BroadcastSystem::broadcast_spawns(const std::map<std::string, ClientInfo>& 
                 type = rtype::net::EntityType::PROJECTILE;
             } else if (registry_.hasComponent<rtype::ecs::component::Tag>(entity_idx)) {
                 const auto& tag = registry_.getComponent<rtype::ecs::component::Tag>(entity_idx);
-                if (tag.name == "Obstacle" || tag.name == "Obstacle_Floor") {
+                if (tag.name == "Obstacle" || tag.name == "Obstacle_Floor" || tag.name == "Obstacle_Train_3" || tag.name == "Obstacle_Train_4") {
                     type = rtype::net::EntityType::OBSTACLE;
                     if (tag.name == "Obstacle_Floor")
                         sub_type = 1;
+                    else if (tag.name == "Obstacle_Train_3")
+                        sub_type = 2;
+                    else if (tag.name == "Obstacle_Train_4")
+                        sub_type = 3;
                 } else if (tag.name == "ForcePodItem" || tag.name == "ForcePod") {
                     type = rtype::net::EntityType::POWERUP;
                     sub_type = (tag.name == "ForcePodItem") ? 1 : 2;
@@ -310,6 +314,12 @@ void BroadcastSystem::send_initial_state(const std::string& ip, uint16_t port) {
             } else if (tag.name == "Obstacle_Floor") {
                 type = rtype::net::EntityType::OBSTACLE;
                 sub_type = 1;
+            } else if (tag.name == "Obstacle_Train_3") {
+                type = rtype::net::EntityType::OBSTACLE;
+                sub_type = 2;
+            } else if (tag.name == "Obstacle_Train_4") {
+                type = rtype::net::EntityType::OBSTACLE;
+                sub_type = 3;
             } else if (tag.name == "Monster_0_Top")
                 sub_type = 1;
             else if (tag.name == "Monster_0_Bot")

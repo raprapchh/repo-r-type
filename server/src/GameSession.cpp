@@ -52,19 +52,36 @@ void load_level(GameEngine::Registry& registry, const std::string& path) {
             if (c == ' ')
                 continue;
             float x = col * 288.0f, y = row * 100.0f;
-            bool is_floor = (c == '2');
             if (c == '1' || c == '2' || c == '3' || c == '4') {
                 auto e = registry.createEntity();
+                
+                float w, h;
+                std::string tag;
+                
+                if (c == '2') {
+                    w = rtype::constants::FLOOR_OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE;
+                    h = rtype::constants::FLOOR_OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE;
+                    tag = "Obstacle_Floor";
+                } else if (c == '3') {
+                    w = rtype::constants::FLOOR_OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE;
+                    h = rtype::constants::FLOOR_OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE;
+                    tag = "Obstacle_Train_3";
+                } else if (c == '4') {
+                    w = rtype::constants::OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE;
+                    h = rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE;
+                    tag = "Obstacle_Train_4";
+                } else {
+                    w = rtype::constants::OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE;
+                    h = rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE;
+                    tag = "Obstacle";
+                }
+                
                 registry.addComponent<rtype::ecs::component::Position>(e, x, y);
-                float w = (is_floor ? rtype::constants::FLOOR_OBSTACLE_WIDTH : rtype::constants::OBSTACLE_WIDTH) *
-                          rtype::constants::OBSTACLE_SCALE;
-                float h = (is_floor ? rtype::constants::FLOOR_OBSTACLE_HEIGHT : rtype::constants::OBSTACLE_HEIGHT) *
-                          rtype::constants::OBSTACLE_SCALE;
                 registry.addComponent<rtype::ecs::component::HitBox>(e, w, h);
                 registry.addComponent<rtype::ecs::component::Collidable>(
                     e, rtype::ecs::component::CollisionLayer::Obstacle);
                 registry.addComponent<rtype::ecs::component::NetworkId>(e, next_id++);
-                registry.addComponent<rtype::ecs::component::Tag>(e, is_floor ? "Obstacle_Floor" : "Obstacle");
+                registry.addComponent<rtype::ecs::component::Tag>(e, tag);
                 registry.addComponent<rtype::ecs::component::Velocity>(e, -100.0f, 0.0f);
             }
         }

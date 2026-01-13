@@ -5,6 +5,7 @@
 #include "../../include/components/HitBox.hpp"
 #include "../../include/components/NetworkId.hpp"
 #include "../../include/components/HitFlash.hpp"
+#include "../../include/components/Tag.hpp"
 #include "../../../client/include/AccessibilityManager.hpp"
 #include "../../../shared/net/MessageData.hpp"
 #include <algorithm>
