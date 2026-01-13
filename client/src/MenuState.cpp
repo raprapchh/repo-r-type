@@ -102,7 +102,7 @@ void MenuState::setup_ui() {
                                              Renderer::Action::Right, Renderer::Action::Shoot};
 
     for (auto action : actions) {
-        KeyBindingRow row{};
+        KeyBindingRow row;
         row.action = action;
         row.box.setSize(sf::Vector2f(450.0f, 50.0f));
         row.box.setFillColor(sf::Color(60, 60, 100));
