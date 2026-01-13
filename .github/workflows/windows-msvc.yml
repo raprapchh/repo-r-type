@@ -4,7 +4,7 @@ on:
   push:
     tags: [ "v*" ]
   pull_request:
-    branches: [ "main", "dev", "feat/cross-platform" ]
+    branches: [ "main", "dev" ]
 
 permissions:
   contents: write
@@ -36,12 +36,12 @@ jobs:
         cp bin/windows/r-type_client.exe dist/
         cp bin/windows/r-type_server.exe dist/
 
-      # Copy runtime DLLs from vcpkg installed location (build-local or global)
-      if (Test-Path "build/vcpkg_installed/x64-windows/bin") {
-        Copy-Item -Path "build/vcpkg_installed/x64-windows/bin/*.dll" -Destination dist -Force -ErrorAction SilentlyContinue
-      } elseif (Test-Path "C:\\vcpkg\\installed\\x64-windows\\bin") {
-        Copy-Item -Path "C:\\vcpkg\\installed\\x64-windows\\bin\\*.dll" -Destination dist -Force -ErrorAction SilentlyContinue
-      }
+        # Copy runtime DLLs from vcpkg installed location (build-local or global)
+        if (Test-Path "build/vcpkg_installed/x64-windows/bin") {
+          Copy-Item -Path "build/vcpkg_installed/x64-windows/bin/*.dll" -Destination dist -Force -ErrorAction SilentlyContinue
+        } elseif (Test-Path "C:\\vcpkg\\installed\\x64-windows\\bin") {
+          Copy-Item -Path "C:\\vcpkg\\installed\\x64-windows\\bin\\*.dll" -Destination dist -Force -ErrorAction SilentlyContinue
+        }
 
         mkdir dist/client
         cp -r client/assets dist/client/
