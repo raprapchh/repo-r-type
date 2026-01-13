@@ -106,4 +106,41 @@ sf::IntRect SFMLRenderer::calculate_texture_rect(const RenderData& data, uint32_
     return sf::IntRect(data.current_sprite * sprite_width, 0, sprite_width, sprite_height);
 }
 
+void SFMLRenderer::draw_parallax_background(const std::string& texture_name, float view_y) {
+    if (textures_.find(texture_name) == textures_.end()) {
+        return;
+    }
+
+    sf::Texture& texture = textures_.at(texture_name);
+    if (!texture.isRepeated()) {
+        texture.setRepeated(true);
+    }
+
+    sf::Vector2u size = window_.getSize();
+    float parallax_factor = 0.5f; // Adjust strictly for visual effect
+    int texture_y = static_cast<int>(view_y * parallax_factor);
+
+    // We want the background to cover the whole view
+    sf::IntRect texture_rect(0, -texture_y, size.x, size.y);
+
+    sf::Sprite sprite(texture, texture_rect);
+    sprite.setPosition(window_.mapPixelToCoords(sf::Vector2i(0, 0))); // Draw relative to view
+
+    // Since we are using a view, we need to make sure the sprite is drawn at the top-left of the view
+    // However, mapPixelToCoords(0,0) gives us exactly that.
+    // Ensure the size matches the window size in world coordinates if the view is zoomed,
+    // but here we assume 1:1 pixel mapping for background simplicity or adjust scale.
+    // For now, let's just draw it covering the current view area.
+
+    sf::View current_view = window_.getView();
+    sf::Vector2f view_center = current_view.getCenter();
+    sf::Vector2f view_size = current_view.getSize();
+
+    sprite.setPosition(view_center.x - view_size.x / 2.0f, view_center.y - view_size.y / 2.0f);
+    sprite.setTextureRect(sf::IntRect(0, -static_cast<int>(view_y * parallax_factor), static_cast<int>(view_size.x),
+                                      static_cast<int>(view_size.y)));
+
+    window_.draw(sprite);
+}
+
 } // namespace rtype::rendering
