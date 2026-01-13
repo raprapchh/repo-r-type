@@ -27,14 +27,24 @@ int main() {
     sf::View view(sf::FloatRect(0, 0, 800, 600));
 
     std::unordered_map<std::string, sf::Texture> textures;
-    sf::Texture player_texture;
-    if (!player_texture.loadFromFile("platformer/assets/player.png") &&
-        !player_texture.loadFromFile("assets/player.png") &&
-        !player_texture.loadFromFile("../platformer/assets/player.png") &&
-        !player_texture.loadFromFile("../assets/player.png")) {
-        std::cerr << "Failed to load player texture!" << std::endl;
+    sf::Texture player_left_texture;
+    if (!player_left_texture.loadFromFile("platformer/assets/player_left.png") &&
+        !player_left_texture.loadFromFile("assets/player_left.png") &&
+        !player_left_texture.loadFromFile("../platformer/assets/player_left.png") &&
+        !player_left_texture.loadFromFile("../assets/player_left.png")) {
+        std::cerr << "Failed to load player_left texture!" << std::endl;
     } else {
-        textures["player"] = player_texture;
+        textures["player_left"] = player_left_texture;
+    }
+
+    sf::Texture player_right_texture;
+    if (!player_right_texture.loadFromFile("platformer/assets/player_right.png") &&
+        !player_right_texture.loadFromFile("assets/player_right.png") &&
+        !player_right_texture.loadFromFile("../platformer/assets/player_right.png") &&
+        !player_right_texture.loadFromFile("../assets/player_right.png")) {
+        std::cerr << "Failed to load player_right texture!" << std::endl;
+    } else {
+        textures["player_right"] = player_right_texture;
     }
 
     auto renderer_impl = std::make_shared<rtype::rendering::SFMLRenderer>(window, textures);
@@ -47,7 +57,7 @@ int main() {
     registry.addComponent<rtype::ecs::component::Position>(player, 200.0f, 400.0f);
     registry.addComponent<rtype::ecs::component::Velocity>(player, 0.0f, 0.0f);
     registry.addComponent<rtype::ecs::component::HitBox>(player, 124.0f, 120.0f);
-    registry.addComponent<rtype::ecs::component::Drawable>(player, "player", 0, 0, 0, 0);
+    registry.addComponent<rtype::ecs::component::Drawable>(player, "player_left", 0, 0, 0, 0);
     registry.addComponent<rtype::ecs::component::Controllable>(player);
     registry.addComponent<rtype::ecs::component::Gravity>(player);
     registry.addComponent<rtype::ecs::component::Jump>(player);
@@ -133,10 +143,14 @@ int main() {
 
             auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(player);
             vel.vx = 0;
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
                 vel.vx = -400.0f;
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+                registry.getComponent<rtype::ecs::component::Drawable>(player).texture_name = "player_left";
+            }
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
                 vel.vx = 400.0f;
+                registry.getComponent<rtype::ecs::component::Drawable>(player).texture_name = "player_right";
+            }
 
             physics_system->update(registry, dt);
             movement_system->update(registry, dt);
