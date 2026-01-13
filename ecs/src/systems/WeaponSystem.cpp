@@ -224,7 +224,13 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
         bool is_player =
             (req.layer == component::CollisionLayer::PlayerProjectile || req.tag.find("shot") != std::string::npos);
         if (is_player) {
-            registry.addComponent<component::AudioEvent>(projectile, component::AudioEventType::PLAYER_SHOOT);
+            // Use missile sound for charged shots, regular shoot sound for normal shots
+            bool is_missile = (req.tag.find("charge") != std::string::npos);
+            if (is_missile) {
+                registry.addComponent<component::AudioEvent>(projectile, component::AudioEventType::PLAYER_MISSILE);
+            } else {
+                registry.addComponent<component::AudioEvent>(projectile, component::AudioEventType::PLAYER_SHOOT);
+            }
         } else {
             registry.addComponent<component::AudioEvent>(projectile, component::AudioEventType::ENEMY_SHOOT);
         }

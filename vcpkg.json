@@ -2,17 +2,5 @@
   "name": "rtype",
   "version-string": "1.0.0",
   "builtin-baseline": "2b6a882f61eaa764ec3cf816e2265fe804a44cd0",
-  "dependencies": [
-    "asio",
-    "sfml",
-    "entt",
-    "catch2",
-    "nlohmann-json"
-  ],
-  "overrides": [
-    {
-      "name": "sfml",
-      "version": "2.6.2"
-    }
-  ]
+  "dependencies": ["asio", "catch2", "nlohmann-json", "fmt"]
 }

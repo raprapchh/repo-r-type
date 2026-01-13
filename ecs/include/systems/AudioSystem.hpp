@@ -14,7 +14,9 @@ namespace rtype::ecs {
 class AudioSystem : public ISystem {
   public:
     AudioSystem();
-    ~AudioSystem() override = default;
+    ~AudioSystem() override;
+
+    void cleanup();
 
     void update(GameEngine::Registry& registry, double dt) override;
 
@@ -27,7 +29,10 @@ class AudioSystem : public ISystem {
 
     void initializeAudioAssets();
     void startBackgroundMusic();
+    void startLobbyMusic();
     void stopBackgroundMusic();
+    void switchToBossMusic();
+    void switchToGameplayMusic();
 
   private:
     std::unordered_map<std::string, sf::SoundBuffer> sound_buffers_;

@@ -49,31 +49,26 @@ endif()
 # Dependencies (vcpkg)
 # ─────────────────────────────
 find_package(asio CONFIG REQUIRED)
-find_package(EnTT CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Threads REQUIRED)
-
 find_package(fmt CONFIG REQUIRED)
-find_package(OpenAL CONFIG QUIET)
 
-message(STATUS "Searching for SFML...")
-# vcpkg's SFMLConfig expects components to be requested
-find_package(SFML CONFIG COMPONENTS graphics window system audio REQUIRED)
-
-# Robust target mapping for different SFML versions/distributions
-set(SFML_COMPONENTS Graphics Window System Audio)
-foreach(comp ${SFML_COMPONENTS})
-    string(TOLOWER ${comp} comp_lc)
-    if(NOT TARGET SFML::${comp})
-        if(TARGET SFML::${comp_lc})
-            message(STATUS "Mapping SFML::${comp_lc} to SFML::${comp}")
-            add_library(SFML::${comp} ALIAS SFML::${comp_lc})
-        elseif(TARGET sfml-${comp_lc})
-            message(STATUS "Mapping sfml-${comp_lc} to SFML::${comp}")
-            add_library(SFML::${comp} ALIAS sfml-${comp_lc})
-        endif()
-    endif()
-endforeach()
+# ─────────────────────────────
+# SFML 2.6.2 (via FetchContent - self-contained)
+# ─────────────────────────────
+include(FetchContent)
+FetchContent_Declare(
+    SFML
+    GIT_REPOSITORY https://github.com/SFML/SFML.git
+    GIT_TAG        2.6.2
+    GIT_SHALLOW    TRUE
+)
+set(SFML_BUILD_AUDIO TRUE CACHE BOOL "" FORCE)
+set(SFML_BUILD_GRAPHICS TRUE CACHE BOOL "" FORCE)
+set(SFML_BUILD_WINDOW TRUE CACHE BOOL "" FORCE)
+set(SFML_BUILD_NETWORK FALSE CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS FALSE CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(SFML)
 
 # Catch2
 find_package(Catch2 CONFIG QUIET)
@@ -93,12 +88,12 @@ file(GLOB_RECURSE ECS_SRC CONFIGURE_DEPENDS ecs/src/*.cpp)
 add_library(rtype_ecs ${ECS_SRC})
 target_include_directories(rtype_ecs PUBLIC ecs/include)
 target_link_libraries(rtype_ecs PUBLIC
-    SFML::Graphics
-    SFML::Window
-    SFML::System
-    SFML::Audio
-    EnTT::EnTT
+    sfml-graphics
+    sfml-window
+    sfml-system
+    sfml-audio
     nlohmann_json::nlohmann_json
+    fmt::fmt
 )
 
 # Shared
@@ -117,11 +112,10 @@ target_link_libraries(r-type_client PRIVATE
     rtype_shared
     asio::asio
     Threads::Threads
-    SFML::Graphics
-    SFML::Window
-    SFML::System
-    SFML::Audio
-    OpenAL::OpenAL
+    sfml-graphics
+    sfml-window
+    sfml-system
+    sfml-audio
     fmt::fmt
 )
 
@@ -134,13 +128,33 @@ target_include_directories(r-type_server PRIVATE server/include)
 target_link_libraries(r-type_server PRIVATE
     rtype_ecs
     rtype_shared
-    rtype_shared
     asio::asio
     Threads::Threads
-    OpenAL::OpenAL
     fmt::fmt
 )
 
+# 5. Platformer PoC
+add_executable(doodle_jump
+    platformer/main.cpp
+    client/src/SFMLRenderer.cpp
+    client/src/AccessibilityManager.cpp
+)
+target_include_directories(doodle_jump PRIVATE
+    ${CMAKE_SOURCE_DIR}/client/include
+    ${CMAKE_SOURCE_DIR}/ecs/include
+    ${CMAKE_SOURCE_DIR}/shared
+)
+target_link_libraries(doodle_jump PRIVATE
+    rtype_ecs
+    rtype_shared
+    sfml-graphics sfml-window sfml-system sfml-audio
+)
+
+if(UNIX)
+    target_link_libraries(r-type_server PRIVATE pthread)
+    target_link_libraries(r-type_client PRIVATE pthread)
+    target_link_libraries(doodle_jump PRIVATE pthread Threads::Threads fmt::fmt)
+endif()
 # Windows specifics
 if (WIN32)
     target_compile_definitions(r-type_client PRIVATE WIN32_LEAN_AND_MEAN)

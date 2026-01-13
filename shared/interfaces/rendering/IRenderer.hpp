@@ -33,6 +33,8 @@ class IRenderer {
     virtual bool is_open() const = 0;
 
     virtual bool get_texture_size(const std::string& texture_name, uint32_t& out_width, uint32_t& out_height) const = 0;
+
+    virtual void draw_parallax_background(const std::string& texture_name, float view_y) = 0;
 };
 
 } // namespace rtype::rendering
