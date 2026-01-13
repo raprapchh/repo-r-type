@@ -53,17 +53,14 @@ find_package(EnTT CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 
-message(STATUS "Searching for SFML...")
-# vcpkg's SFMLConfig expects components to be requested; call with components
-find_package(SFML CONFIG COMPONENTS graphics window system audio QUIET)
-if(NOT SFML_FOUND)
-    message(STATUS "SFML CONFIG not found or incomplete, falling back to non-CONFIG search...")
-    find_package(SFML COMPONENTS graphics window system audio REQUIRED)
-else()
-    message(STATUS "SFML CONFIG found version ${SFML_VERSION}")
-endif()
+find_package(fmt CONFIG REQUIRED)
+find_package(OpenAL CONFIG QUIET)
 
-# Robust target mapping
+message(STATUS "Searching for SFML...")
+# vcpkg's SFMLConfig expects components to be requested
+find_package(SFML CONFIG COMPONENTS graphics window system audio REQUIRED)
+
+# Robust target mapping for different SFML versions/distributions
 set(SFML_COMPONENTS Graphics Window System Audio)
 foreach(comp ${SFML_COMPONENTS})
     string(TOLOWER ${comp} comp_lc)
@@ -74,8 +71,6 @@ foreach(comp ${SFML_COMPONENTS})
         elseif(TARGET sfml-${comp_lc})
             message(STATUS "Mapping sfml-${comp_lc} to SFML::${comp}")
             add_library(SFML::${comp} ALIAS sfml-${comp_lc})
-        else()
-            message(WARNING "Could not find target for SFML ${comp}")
         endif()
     endif()
 endforeach()
@@ -107,8 +102,9 @@ target_link_libraries(rtype_ecs PUBLIC
 )
 
 # Shared
-add_library(rtype_shared INTERFACE)
-target_include_directories(rtype_shared INTERFACE shared)
+file(GLOB_RECURSE SHARED_SRC CONFIGURE_DEPENDS shared/*.cpp)
+add_library(rtype_shared STATIC ${SHARED_SRC})
+target_include_directories(rtype_shared PUBLIC shared)
 
 # ─────────────────────────────
 # Client executable
@@ -125,6 +121,8 @@ target_link_libraries(r-type_client PRIVATE
     SFML::Window
     SFML::System
     SFML::Audio
+    OpenAL::OpenAL
+    fmt::fmt
 )
 
 # ─────────────────────────────
@@ -139,6 +137,8 @@ target_link_libraries(r-type_server PRIVATE
     rtype_shared
     asio::asio
     Threads::Threads
+    OpenAL::OpenAL
+    fmt::fmt
 )
 
 # Windows specifics
