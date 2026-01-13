@@ -7,6 +7,11 @@ InstallDir "$PROGRAMFILES\R-TypeClone"
 InstallDirRegKey HKCU "Software\R-TypeClone" ""
 RequestExecutionLevel admin
 
+; Download URL must be provided at build time with makensis /DDOWNLOAD_URL="https://.../dist.zip"
+!ifndef DOWNLOAD_URL
+    !define DOWNLOAD_URL "https://github.com/OWNER/REPO/releases/download/latest/dist.zip"
+!endif
+
 !define MUI_ABORTWARNING
 !define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
 !define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
@@ -26,23 +31,37 @@ RequestExecutionLevel admin
 Section "Application" SEC01
     SetOutPath "$INSTDIR"
 
-    File "..\bin\windows\r-type_client.exe"
-    File "..\bin\windows\r-type_server.exe"
+        ; Web installer: download release archive and extract
+        CreateDirectory "$INSTDIR"
 
-    SetOutPath "$INSTDIR\client\assets"
-    File /r "..\client\assets\*.*"
+        ; Download dist.zip from the release URL into the installation folder
+        DetailPrint "Téléchargement des fichiers depuis: ${DOWNLOAD_URL}"
+        ; Retry loop: up to 3 attempts with 3s delay
+        StrCpy $R9 0
+    DownloadRetryLoop:
+        inetc::get /caption "Téléchargement des ressources" /popup "${DOWNLOAD_URL}" "${DOWNLOAD_URL}" "$INSTDIR\\dist.zip" /end
+        Pop $0
+        StrCmp $0 "OK" DownloadSucceeded
+        IntOp $R9 $R9 + 1
+        DetailPrint "Téléchargement échoué: $0 (tentative $R9/3)"
+        StrCmp $R9 "3" DownloadFailed
+        Sleep 3000
+        Goto DownloadRetryLoop
+    DownloadFailed:
+        MessageBox MB_OK|MB_ICONEXCLAMATION "Échec du téléchargement des ressources après 3 tentatives: $0"
+        Abort
+    DownloadSucceeded:
 
-    SetOutPath "$INSTDIR\client\fonts"
-    File /r "..\client\fonts\*.*"
+        ; Try to unzip using nsisunz plugin
+        DetailPrint "Extraction des fichiers..."
+        nsisunz::UnzipToLog "$INSTDIR\\dist.zip" "$INSTDIR"
+        Pop $0
+        StrCmp $0 "success" 0 +3
+            MessageBox MB_OK|MB_ICONEXCLAMATION "Échec de l'extraction: $0"
+            Abort
 
-    SetOutPath "$INSTDIR\client\sprites"
-    File /r "..\client\sprites\*.*"
-
-    SetOutPath "$INSTDIR\server\assets"
-    File /r "..\server\assets\*.*"
-
-    SetOutPath "$INSTDIR\config"
-    File /r "..\config\*.*"
+        ; Cleanup archive
+        Delete "$INSTDIR\\dist.zip"
 
     WriteUninstaller "$INSTDIR\Uninstall.exe"
 

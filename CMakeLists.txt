@@ -129,6 +129,8 @@ target_link_libraries(r-type_server PRIVATE
     rtype_ecs
     rtype_shared
     asio::asio
+    Threads::Threads
+    fmt::fmt
 )
 
 # 5. Platformer PoC
@@ -153,7 +155,6 @@ if(UNIX)
     target_link_libraries(r-type_client PRIVATE pthread)
     target_link_libraries(doodle_jump PRIVATE pthread Threads::Threads fmt::fmt)
 endif()
-
 # Windows specifics
 if (WIN32)
     target_compile_definitions(r-type_client PRIVATE WIN32_LEAN_AND_MEAN)
