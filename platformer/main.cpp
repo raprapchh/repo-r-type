@@ -27,14 +27,42 @@ int main() {
     sf::View view(sf::FloatRect(0, 0, 800, 600));
 
     std::unordered_map<std::string, sf::Texture> textures;
-    sf::Texture player_texture;
-    if (!player_texture.loadFromFile("platformer/assets/player.png") &&
-        !player_texture.loadFromFile("assets/player.png") &&
-        !player_texture.loadFromFile("../platformer/assets/player.png") &&
-        !player_texture.loadFromFile("../assets/player.png")) {
-        std::cerr << "Failed to load player texture!" << std::endl;
+    sf::Texture player_left_texture;
+    if (!player_left_texture.loadFromFile("platformer/assets/player_left.png") &&
+        !player_left_texture.loadFromFile("assets/player_left.png") &&
+        !player_left_texture.loadFromFile("../platformer/assets/player_left.png") &&
+        !player_left_texture.loadFromFile("../assets/player_left.png")) {
+        std::cerr << "Failed to load player_left texture!" << std::endl;
     } else {
-        textures["player"] = player_texture;
+        textures["player_left"] = player_left_texture;
+    }
+
+    sf::Texture player_right_texture;
+    if (!player_right_texture.loadFromFile("platformer/assets/player_right.png") &&
+        !player_right_texture.loadFromFile("assets/player_right.png") &&
+        !player_right_texture.loadFromFile("../platformer/assets/player_right.png") &&
+        !player_right_texture.loadFromFile("../assets/player_right.png")) {
+        std::cerr << "Failed to load player_right texture!" << std::endl;
+    } else {
+        textures["player_right"] = player_right_texture;
+    }
+
+    sf::Texture bck_texture;
+    if (!bck_texture.loadFromFile("platformer/assets/bck.png") && !bck_texture.loadFromFile("assets/bck.png") &&
+        !bck_texture.loadFromFile("../platformer/assets/bck.png") && !bck_texture.loadFromFile("../assets/bck.png")) {
+    } else {
+        bck_texture.setRepeated(true);
+        textures["bck"] = bck_texture;
+    }
+
+    sf::Texture green_platform_texture;
+    if (!green_platform_texture.loadFromFile("platformer/assets/green_platform.png") &&
+        !green_platform_texture.loadFromFile("assets/green_platform.png") &&
+        !green_platform_texture.loadFromFile("../platformer/assets/green_platform.png") &&
+        !green_platform_texture.loadFromFile("../assets/green_platform.png")) {
+        std::cerr << "Failed to load green_platform texture!" << std::endl;
+    } else {
+        textures["green_platform"] = green_platform_texture;
     }
 
     auto renderer_impl = std::make_shared<rtype::rendering::SFMLRenderer>(window, textures);
@@ -47,7 +75,7 @@ int main() {
     registry.addComponent<rtype::ecs::component::Position>(player, 200.0f, 400.0f);
     registry.addComponent<rtype::ecs::component::Velocity>(player, 0.0f, 0.0f);
     registry.addComponent<rtype::ecs::component::HitBox>(player, 124.0f, 120.0f);
-    registry.addComponent<rtype::ecs::component::Drawable>(player, "player", 0, 0, 0, 0);
+    registry.addComponent<rtype::ecs::component::Drawable>(player, "player_left", 0, 0, 0, 0);
     registry.addComponent<rtype::ecs::component::Controllable>(player);
     registry.addComponent<rtype::ecs::component::Gravity>(player);
     registry.addComponent<rtype::ecs::component::Jump>(player);
@@ -73,7 +101,7 @@ int main() {
         registry.addComponent<rtype::ecs::component::HitBox>(wall, config.width, config.height);
         registry.addComponent<rtype::ecs::component::Collidable>(wall, rtype::ecs::component::CollisionLayer::Obstacle);
         registry.addComponent<rtype::ecs::component::Drawable>(
-            wall, "__RECTANGLE__", 0, 0, static_cast<int>(config.width), static_cast<int>(config.height));
+            wall, "green_platform", 0, 0, static_cast<int>(config.width), static_cast<int>(config.height));
     }
 
     sf::Font font;
@@ -90,22 +118,38 @@ int main() {
     sf::FloatRect textRect = lose_text.getLocalBounds();
     lose_text.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
 
-    sf::Text title_text("Doodle Jump", font, 60);
-    title_text.setFillColor(sf::Color::Blue);
-    sf::FloatRect titleRect = title_text.getLocalBounds();
-    title_text.setOrigin(titleRect.left + titleRect.width / 2.0f, titleRect.top + titleRect.height / 2.0f);
-    title_text.setPosition(400, 200);
+    sf::Texture title_texture;
+    if (!title_texture.loadFromFile("platformer/assets/doodle-jump@2x.png") &&
+        !title_texture.loadFromFile("assets/doodle-jump@2x.png") &&
+        !title_texture.loadFromFile("../platformer/assets/doodle-jump@2x.png") &&
+        !title_texture.loadFromFile("../assets/doodle-jump@2x.png")) {
+        std::cerr << "Failed to load title texture!" << std::endl;
+    }
 
-    sf::RectangleShape play_button(sf::Vector2f(200, 60));
-    play_button.setFillColor(sf::Color::Green);
-    play_button.setOrigin(100, 30);
-    play_button.setPosition(400, 400);
+    sf::Sprite title_sprite(title_texture);
+    sf::FloatRect titleRect = title_sprite.getLocalBounds();
+    title_sprite.setOrigin(titleRect.width / 2.0f, titleRect.height / 2.0f);
+    title_sprite.setPosition(400, 200);
 
-    sf::Text play_text("PLAY", font, 30);
-    play_text.setFillColor(sf::Color::White);
-    sf::FloatRect playRect = play_text.getLocalBounds();
-    play_text.setOrigin(playRect.left + playRect.width / 2.0f, playRect.top + playRect.height / 2.0f);
-    play_text.setPosition(400, 400);
+    sf::Texture play_texture;
+    if (!play_texture.loadFromFile("platformer/assets/play@2x.png") &&
+        !play_texture.loadFromFile("assets/play@2x.png") &&
+        !play_texture.loadFromFile("../platformer/assets/play@2x.png") &&
+        !play_texture.loadFromFile("../assets/play@2x.png")) {
+        std::cerr << "Failed to load play texture!" << std::endl;
+    }
+    sf::Texture play_on_texture;
+    if (!play_on_texture.loadFromFile("platformer/assets/play-on@2x.png") &&
+        !play_on_texture.loadFromFile("assets/play-on@2x.png") &&
+        !play_on_texture.loadFromFile("../platformer/assets/play-on@2x.png") &&
+        !play_on_texture.loadFromFile("../assets/play-on@2x.png")) {
+        std::cerr << "Failed to load play-on texture!" << std::endl;
+    }
+
+    sf::Sprite play_sprite(play_texture);
+    sf::FloatRect playRect = play_sprite.getLocalBounds();
+    play_sprite.setOrigin(playRect.width / 2.0f, playRect.height / 2.0f);
+    play_sprite.setPosition(400, 400);
 
     bool in_menu = true;
     bool game_over = false;
@@ -120,11 +164,21 @@ int main() {
                 if (event.mouseButton.button == sf::Mouse::Left) {
                     sf::Vector2i mousePos = sf::Mouse::getPosition(window);
                     sf::Vector2f worldPos = window.mapPixelToCoords(mousePos);
-                    if (play_button.getGlobalBounds().contains(worldPos)) {
+                    if (play_sprite.getGlobalBounds().contains(worldPos)) {
                         in_menu = false;
                         clock.restart();
                     }
                 }
+            }
+        }
+
+        if (in_menu) {
+            sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+            sf::Vector2f worldPos = window.mapPixelToCoords(mousePos);
+            if (play_sprite.getGlobalBounds().contains(worldPos)) {
+                play_sprite.setTexture(play_on_texture);
+            } else {
+                play_sprite.setTexture(play_texture);
             }
         }
 
@@ -133,10 +187,14 @@ int main() {
 
             auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(player);
             vel.vx = 0;
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
                 vel.vx = -400.0f;
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+                registry.getComponent<rtype::ecs::component::Drawable>(player).texture_name = "player_left";
+            }
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
                 vel.vx = 400.0f;
+                registry.getComponent<rtype::ecs::component::Drawable>(player).texture_name = "player_right";
+            }
 
             physics_system->update(registry, dt);
             movement_system->update(registry, dt);
@@ -161,11 +219,11 @@ int main() {
         }
 
         renderer_impl->clear();
+        renderer_impl->draw_parallax_background("bck", view.getCenter().y);
         if (in_menu) {
             window.setView(window.getDefaultView());
-            window.draw(title_text);
-            window.draw(play_button);
-            window.draw(play_text);
+            window.draw(title_sprite);
+            window.draw(play_sprite);
         } else if (!game_over) {
             render_system->update(registry, 0);
         } else {
