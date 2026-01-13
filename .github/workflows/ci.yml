@@ -108,7 +108,9 @@ jobs:
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: '594ad8871e1e8e45f8e626c015fd611163430207'
+          # Align vcpkg checkout with the project's vcpkg baseline to ensure
+          # portfiles and patches match the manifest. See vcpkg-configuration.json
+          vcpkgGitCommitId: '2b6a882f61eaa764ec3cf816e2265fe804a44cd0'
 
       - name: Configure
         run: |
