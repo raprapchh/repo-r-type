@@ -3,7 +3,7 @@
 namespace rtype::ecs::component {
 
 struct Jump {
-    float strength = -400.0f;
+    float strength = -600.0f;
     bool can_jump = false;
 };
 
