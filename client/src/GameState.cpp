@@ -29,6 +29,10 @@
 #include "../../ecs/include/components/TextDrawable.hpp"
 #include "../../ecs/include/components/UITag.hpp"
 #include "../../ecs/include/components/FpsCounter.hpp"
+#include "../../ecs/include/components/PingStats.hpp"
+#include "../../ecs/include/components/CpuStats.hpp"
+#include "../../ecs/include/systems/PingSystem.hpp"
+#include "../../ecs/include/systems/CpuMetricSystem.hpp"
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -45,6 +49,10 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
     score_saved_ = false;
     initial_player_count_ = 0;
     max_score_reached_ = 0;
+    score_saved_ = false;
+    initial_player_count_ = 0;
+    max_score_reached_ = 0;
+
     if (multiplayer_) {
         if (!client.is_connected()) {
             client.connect();
@@ -77,6 +85,7 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
     GameEngine::Registry& registry = client_->get_registry();
+
     std::mutex& registry_mutex = client_->get_registry_mutex();
     std::lock_guard<std::mutex> lock(registry_mutex);
     auto view = registry.view<rtype::ecs::component::Tag>();
@@ -93,6 +102,7 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
     if (multiplayer_) {
         sf::Vector2u windowSize = renderer.get_window_size();
         createFpsCounter(registry, static_cast<float>(windowSize.x));
+        createDevMetrics(registry, static_cast<float>(windowSize.x));
     }
 
     client.get_audio_system().startBackgroundMusic();
@@ -431,6 +441,21 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
                 }
                 shoot_requested_ = false;
             }
+
+            // Send ping if requested by PingSystem
+            if (multiplayer_ && client.is_connected()) {
+                auto ping_view = registry.view<rtype::ecs::component::PingStats>();
+                for (auto entity : ping_view) {
+                    auto& stats = registry.getComponent<rtype::ecs::component::PingStats>(entity);
+                    if (stats.pingRequested) {
+                        auto now = std::chrono::steady_clock::now();
+                        uint64_t timestamp =
+                            std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
+                        client.send_ping(timestamp);
+                        stats.pingRequested = false;
+                    }
+                }
+            }
         } else {
             auto controllable_view =
                 registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
@@ -491,7 +516,14 @@ void GameState::render(Renderer& renderer, Client& client) {
         rtype::ecs::FpsSystem fps_system;
         fps_system.update(registry, static_cast<double>(fps_dt));
 
-        // Render UI overlay (FPS counter)
+        // Update Dev Metrics with REAL delta time
+        rtype::ecs::PingSystem ping_system;
+        ping_system.update(registry, static_cast<double>(fps_dt));
+
+        rtype::ecs::CpuMetricSystem cpu_metric_system;
+        cpu_metric_system.update(registry, static_cast<double>(fps_dt));
+
+        // Render UI overlay (FPS counter, Ping, CPU)
         rtype::ecs::UIRenderSystem ui_render_system(renderer.get_window());
         ui_render_system.update(registry, static_cast<double>(fps_dt));
     }
@@ -680,9 +712,7 @@ void GameState::createFpsCounter(GameEngine::Registry& registry, float windowWid
 
     fps_counter_entity_ = registry.createEntity();
 
-    // Position: Top-Right with padding
-    // Approximate width of "FPS: 60" is about 120 pixels with size 20 font
-    float x = windowWidth - 140.0f;
+    float x = windowWidth - 230.0f;
     float y = 10.0f;
 
     registry.addComponent<rtype::ecs::component::Position>(fps_counter_entity_, x, y);
@@ -694,6 +724,29 @@ void GameState::createFpsCounter(GameEngine::Registry& registry, float windowWid
     sf::Color textColor = sf::Color::Green;
     registry.addComponent<rtype::ecs::component::TextDrawable>(fps_counter_entity_, dev_font_, "FPS: --", 20,
                                                                textColor);
+}
+
+void GameState::createDevMetrics(GameEngine::Registry& registry, float windowWidth) {
+    // Ping Entity
+    auto ping_entity = registry.createEntity();
+    float x = windowWidth - 230.0f;
+    float y_ping = 40.0f;
+
+    registry.addComponent<rtype::ecs::component::Position>(ping_entity, x, y_ping);
+    registry.addComponent<rtype::ecs::component::UITag>(ping_entity);
+    registry.addComponent<rtype::ecs::component::PingStats>(ping_entity);
+    registry.addComponent<rtype::ecs::component::TextDrawable>(ping_entity, dev_font_, "PING: -- ms", 20,
+                                                               sf::Color::Green);
+
+    // CPU Entity
+    auto cpu_entity = registry.createEntity();
+    float y_cpu = 70.0f;
+
+    registry.addComponent<rtype::ecs::component::Position>(cpu_entity, x, y_cpu);
+    registry.addComponent<rtype::ecs::component::UITag>(cpu_entity);
+    registry.addComponent<rtype::ecs::component::CpuStats>(cpu_entity);
+    registry.addComponent<rtype::ecs::component::TextDrawable>(cpu_entity, dev_font_, "CPU: -- ms", 20,
+                                                               sf::Color::Green);
 }
 
 } // namespace rtype::client
