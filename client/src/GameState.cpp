@@ -538,7 +538,8 @@ void GameState::render(Renderer& renderer, Client& client) {
     // Stage cleared victory screen
     renderer.draw_stage_cleared();
 
-    if (game_over_) {
+    // Only show game over if victory screen is NOT displayed
+    if (game_over_ && !renderer.is_stage_cleared()) {
         renderer.draw_game_over(all_players_dead_);
     }
 

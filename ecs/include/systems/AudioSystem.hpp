@@ -14,7 +14,9 @@ namespace rtype::ecs {
 class AudioSystem : public ISystem {
   public:
     AudioSystem();
-    ~AudioSystem() override = default;
+    ~AudioSystem() override;
+
+    void cleanup();
 
     void update(GameEngine::Registry& registry, double dt) override;
 

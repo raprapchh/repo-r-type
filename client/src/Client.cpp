@@ -58,6 +58,7 @@ void Client::set_player_join_callback(std::function<void(uint32_t, const std::st
 }
 
 Client::~Client() {
+    audio_system_.cleanup();
     disconnect();
 }
 
