@@ -203,6 +203,13 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                     renderer.set_charge_percentage(0.0f);
                     if (client_) {
                         client_->send_shoot(0, 0, chargeLevel);
+
+                        // Play shoot sound locally
+                        if (chargeLevel > 0) {
+                            client_->get_audio_system().playSound("player_missile");
+                        } else {
+                            client_->get_audio_system().playSound("player_shoot");
+                        }
                     }
                 }
             } else if (event.key.code == sf::Keyboard::F3) {
