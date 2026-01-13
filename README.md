@@ -125,7 +125,7 @@ The codebase is modularized for clarity and scalability:
 - **`client/`**: manages rendering (SFML), input handling, and interpolation.
 - **`ecs/`**: The core Entity Component System library (Entities, Components, Systems).
 - **`shared/`**: Common resources, network protocols, and data structures.
-- **`config/`**: JSON/YAML configuration files for game balancing.
+- **`config/`**: JSON configuration files for game balancing.
 - **`documentation/`**: Developer guides and technical documentation.
 
 <br>
