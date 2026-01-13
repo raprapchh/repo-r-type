@@ -27,6 +27,7 @@ class AudioSystem : public ISystem {
 
     void initializeAudioAssets();
     void startBackgroundMusic();
+    void startLobbyMusic();
     void stopBackgroundMusic();
     void switchToBossMusic();
     void switchToGameplayMusic();

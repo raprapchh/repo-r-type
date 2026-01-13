@@ -172,7 +172,8 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
 
                     // Trigger boss music and roar
                     auto musicEvent = registry.createEntity();
-                    registry.addComponent<component::AudioEvent>(musicEvent, component::AudioEventType::BOSS_MUSIC_START);
+                    registry.addComponent<component::AudioEvent>(musicEvent,
+                                                                 component::AudioEventType::BOSS_MUSIC_START);
                     auto roarEvent = registry.createEntity();
                     registry.addComponent<component::AudioEvent>(roarEvent, component::AudioEventType::BOSS_ROAR);
                 } else if (tag == "Boss_2") {
@@ -189,7 +190,8 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
 
                     // Trigger boss music and roar
                     auto musicEvent = registry.createEntity();
-                    registry.addComponent<component::AudioEvent>(musicEvent, component::AudioEventType::BOSS_MUSIC_START);
+                    registry.addComponent<component::AudioEvent>(musicEvent,
+                                                                 component::AudioEventType::BOSS_MUSIC_START);
                     auto roarEvent = registry.createEntity();
                     registry.addComponent<component::AudioEvent>(roarEvent, component::AudioEventType::BOSS_ROAR);
                 } else if (tag == "Monster_Wave_2_Left" || tag == "Monster_Wave_2_Right") {
