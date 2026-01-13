@@ -42,9 +42,14 @@ void AudioSystem::update(GameEngine::Registry& registry, double) {
 
             auto& audio_event = registry.getComponent<component::AudioEvent>(entity);
 
-            std::string sound_id = mapEventToSoundId(audio_event.type);
-            if (!sound_id.empty()) {
-                playSound(sound_id);
+            // Handle special music events
+            if (audio_event.type == component::AudioEventType::BOSS_MUSIC_START) {
+                switchToBossMusic();
+            } else {
+                std::string sound_id = mapEventToSoundId(audio_event.type);
+                if (!sound_id.empty()) {
+                    playSound(sound_id);
+                }
             }
 
             registry.removeComponent<component::AudioEvent>(entity);
@@ -89,6 +94,7 @@ void AudioSystem::playSound(const std::string& id) {
         active_sounds_.emplace_back();
         sf::Sound& sound = active_sounds_.back();
         sound.setBuffer(it->second);
+        sound.setVolume(100.0f);
         sound.play();
     } else {
         std::cerr << "Sound ID not found: " << id << std::endl;
@@ -100,6 +106,7 @@ void AudioSystem::playMusic(const std::string& id, bool loop) {
     if (it != music_tracks_.end()) {
         if (it->second->getStatus() != sf::Music::Playing) {
             it->second->setLoop(loop);
+            it->second->setVolume(100.0f);
             it->second->play();
         }
     } else {
@@ -118,6 +125,8 @@ std::string AudioSystem::mapEventToSoundId(component::AudioEventType type) {
     switch (type) {
     case component::AudioEventType::PLAYER_SHOOT:
         return "player_shoot";
+    case component::AudioEventType::PLAYER_MISSILE:
+        return "player_missile";
     case component::AudioEventType::ENEMY_SHOOT:
         return "enemy_shoot";
     case component::AudioEventType::EXPLOSION:
@@ -130,23 +139,31 @@ std::string AudioSystem::mapEventToSoundId(component::AudioEventType type) {
         return "enemy_death";
     case component::AudioEventType::PLAYER_DAMAGE:
         return "player_damage";
+    case component::AudioEventType::BOSS_ROAR:
+        return "boss_roar";
+    case component::AudioEventType::BOSS_MUSIC_START:
+        return ""; // Handled separately in update()
     default:
         return "";
     }
 }
 
 void AudioSystem::initializeAudioAssets() {
-    // Load sound effects (using available audio files)
-    loadSoundBuffer("player_shoot", "client/assets/audio/shoot.wav");    // Player shooting
-    loadSoundBuffer("enemy_shoot", "client/assets/audio/shoot.wav");     // Enemy shooting
-    loadSoundBuffer("explosion", "client/assets/audio/explosion.wav");   // Explosion sound
-    loadSoundBuffer("hit", "client/assets/audio/impact.wav");            // Impact/hit sound
-    loadSoundBuffer("powerup", "client/assets/audio/power-up.wav");      // Power-up collection
-    loadSoundBuffer("enemy_death", "client/assets/audio/explosion.wav"); // Reuse explosion for death
-    loadSoundBuffer("player_damage", "client/assets/audio/impact.wav");  // Player damage sound
+    // Load sound effects
+    loadSoundBuffer("player_shoot", "client/assets/audio/impact.wav");       // Player shooting (shoot.wav is empty)
+    loadSoundBuffer("player_missile", "client/assets/audio/game_shoot.wav"); // Player missile (charged shot)
+    loadSoundBuffer("enemy_shoot", "client/assets/audio/impact.wav");        // Enemy shooting (shoot.wav is empty)
+    loadSoundBuffer("explosion", "client/assets/audio/explosion.wav");       // Explosion sound
+    loadSoundBuffer("hit", "client/assets/audio/impact.wav");                // Impact/hit sound
+    loadSoundBuffer("powerup", "client/assets/audio/power-up.wav");          // Power-up collection
+    loadSoundBuffer("enemy_death", "client/assets/audio/explosion.wav");     // Reuse explosion for death
+    loadSoundBuffer("player_damage", "client/assets/audio/impact.wav");      // Player damage sound
+    loadSoundBuffer("boss_roar", "client/assets/audio/boss_apparition.wav"); // Boss roar/apparition
 
-    // Load background music (WAV format - will work but OGG recommended for size)
-    loadMusic("gameplay", "client/assets/audio/music.wav");
+    // Load background music
+    loadMusic("lobby_music", "client/assets/audio/lobby_music.mp3"); // Lobby background music
+    loadMusic("gameplay", "client/assets/audio/music.wav");          // Gameplay background music
+    loadMusic("boss_music", "client/assets/audio/music_boss.wav");   // Boss battle music
 
     std::cout << "AudioSystem: Assets initialized" << std::endl;
 }
@@ -158,11 +175,41 @@ void AudioSystem::startBackgroundMusic() {
     }
 }
 
+void AudioSystem::startLobbyMusic() {
+    // Stop current music if any
+    if (!current_music_id_.empty()) {
+        stopMusic(current_music_id_);
+    }
+    // Start lobby music
+    playMusic("lobby_music", true);
+    current_music_id_ = "lobby_music";
+}
+
 void AudioSystem::stopBackgroundMusic() {
     if (!current_music_id_.empty()) {
         stopMusic(current_music_id_);
         current_music_id_.clear();
     }
+}
+
+void AudioSystem::switchToBossMusic() {
+    // Stop current music
+    if (!current_music_id_.empty()) {
+        stopMusic(current_music_id_);
+    }
+    // Start boss music (will use gameplay music for now, add boss music file later)
+    playMusic("boss_music", true);
+    current_music_id_ = "boss_music";
+}
+
+void AudioSystem::switchToGameplayMusic() {
+    // Stop current music
+    if (!current_music_id_.empty()) {
+        stopMusic(current_music_id_);
+    }
+    // Start gameplay music
+    playMusic("gameplay", true);
+    current_music_id_ = "gameplay";
 }
 
 } // namespace rtype::ecs

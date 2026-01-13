@@ -24,6 +24,8 @@ class SFMLRenderer : public IRenderer {
 
     bool get_texture_size(const std::string& texture_name, uint32_t& out_width, uint32_t& out_height) const override;
 
+    void draw_parallax_background(const std::string& texture_name, float view_y) override;
+
   private:
     sf::IntRect calculate_texture_rect(const RenderData& data, uint32_t texture_width, uint32_t texture_height) const;
 
