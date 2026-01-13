@@ -1,16 +1,16 @@
-#include "../../include/systems/BoundarySystem.hpp"
-#include "../../include/components/Position.hpp"
-#include "../../include/components/HitBox.hpp"
-#include "../../include/components/Health.hpp"
-#include "../../include/components/Weapon.hpp"
-#include "../../include/components/Projectile.hpp"
-#include "../../include/components/MapBounds.hpp"
-#include "../../../shared/GameConstants.hpp"
-#include "../../include/components/Tag.hpp"
-#include "../../include/Registry.hpp"
+#include "systems/BoundarySystem.hpp"
+#include "components/Position.hpp"
+#include "components/HitBox.hpp"
+#include "components/Health.hpp"
+#include "components/Weapon.hpp"
+#include "components/Projectile.hpp"
+#include "components/MapBounds.hpp"
+#include "GameConstants.hpp"
+#include "components/Tag.hpp"
+#include "Registry.hpp"
 #include <vector>
 
-#include "../../shared/utils/GameConfig.hpp"
+#include "utils/GameConfig.hpp"
 
 namespace rtype::ecs {
 

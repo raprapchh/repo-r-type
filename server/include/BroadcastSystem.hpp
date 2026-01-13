@@ -2,10 +2,10 @@
 
 #include "ClientInfo.hpp"
 #include "UdpServer.hpp"
-#include "../../ecs/include/Registry.hpp"
-#include "../../shared/interfaces/network/IProtocolAdapter.hpp"
-#include "../../shared/interfaces/network/IMessageSerializer.hpp"
-#include "../../shared/net/Packet.hpp"
+#include "Registry.hpp"
+#include "interfaces/network/IProtocolAdapter.hpp"
+#include "interfaces/network/IMessageSerializer.hpp"
+#include "net/Packet.hpp"
 #include <map>
 #include <string>
 #include <vector>

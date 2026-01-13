@@ -1,5 +1,5 @@
-#include "../../include/systems/ProjectileSystem.hpp"
-#include "../../include/components/Projectile.hpp"
+#include "systems/ProjectileSystem.hpp"
+#include "components/Projectile.hpp"
 #include <vector>
 
 namespace rtype::ecs {

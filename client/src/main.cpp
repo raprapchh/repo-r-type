@@ -2,7 +2,7 @@
 #include "Renderer.hpp"
 #include "States.hpp"
 #include "MenuState.hpp"
-#include "../../shared/GameConstants.hpp"
+#include "GameConstants.hpp"
 #include <iostream>
 #include <chrono>
 #include <thread>

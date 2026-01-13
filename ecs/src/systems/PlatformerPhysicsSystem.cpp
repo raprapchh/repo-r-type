@@ -1,11 +1,11 @@
-#include "../../include/systems/PlatformerPhysicsSystem.hpp"
+#include "systems/PlatformerPhysicsSystem.hpp"
 
-#include "../../include/components/Position.hpp"
-#include "../../include/components/Velocity.hpp"
-#include "../../include/components/Gravity.hpp"
-#include "../../include/components/Jump.hpp"
-#include "../../include/components/HitBox.hpp"
-#include "../../include/components/CollisionLayer.hpp"
+#include "components/Position.hpp"
+#include "components/Velocity.hpp"
+#include "components/Gravity.hpp"
+#include "components/Jump.hpp"
+#include "components/HitBox.hpp"
+#include "components/CollisionLayer.hpp"
 
 namespace rtype::ecs {
 

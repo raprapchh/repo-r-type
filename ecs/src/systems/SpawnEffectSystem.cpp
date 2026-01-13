@@ -1,6 +1,6 @@
-#include "../../include/systems/SpawnEffectSystem.hpp"
-#include "../../include/components/SpawnEffect.hpp"
-#include "../../include/components/Drawable.hpp"
+#include "systems/SpawnEffectSystem.hpp"
+#include "components/SpawnEffect.hpp"
+#include "components/Drawable.hpp"
 #include <vector>
 
 namespace rtype::ecs {

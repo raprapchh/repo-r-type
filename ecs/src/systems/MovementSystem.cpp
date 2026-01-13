@@ -1,7 +1,7 @@
-#include "../../include/systems/MovementSystem.hpp"
-#include "../../include/components/Position.hpp"
-#include "../../include/components/Velocity.hpp"
-#include "../../include/components/MovementPattern.hpp"
+#include "systems/MovementSystem.hpp"
+#include "components/Position.hpp"
+#include "components/Velocity.hpp"
+#include "components/MovementPattern.hpp"
 #include <cmath>
 
 namespace rtype::ecs {

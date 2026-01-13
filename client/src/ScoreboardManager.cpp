@@ -1,4 +1,4 @@
-#include "../include/ScoreboardManager.hpp"
+#include "ScoreboardManager.hpp"
 #include <fstream>
 #include <iostream>
 #include <chrono>

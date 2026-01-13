@@ -1,7 +1,7 @@
-#include "../../include/systems/FpsSystem.hpp"
-#include "../../include/components/FpsCounter.hpp"
-#include "../../include/components/TextDrawable.hpp"
-#include "../../include/components/UITag.hpp"
+#include "systems/FpsSystem.hpp"
+#include "components/FpsCounter.hpp"
+#include "components/TextDrawable.hpp"
+#include "components/UITag.hpp"
 #include <sstream>
 #include <iomanip>
 
