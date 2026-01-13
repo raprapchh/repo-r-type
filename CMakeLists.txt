@@ -85,17 +85,17 @@ target_link_libraries(r-type_server PRIVATE
 )
 
 # 5. Platformer PoC
-add_executable(platformer_game
+add_executable(doodle_jump
     platformer/main.cpp
     client/src/SFMLRenderer.cpp
     client/src/AccessibilityManager.cpp
 )
-target_include_directories(platformer_game PRIVATE
+target_include_directories(doodle_jump PRIVATE
     ${CMAKE_SOURCE_DIR}/client/include
     ${CMAKE_SOURCE_DIR}/ecs/include
     ${CMAKE_SOURCE_DIR}/shared
 )
-target_link_libraries(platformer_game PRIVATE
+target_link_libraries(doodle_jump PRIVATE
     rtype_ecs
     rtype_shared
     sfml-graphics sfml-window sfml-system sfml-audio
@@ -104,5 +104,5 @@ target_link_libraries(platformer_game PRIVATE
 if(UNIX)
     target_link_libraries(r-type_server PRIVATE pthread)
     target_link_libraries(r-type_client PRIVATE pthread)
-    target_link_libraries(platformer_game PRIVATE pthread)
+    target_link_libraries(doodle_jump PRIVATE pthread)
 endif()
