@@ -1,7 +1,7 @@
-#include "../../include/systems/CpuMetricSystem.hpp"
-#include "../../include/components/CpuStats.hpp"
-#include "../../include/components/TextDrawable.hpp"
-#include "../../include/components/UITag.hpp"
+#include "systems/CpuMetricSystem.hpp"
+#include "components/CpuStats.hpp"
+#include "components/TextDrawable.hpp"
+#include "components/UITag.hpp"
 #include <iomanip>
 #include <sstream>
 

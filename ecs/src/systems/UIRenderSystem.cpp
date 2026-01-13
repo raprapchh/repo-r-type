@@ -1,7 +1,7 @@
-#include "../../include/systems/UIRenderSystem.hpp"
-#include "../../include/components/TextDrawable.hpp"
-#include "../../include/components/UITag.hpp"
-#include "../../include/components/Position.hpp"
+#include "systems/UIRenderSystem.hpp"
+#include "components/TextDrawable.hpp"
+#include "components/UITag.hpp"
+#include "components/Position.hpp"
 
 namespace rtype::ecs {
 

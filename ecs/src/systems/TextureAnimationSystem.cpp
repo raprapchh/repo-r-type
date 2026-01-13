@@ -1,6 +1,6 @@
-#include "../../include/systems/TextureAnimationSystem.hpp"
-#include "../../include/components/TextureAnimation.hpp"
-#include "../../include/components/Drawable.hpp"
+#include "systems/TextureAnimationSystem.hpp"
+#include "components/TextureAnimation.hpp"
+#include "components/Drawable.hpp"
 #include <iostream>
 
 namespace rtype::ecs {

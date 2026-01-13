@@ -6,7 +6,7 @@
 #include "components/Velocity.hpp"
 #include "components/HitBox.hpp"
 #include "components/CollisionLayer.hpp"
-#include "../shared/GameConstants.hpp"
+#include "GameConstants.hpp"
 
 TEST_CASE("Player vs Obstacle Stop Test", "[collision]") {
     GameEngine::Registry registry;

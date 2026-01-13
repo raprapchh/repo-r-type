@@ -1,7 +1,7 @@
-#include "../../include/systems/InputSystem.hpp"
-#include "../../include/components/Controllable.hpp"
-#include "../../include/components/Velocity.hpp"
-#include "../../include/components/Tag.hpp"
+#include "systems/InputSystem.hpp"
+#include "components/Controllable.hpp"
+#include "components/Velocity.hpp"
+#include "components/Tag.hpp"
 
 namespace rtype::ecs {
 

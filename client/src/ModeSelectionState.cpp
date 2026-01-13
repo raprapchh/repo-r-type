@@ -1,7 +1,7 @@
-#include "../include/ModeSelectionState.hpp"
-#include "../include/GameState.hpp"
-#include "../include/LobbyState.hpp"
-#include "../include/MenuState.hpp"
+#include "ModeSelectionState.hpp"
+#include "GameState.hpp"
+#include "LobbyState.hpp"
+#include "MenuState.hpp"
 #include <iostream>
 #include <memory>
 

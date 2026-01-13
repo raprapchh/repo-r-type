@@ -1,5 +1,5 @@
-#include "../include/ScoreboardState.hpp"
-#include "../include/MenuState.hpp"
+#include "ScoreboardState.hpp"
+#include "MenuState.hpp"
 #include <iostream>
 #include <sstream>
 #include <iomanip>

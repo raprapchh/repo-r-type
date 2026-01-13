@@ -1,4 +1,4 @@
-#include "../include/States.hpp"
+#include "States.hpp"
 
 namespace rtype::client {
 

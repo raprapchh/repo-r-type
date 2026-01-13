@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "../../ecs/include/Registry.hpp"
+#include "Registry.hpp"
 
 namespace rtype::server {
 

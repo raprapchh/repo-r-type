@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <vector>
 #include "SparseArray.hpp"
-#include "../../shared/interfaces/ecs/IEntityRegistry.hpp"
+#include "interfaces/ecs/IEntityRegistry.hpp"
 
 namespace GameEngine {
 

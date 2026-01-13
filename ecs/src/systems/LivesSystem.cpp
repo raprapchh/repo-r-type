@@ -1,11 +1,11 @@
-#include "../../include/systems/LivesSystem.hpp"
-#include "../../include/components/Health.hpp"
-#include "../../include/components/Lives.hpp"
-#include "../../include/components/Position.hpp"
-#include "../../include/components/Velocity.hpp"
-#include "../../include/components/CollisionLayer.hpp"
-#include "../../include/components/InvincibilityTimer.hpp"
-#include "../../shared/utils/Logger.hpp"
+#include "systems/LivesSystem.hpp"
+#include "components/Health.hpp"
+#include "components/Lives.hpp"
+#include "components/Position.hpp"
+#include "components/Velocity.hpp"
+#include "components/CollisionLayer.hpp"
+#include "components/InvincibilityTimer.hpp"
+#include "utils/Logger.hpp"
 #include <vector>
 
 namespace rtype::ecs {

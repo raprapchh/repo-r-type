@@ -1,5 +1,5 @@
-#include "../include/MenuState.hpp"
-#include "../include/ModeSelectionState.hpp"
+#include "MenuState.hpp"
+#include "ModeSelectionState.hpp"
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
