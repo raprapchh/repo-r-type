@@ -47,6 +47,24 @@ int main() {
         textures["player_right"] = player_right_texture;
     }
 
+    sf::Texture bck_texture;
+    if (!bck_texture.loadFromFile("platformer/assets/bck.png") && !bck_texture.loadFromFile("assets/bck.png") &&
+        !bck_texture.loadFromFile("../platformer/assets/bck.png") && !bck_texture.loadFromFile("../assets/bck.png")) {
+    } else {
+        bck_texture.setRepeated(true);
+        textures["bck"] = bck_texture;
+    }
+
+    sf::Texture green_platform_texture;
+    if (!green_platform_texture.loadFromFile("platformer/assets/green_platform.png") &&
+        !green_platform_texture.loadFromFile("assets/green_platform.png") &&
+        !green_platform_texture.loadFromFile("../platformer/assets/green_platform.png") &&
+        !green_platform_texture.loadFromFile("../assets/green_platform.png")) {
+        std::cerr << "Failed to load green_platform texture!" << std::endl;
+    } else {
+        textures["green_platform"] = green_platform_texture;
+    }
+
     auto renderer_impl = std::make_shared<rtype::rendering::SFMLRenderer>(window, textures);
     auto render_system = std::make_shared<rtype::ecs::RenderSystem>(renderer_impl, nullptr);
 
@@ -83,7 +101,7 @@ int main() {
         registry.addComponent<rtype::ecs::component::HitBox>(wall, config.width, config.height);
         registry.addComponent<rtype::ecs::component::Collidable>(wall, rtype::ecs::component::CollisionLayer::Obstacle);
         registry.addComponent<rtype::ecs::component::Drawable>(
-            wall, "__RECTANGLE__", 0, 0, static_cast<int>(config.width), static_cast<int>(config.height));
+            wall, "green_platform", 0, 0, static_cast<int>(config.width), static_cast<int>(config.height));
     }
 
     sf::Font font;
@@ -175,6 +193,7 @@ int main() {
         }
 
         renderer_impl->clear();
+        renderer_impl->draw_parallax_background("bck", view.getCenter().y);
         if (in_menu) {
             window.setView(window.getDefaultView());
             window.draw(title_text);
