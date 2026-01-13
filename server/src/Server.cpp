@@ -130,6 +130,13 @@ GameSession* Server::get_or_create_session(uint32_t session_id) {
         return it->second.get();
 
     auto session = std::make_unique<GameSession>(session_id, *udp_server_, *protocol_adapter_, *message_serializer_);
+
+    auto rules_it = session_rules_.find(session_id);
+    if (rules_it != session_rules_.end()) {
+        session->set_game_rules(rules_it->second);
+        Logger::instance().info("Applied game rules to session " + std::to_string(session_id));
+    }
+
     session->set_client_unmap_callback([this](const std::string& key) { unmap_client(key); });
     session->set_session_empty_callback([this](uint32_t id) {
         if (io_context_)
@@ -212,14 +219,25 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
         std::string room_name(create_data.room_name);
         if (room_name.empty())
             room_name = "Room " + std::to_string(new_session_id);
+
+        rtype::config::GameRules rules(static_cast<rtype::config::GameMode>(create_data.game_mode),
+                                       static_cast<rtype::config::Difficulty>(create_data.difficulty));
+        if (create_data.friendly_fire != 0) {
+            rules.friendly_fire_enabled = true;
+        }
+
         {
             std::lock_guard<std::mutex> lock(sessions_mutex_);
             session_names_[new_session_id] = room_name;
+            session_rules_[new_session_id] = rules;
         }
+
         rtype::net::RoomInfoData room_info(new_session_id, 0, create_data.max_players, 0, room_name);
         udp_server_->send(client_ip, client_port,
                           protocol_adapter_->serialize(message_serializer_->serialize_room_info(room_info)));
-        Logger::instance().info("Created room '" + room_name + "' with id " + std::to_string(new_session_id));
+        Logger::instance().info("Created room '" + room_name + "' with id " + std::to_string(new_session_id) +
+                                " (mode=" + std::to_string(create_data.game_mode) +
+                                ", diff=" + std::to_string(create_data.difficulty) + ")");
         return;
     }
 
