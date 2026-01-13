@@ -12,6 +12,10 @@ class Serializer {
   public:
     Serializer() = default;
 
+    void write(uint8_t value) {
+        data.push_back(value);
+    }
+
     template <typename T>
     typename std::enable_if<std::is_standard_layout_v<T> && std::is_trivial_v<T>, void>::type write(const T& value) {
         const uint8_t* ptr = reinterpret_cast<const uint8_t*>(&value);
@@ -20,6 +24,11 @@ class Serializer {
 
     void write(const std::vector<uint8_t>& bytes) {
         data.insert(data.end(), bytes.begin(), bytes.end());
+    }
+
+    void write(const void* ptr, size_t size) {
+        const uint8_t* byte_ptr = static_cast<const uint8_t*>(ptr);
+        data.insert(data.end(), byte_ptr, byte_ptr + size);
     }
 
     void write(const std::string& str) {

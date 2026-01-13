@@ -2,6 +2,7 @@
 
 #include "../../shared/interfaces/ecs/ISystem.hpp"
 #include "../Registry.hpp"
+#include "../components/AudioEvent.hpp"
 #include <SFML/Audio.hpp>
 #include <list>
 #include <memory>
@@ -24,10 +25,20 @@ class AudioSystem : public ISystem {
     void playMusic(const std::string& id, bool loop = true);
     void stopMusic(const std::string& id);
 
+    void initializeAudioAssets();
+    void startBackgroundMusic();
+    void startLobbyMusic();
+    void stopBackgroundMusic();
+    void switchToBossMusic();
+    void switchToGameplayMusic();
+
   private:
     std::unordered_map<std::string, sf::SoundBuffer> sound_buffers_;
     std::unordered_map<std::string, std::unique_ptr<sf::Music>> music_tracks_;
     std::list<sf::Sound> active_sounds_;
+    std::string current_music_id_;
+
+    std::string mapEventToSoundId(component::AudioEventType type);
 };
 
 } // namespace rtype::ecs

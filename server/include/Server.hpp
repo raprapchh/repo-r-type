@@ -1,35 +1,25 @@
 #pragma once
 
 #include "UdpServer.hpp"
-#include "../../ecs/include/Registry.hpp"
+#include "GameSession.hpp"
 #include "../../shared/interfaces/network/IProtocolAdapter.hpp"
 #include "../../shared/interfaces/network/IMessageSerializer.hpp"
 #include "../../shared/net/Packet.hpp"
+#include "../../shared/utils/GameRules.hpp"
 #include <atomic>
-#include <chrono>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
 #include <thread>
+#include <unordered_map>
 
 namespace rtype::server {
 
-/// @brief Connected client information
-struct ClientInfo {
-    std::string ip;
-    uint16_t port;
-    uint32_t player_id;
-    bool is_connected;
-    GameEngine::entity_t entity_id;
-    std::chrono::steady_clock::time_point last_seen;
-};
-
-/// @brief Authoritative game server for R-Type multiplayer
 class Server {
   public:
-    Server(GameEngine::Registry& registry, uint16_t port = 4242);
+    Server(uint16_t port = 4242);
     ~Server();
 
     void start();
@@ -38,40 +28,28 @@ class Server {
 
   private:
     void handle_client_message(const std::string& client_ip, uint16_t client_port, const std::vector<uint8_t>& data);
-    void handle_player_join(const std::string& client_ip, uint16_t client_port);
-    void handle_player_move(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
-    void handle_player_shoot(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
-    void handle_game_start(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
-    void handle_map_resize(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
-    void broadcast_message(const std::vector<uint8_t>& data, const std::string& exclude_ip = "",
-                           uint16_t exclude_port = 0);
-    void game_loop();
     void network_loop();
+
+    GameSession* get_or_create_session(uint32_t session_id);
+    uint32_t allocate_session_id();
+    void unmap_client(const std::string& client_key);
+    void remove_session(uint32_t session_id);
 
     uint16_t port_;
     std::unique_ptr<asio::io_context> io_context_;
     std::unique_ptr<UdpServer> udp_server_;
     std::unique_ptr<rtype::net::IProtocolAdapter> protocol_adapter_;
     std::unique_ptr<rtype::net::IMessageSerializer> message_serializer_;
-    std::map<std::string, ClientInfo> clients_;
-    std::mutex clients_mutex_;
-    std::mutex registry_mutex_;
-    uint32_t next_player_id_;
-    std::atomic<bool> running_;
-    std::atomic<bool> game_started_;
-    std::atomic<bool> game_over_;
-    std::thread game_thread_;
-    std::thread network_thread_;
     std::optional<asio::executor_work_guard<asio::io_context::executor_type>> work_guard_;
-    static constexpr double TARGET_TICK_RATE = 60.0;
-    static constexpr std::chrono::milliseconds TICK_DURATION =
-        std::chrono::milliseconds(static_cast<long>(1000.0 / TARGET_TICK_RATE));
-    static constexpr std::chrono::seconds CLIENT_TIMEOUT_DURATION = std::chrono::seconds(10);
+    std::thread network_thread_;
+    std::atomic<bool> running_;
 
-    GameEngine::Registry& registry_;
-
-    void check_client_timeouts();
-    void disconnect_client(const std::string& client_key, const ClientInfo& client);
+    std::mutex sessions_mutex_;
+    std::unordered_map<uint32_t, std::unique_ptr<GameSession>> sessions_;
+    std::unordered_map<std::string, uint32_t> client_session_map_;
+    std::unordered_map<uint32_t, std::string> session_names_;
+    std::unordered_map<uint32_t, rtype::config::GameRules> session_rules_;
+    uint32_t next_session_id_;
 };
 
 } // namespace rtype::server

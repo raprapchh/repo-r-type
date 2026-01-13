@@ -2,14 +2,22 @@
 #include "../include/GameState.hpp"
 #include "../include/States.hpp"
 #include <iostream>
-#include <algorithm>
 #include <thread>
 #include <chrono>
-#include <memory>
+#include <vector>
 
 namespace rtype::client {
 
-LobbyState::LobbyState() : font_loaded_(false), player_count_(0), game_started_(false), renderer_ref_(nullptr) {
+LobbyState::LobbyState()
+    : is_typing_name_(false), backspace_timer_(0.0f), backspace_delay_(INITIAL_BACKSPACE_DELAY),
+      was_backspace_pressed_(false), font_loaded_(false), player_count_(0), game_started_(false),
+      renderer_ref_(nullptr), local_player_id_(0), current_mode_(LobbyMode::MAIN_MENU), room_list_needs_update_(false),
+      lobby_update_pending_(false), pending_player_count_(0), pending_your_player_id_(-1), selected_room_index_(-1),
+      is_typing_room_name_(false), was_room_backspace_pressed_(false), room_backspace_timer_(0.0f),
+      room_backspace_delay_(INITIAL_BACKSPACE_DELAY), is_typing_chat_(false), chat_backspace_timer_(0.0f),
+      chat_backspace_delay_(INITIAL_BACKSPACE_DELAY), was_chat_backspace_pressed_(false),
+      selected_game_mode_(rtype::config::GameMode::COOP), selected_difficulty_(rtype::config::Difficulty::NORMAL),
+      selected_friendly_fire_(false) {
     setup_ui();
 }
 
@@ -51,8 +59,177 @@ void LobbyState::setup_ui() {
 
     start_button_text_.setFont(font_);
     start_button_text_.setString("START GAME");
-    start_button_text_.setCharacterSize(30);
+    start_button_text_.setCharacterSize(24);
     start_button_text_.setFillColor(sf::Color::White);
+
+    input_background_.setSize(sf::Vector2f(300, 40));
+    input_background_.setFillColor(sf::Color(30, 30, 30, 200));
+    input_background_.setOutlineColor(sf::Color(100, 100, 100));
+    input_background_.setOutlineThickness(2);
+
+    name_input_label_.setFont(font_);
+    name_input_label_.setString("ENTER NAME:");
+    name_input_label_.setCharacterSize(18);
+    name_input_label_.setFillColor(sf::Color(200, 200, 200));
+
+    name_input_text_.setFont(font_);
+    name_input_text_.setString("");
+    name_input_text_.setCharacterSize(20);
+    name_input_text_.setFillColor(sf::Color::White);
+
+    is_typing_name_ = false;
+    current_name_input_ = "";
+
+    chat_background_.setSize(sf::Vector2f(600, 200));
+    chat_background_.setFillColor(sf::Color(15, 15, 20, 240));
+    chat_background_.setOutlineColor(sf::Color(0, 180, 220, 180));
+    chat_background_.setOutlineThickness(2);
+
+    chat_input_background_.setSize(sf::Vector2f(600, 40));
+    chat_input_background_.setFillColor(sf::Color(25, 25, 35, 240));
+    chat_input_background_.setOutlineColor(sf::Color(0, 180, 220, 120));
+    chat_input_background_.setOutlineThickness(1);
+
+    chat_input_label_.setFont(font_);
+    chat_input_label_.setString("CHAT:");
+    chat_input_label_.setCharacterSize(14);
+    chat_input_label_.setFillColor(sf::Color(0, 200, 255));
+
+    chat_input_text_.setFont(font_);
+    chat_input_text_.setString("");
+    chat_input_text_.setCharacterSize(14);
+    chat_input_text_.setFillColor(sf::Color(220, 220, 220));
+
+    is_typing_chat_ = false;
+    current_chat_input_ = "";
+
+    rooms_title_text_.setFont(font_);
+    rooms_title_text_.setString("AVAILABLE ROOMS");
+    rooms_title_text_.setCharacterSize(36);
+    rooms_title_text_.setFillColor(sf::Color::White);
+    rooms_title_text_.setStyle(sf::Text::Bold);
+
+    create_room_button_.setSize(sf::Vector2f(250, 50));
+    create_room_button_.setFillColor(sf::Color(50, 150, 50));
+    create_room_button_.setOutlineColor(sf::Color::White);
+    create_room_button_.setOutlineThickness(2);
+
+    create_room_button_text_.setFont(font_);
+    create_room_button_text_.setString("CREATE ROOM");
+    create_room_button_text_.setCharacterSize(20);
+    create_room_button_text_.setFillColor(sf::Color::White);
+
+    refresh_button_.setSize(sf::Vector2f(250, 50));
+    refresh_button_.setFillColor(sf::Color(100, 100, 150));
+    refresh_button_.setOutlineColor(sf::Color::White);
+    refresh_button_.setOutlineThickness(2);
+
+    refresh_button_text_.setFont(font_);
+    refresh_button_text_.setString("REFRESH");
+    refresh_button_text_.setCharacterSize(20);
+    refresh_button_text_.setFillColor(sf::Color::White);
+
+    room_input_background_.setSize(sf::Vector2f(400, 40));
+    room_input_background_.setFillColor(sf::Color(30, 30, 30, 200));
+    room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+    room_input_background_.setOutlineThickness(2);
+
+    room_input_label_.setFont(font_);
+    room_input_label_.setString("ROOM NAME:");
+    room_input_label_.setCharacterSize(18);
+    room_input_label_.setFillColor(sf::Color(200, 200, 200));
+
+    room_input_text_.setFont(font_);
+    room_input_text_.setString("");
+    room_input_text_.setCharacterSize(20);
+    room_input_text_.setFillColor(sf::Color::White);
+
+    title_text_.setString("R-TYPE MULTIPLAYER");
+
+    create_button_.setSize(sf::Vector2f(400, 80));
+    create_button_.setFillColor(sf::Color(50, 150, 50));
+    create_button_.setOutlineColor(sf::Color::White);
+    create_button_.setOutlineThickness(3);
+
+    create_button_text_.setFont(font_);
+    create_button_text_.setString("CREATE ROOM");
+    create_button_text_.setCharacterSize(30);
+    create_button_text_.setFillColor(sf::Color::White);
+
+    join_button_.setSize(sf::Vector2f(400, 80));
+    join_button_.setFillColor(sf::Color(100, 100, 200));
+    join_button_.setOutlineColor(sf::Color::White);
+    join_button_.setOutlineThickness(3);
+
+    join_button_text_.setFont(font_);
+    join_button_text_.setString("JOIN ROOM");
+    join_button_text_.setCharacterSize(30);
+    join_button_text_.setFillColor(sf::Color::White);
+
+    back_button_.setSize(sf::Vector2f(200, 50));
+    back_button_.setFillColor(sf::Color(150, 50, 50));
+    back_button_.setOutlineColor(sf::Color::White);
+    back_button_.setOutlineThickness(2);
+
+    back_button_text_.setFont(font_);
+    back_button_text_.setString("BACK");
+    back_button_text_.setCharacterSize(20);
+    back_button_text_.setFillColor(sf::Color::White);
+
+    leave_room_button_.setSize(sf::Vector2f(250, 50));
+    leave_room_button_.setFillColor(sf::Color(180, 50, 50));
+    leave_room_button_.setOutlineColor(sf::Color::White);
+    leave_room_button_.setOutlineThickness(2);
+
+    leave_room_button_text_.setFont(font_);
+    leave_room_button_text_.setString("LEAVE ROOM");
+    leave_room_button_text_.setCharacterSize(18);
+    leave_room_button_text_.setFillColor(sf::Color::White);
+
+    game_mode_label_.setFont(font_);
+    game_mode_label_.setString("MODE:");
+    game_mode_label_.setCharacterSize(16);
+    game_mode_label_.setFillColor(sf::Color(200, 200, 200));
+
+    game_mode_button_.setSize(sf::Vector2f(150, 35));
+    game_mode_button_.setFillColor(sf::Color(60, 120, 180));
+    game_mode_button_.setOutlineColor(sf::Color::White);
+    game_mode_button_.setOutlineThickness(2);
+
+    game_mode_text_.setFont(font_);
+    game_mode_text_.setString("COOP");
+    game_mode_text_.setCharacterSize(16);
+    game_mode_text_.setFillColor(sf::Color::White);
+
+    difficulty_label_.setFont(font_);
+    difficulty_label_.setString("DIFFICULTY:");
+    difficulty_label_.setCharacterSize(16);
+    difficulty_label_.setFillColor(sf::Color(200, 200, 200));
+
+    difficulty_button_.setSize(sf::Vector2f(150, 35));
+    difficulty_button_.setFillColor(sf::Color(180, 140, 60));
+    difficulty_button_.setOutlineColor(sf::Color::White);
+    difficulty_button_.setOutlineThickness(2);
+
+    difficulty_text_.setFont(font_);
+    difficulty_text_.setString("NORMAL");
+    difficulty_text_.setCharacterSize(16);
+    difficulty_text_.setFillColor(sf::Color::White);
+
+    friendly_fire_label_.setFont(font_);
+    friendly_fire_label_.setString("FRIENDLY FIRE:");
+    friendly_fire_label_.setCharacterSize(16);
+    friendly_fire_label_.setFillColor(sf::Color(200, 200, 200));
+
+    friendly_fire_button_.setSize(sf::Vector2f(150, 35));
+    friendly_fire_button_.setFillColor(sf::Color(150, 50, 50));
+    friendly_fire_button_.setOutlineColor(sf::Color::White);
+    friendly_fire_button_.setOutlineThickness(2);
+
+    friendly_fire_text_.setFont(font_);
+    friendly_fire_text_.setString("OFF");
+    friendly_fire_text_.setCharacterSize(16);
+    friendly_fire_text_.setFillColor(sf::Color::White);
 }
 
 void LobbyState::on_enter(Renderer& renderer, Client& client) {
@@ -63,25 +240,81 @@ void LobbyState::on_enter(Renderer& renderer, Client& client) {
     player_count_ = 0;
     game_started_ = false;
 
-    if (!client.is_connected()) {
-        client.connect();
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    // Start lobby music
+    client.get_audio_system().startLobbyMusic();
+
+    if (client.is_connected()) {
+        add_player(client.get_player_id(), client.get_player_name());
+        local_player_id_ = client.get_player_id();
+        set_player_count(static_cast<uint8_t>(connected_players_.size()));
     }
 
-    add_player(client.get_player_id());
-    set_player_count(1);
+    client.set_player_join_callback([this](uint32_t player_id, const std::string& name) {
+        std::lock_guard<std::mutex> lock(pending_mutex_);
+        pending_player_joins_.emplace_back(player_id, name);
+    });
 
-    client.set_player_join_callback([this](uint32_t player_id) {
-        add_player(player_id);
-        set_player_count(static_cast<uint8_t>(connected_players_.size()));
+    client.set_player_name_callback([this](uint32_t player_id, const std::string& name) {
+        std::lock_guard<std::mutex> lock(pending_mutex_);
+        pending_name_updates_.emplace_back(player_id, name);
     });
 
     client.set_game_start_callback([this]() { game_started_.store(true); });
+
+    client.set_chat_message_callback(
+        [this](uint32_t /*player_id*/, const std::string& player_name, const std::string& message) {
+            std::lock_guard<std::mutex> lock(pending_mutex_);
+            pending_chat_messages_.emplace_back(player_name, message);
+        });
+
+    client.set_room_list_callback(
+        [this](uint32_t session_id, uint8_t player_count, uint8_t max_players, uint8_t status,
+               const std::string& room_name) { add_room(session_id, player_count, max_players, status, room_name); });
+
+    client.set_lobby_update_callback([this](int8_t playerCount, int8_t yourPlayerId) {
+        pending_player_count_.store(playerCount);
+        pending_your_player_id_.store(yourPlayerId);
+        lobby_update_pending_.store(true);
+    });
+
+    current_mode_ = LobbyMode::MAIN_MENU;
+    selected_main_menu_button_ = MainMenuButton::CREATE;
+    selected_create_room_button_ = CreateRoomButton::INPUT;
+    selected_browse_rooms_button_ = BrowseRoomsButton::REFRESH;
+    selected_in_room_button_ = InRoomButton::START;
+    available_rooms_.clear();
+    selected_room_index_ = -1;
+
+    current_name_input_ = client.get_player_name();
+    if (current_name_input_.empty()) {
+        current_name_input_ = "Player " + std::to_string(local_player_id_);
+    }
+    name_input_text_.setString(current_name_input_);
+
+    if (client.is_connected()) {
+        client.send_player_name_update(current_name_input_);
+    }
+
+    chat_messages_.clear();
+    chat_message_texts_.clear();
 }
 
 void LobbyState::on_exit(Renderer& renderer, Client& client) {
     (void)renderer;
-    (void)client;
+
+    client.set_player_join_callback(nullptr);
+    client.set_player_name_callback(nullptr);
+    client.set_game_start_callback(nullptr);
+    client.set_chat_message_callback(nullptr);
+    client.set_room_list_callback(nullptr);
+    client.set_lobby_update_callback(nullptr);
+
+    chat_messages_.clear();
+    chat_message_texts_.clear();
+
+    available_rooms_.clear();
+    room_texts_.clear();
+    room_buttons_.clear();
 }
 
 void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
@@ -96,15 +329,395 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
         } else if (event.type == sf::Event::MouseButtonPressed) {
             if (event.mouseButton.button == sf::Mouse::Left) {
                 sf::Vector2f mouse_pos = renderer.get_mouse_position();
-                if (player_count_ >= 2 && start_button_.getGlobalBounds().contains(mouse_pos)) {
-                    state_manager.get_client().send_game_start_request();
+
+                if (current_mode_ == LobbyMode::MAIN_MENU) {
+
+                    if (create_button_.getGlobalBounds().contains(mouse_pos)) {
+
+                        if (!state_manager.get_client().is_connected()) {
+                            state_manager.get_client().connect();
+                            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                        }
+
+                        if (state_manager.get_client().is_connected()) {
+                            add_player(state_manager.get_client().get_player_id(),
+                                       state_manager.get_client().get_player_name());
+                            local_player_id_ = state_manager.get_client().get_player_id();
+                        }
+                        current_mode_ = LobbyMode::CREATE_ROOM;
+                        current_room_name_input_.clear();
+                        room_input_text_.setString("");
+                        selected_create_room_button_ = CreateRoomButton::INPUT;
+                        is_typing_room_name_ = true;
+                        room_input_background_.setOutlineColor(sf::Color::Cyan);
+                        if (renderer_ref_) {
+                            update_positions(renderer_ref_->get_window_size());
+                        }
+                    } else if (join_button_.getGlobalBounds().contains(mouse_pos)) {
+
+                        if (!state_manager.get_client().is_connected()) {
+                            state_manager.get_client().connect();
+                            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                        }
+
+                        if (state_manager.get_client().is_connected()) {
+                            add_player(state_manager.get_client().get_player_id(),
+                                       state_manager.get_client().get_player_name());
+                            local_player_id_ = state_manager.get_client().get_player_id();
+                        }
+                        current_mode_ = LobbyMode::BROWSE_ROOMS;
+                        available_rooms_.clear();
+                        selected_room_index_ = -1;
+                        selected_browse_rooms_button_ = BrowseRoomsButton::REFRESH;
+                        state_manager.get_client().request_room_list();
+                        if (renderer_ref_) {
+                            update_positions(renderer_ref_->get_window_size());
+                        }
+                        update_room_list_display();
+                    } else if (back_button_.getGlobalBounds().contains(mouse_pos)) {
+                        renderer.close_window();
+                    }
+                } else if (current_mode_ == LobbyMode::CREATE_ROOM) {
+
+                    if (back_button_.getGlobalBounds().contains(mouse_pos)) {
+                        current_mode_ = LobbyMode::MAIN_MENU;
+                        is_typing_room_name_ = false;
+                        room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                        selected_main_menu_button_ = MainMenuButton::CREATE;
+                        if (renderer_ref_) {
+                            update_positions(renderer_ref_->get_window_size());
+                        }
+                    } else if (create_room_button_.getGlobalBounds().contains(mouse_pos)) {
+                        if (!current_room_name_input_.empty()) {
+                            state_manager.get_client().create_room(current_room_name_input_, 4, selected_game_mode_,
+                                                                   selected_difficulty_, selected_friendly_fire_);
+                            current_mode_ = LobbyMode::IN_ROOM;
+                            selected_in_room_button_ = InRoomButton::START;
+                            is_typing_room_name_ = false;
+                            room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                            if (renderer_ref_) {
+                                update_positions(renderer_ref_->get_window_size());
+                            }
+                        }
+                    } else if (room_input_background_.getGlobalBounds().contains(mouse_pos)) {
+                        is_typing_room_name_ = true;
+                        room_input_background_.setOutlineColor(sf::Color::Cyan);
+                    } else if (game_mode_button_.getGlobalBounds().contains(mouse_pos)) {
+                        int current = static_cast<int>(selected_game_mode_);
+                        current = (current + 1) % 3;
+                        selected_game_mode_ = static_cast<rtype::config::GameMode>(current);
+                        const char* mode_names[] = {"COOP", "PVP", "PVE"};
+                        game_mode_text_.setString(mode_names[current]);
+                        if (selected_game_mode_ == rtype::config::GameMode::PVP) {
+                            selected_friendly_fire_ = true;
+                            friendly_fire_text_.setString("ON");
+                        }
+                    } else if (difficulty_button_.getGlobalBounds().contains(mouse_pos)) {
+                        int current = static_cast<int>(selected_difficulty_);
+                        current = (current + 1) % 3;
+                        selected_difficulty_ = static_cast<rtype::config::Difficulty>(current);
+                        const char* diff_names[] = {"EASY", "NORMAL", "HARD"};
+                        difficulty_text_.setString(diff_names[current]);
+                    } else if (friendly_fire_button_.getGlobalBounds().contains(mouse_pos)) {
+                        selected_friendly_fire_ = !selected_friendly_fire_;
+                        friendly_fire_text_.setString(selected_friendly_fire_ ? "ON" : "OFF");
+                    } else {
+                        is_typing_room_name_ = false;
+                        room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                    }
+                } else if (current_mode_ == LobbyMode::BROWSE_ROOMS) {
+
+                    if (back_button_.getGlobalBounds().contains(mouse_pos)) {
+                        current_mode_ = LobbyMode::MAIN_MENU;
+                        selected_main_menu_button_ = MainMenuButton::JOIN;
+                        if (renderer_ref_) {
+                            update_positions(renderer_ref_->get_window_size());
+                        }
+                    } else if (refresh_button_.getGlobalBounds().contains(mouse_pos)) {
+                        available_rooms_.clear();
+                        selected_room_index_ = -1;
+                        state_manager.get_client().request_room_list();
+                        update_room_list_display();
+                    } else {
+
+                        for (size_t i = 0; i < room_buttons_.size(); ++i) {
+                            if (room_buttons_[i].getGlobalBounds().contains(mouse_pos)) {
+                                if (static_cast<int>(i) == selected_room_index_) {
+
+                                    state_manager.get_client().join_room(available_rooms_[i].session_id);
+                                    current_mode_ = LobbyMode::IN_ROOM;
+                                    selected_in_room_button_ = InRoomButton::START;
+                                    if (renderer_ref_) {
+                                        update_positions(renderer_ref_->get_window_size());
+                                    }
+                                } else {
+                                    selected_room_index_ = static_cast<int>(i);
+                                }
+                                update_room_list_display();
+                                break;
+                            }
+                        }
+                    }
+                } else if (current_mode_ == LobbyMode::IN_ROOM) {
+
+                    if (leave_room_button_.getGlobalBounds().contains(mouse_pos)) {
+
+                        state_manager.get_client().leave_room();
+
+                        current_mode_ = LobbyMode::BROWSE_ROOMS;
+                        connected_players_.clear();
+                        player_count_ = 0;
+                        chat_messages_.clear();
+                        chat_message_texts_.clear();
+                        available_rooms_.clear();
+                        selected_room_index_ = -1;
+
+                        if (!state_manager.get_client().is_connected()) {
+                            state_manager.get_client().connect();
+                        }
+                        state_manager.get_client().request_room_list();
+                        update_room_list_display();
+                        if (renderer_ref_) {
+                            update_positions(renderer_ref_->get_window_size());
+                        }
+                    } else if (player_count_ >= 1 && local_player_id_ == 1 &&
+                               start_button_.getGlobalBounds().contains(mouse_pos)) {
+                        state_manager.get_client().send_game_start_request();
+                    }
+
+                    if (input_background_.getGlobalBounds().contains(mouse_pos)) {
+                        is_typing_name_ = true;
+                        is_typing_chat_ = false;
+                        input_background_.setOutlineColor(sf::Color::Cyan);
+                        chat_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                    } else if (chat_input_background_.getGlobalBounds().contains(mouse_pos)) {
+                        is_typing_chat_ = true;
+                        is_typing_name_ = false;
+                        chat_input_background_.setOutlineColor(sf::Color::Cyan);
+                        input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                    } else {
+                        is_typing_name_ = false;
+                        is_typing_chat_ = false;
+                        input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                        chat_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                    }
                 }
             }
         } else if (event.type == sf::Event::KeyPressed) {
-            if (event.key.code == sf::Keyboard::Escape) {
-            } else if ((event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) &&
-                       player_count_ >= 2) {
-                state_manager.get_client().send_game_start_request();
+
+            if (current_mode_ == LobbyMode::MAIN_MENU) {
+                if (event.key.code == sf::Keyboard::Up) {
+                    if (selected_main_menu_button_ == MainMenuButton::JOIN) {
+                        selected_main_menu_button_ = MainMenuButton::CREATE;
+                    } else if (selected_main_menu_button_ == MainMenuButton::BACK) {
+                        selected_main_menu_button_ = MainMenuButton::JOIN;
+                    }
+                } else if (event.key.code == sf::Keyboard::Down) {
+                    if (selected_main_menu_button_ == MainMenuButton::CREATE) {
+                        selected_main_menu_button_ = MainMenuButton::JOIN;
+                    } else if (selected_main_menu_button_ == MainMenuButton::JOIN) {
+                        selected_main_menu_button_ = MainMenuButton::BACK;
+                    }
+                } else if (event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) {
+                    if (selected_main_menu_button_ == MainMenuButton::CREATE) {
+                        if (!state_manager.get_client().is_connected()) {
+                            state_manager.get_client().connect();
+                            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                        }
+                        if (state_manager.get_client().is_connected()) {
+                            add_player(state_manager.get_client().get_player_id(),
+                                       state_manager.get_client().get_player_name());
+                            local_player_id_ = state_manager.get_client().get_player_id();
+                        }
+                        current_mode_ = LobbyMode::CREATE_ROOM;
+                        current_room_name_input_.clear();
+                        room_input_text_.setString("");
+                        selected_create_room_button_ = CreateRoomButton::INPUT;
+                        is_typing_room_name_ = true;
+                        room_input_background_.setOutlineColor(sf::Color::Cyan);
+                        if (renderer_ref_) {
+                            update_positions(renderer_ref_->get_window_size());
+                        }
+                    } else if (selected_main_menu_button_ == MainMenuButton::JOIN) {
+                        if (!state_manager.get_client().is_connected()) {
+                            state_manager.get_client().connect();
+                            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                        }
+                        if (state_manager.get_client().is_connected()) {
+                            add_player(state_manager.get_client().get_player_id(),
+                                       state_manager.get_client().get_player_name());
+                            local_player_id_ = state_manager.get_client().get_player_id();
+                        }
+                        current_mode_ = LobbyMode::BROWSE_ROOMS;
+                        available_rooms_.clear();
+                        selected_room_index_ = -1;
+                        selected_browse_rooms_button_ = BrowseRoomsButton::REFRESH;
+                        state_manager.get_client().request_room_list();
+                        if (renderer_ref_) {
+                            update_positions(renderer_ref_->get_window_size());
+                        }
+                        update_room_list_display();
+                    } else if (selected_main_menu_button_ == MainMenuButton::BACK) {
+                        renderer.close_window();
+                    }
+                }
+            } else if (current_mode_ == LobbyMode::CREATE_ROOM) {
+                if (is_typing_room_name_) {
+                    if (event.key.code == sf::Keyboard::Return) {
+                        if (!current_room_name_input_.empty()) {
+                            state_manager.get_client().create_room(current_room_name_input_);
+                            current_mode_ = LobbyMode::IN_ROOM;
+                        }
+                        is_typing_room_name_ = false;
+                        room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                    } else if (event.key.code == sf::Keyboard::Escape) {
+                        current_mode_ = LobbyMode::MAIN_MENU;
+                        is_typing_room_name_ = false;
+                        room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                        selected_main_menu_button_ = MainMenuButton::CREATE;
+                    }
+                } else {
+                    if (event.key.code == sf::Keyboard::Up) {
+                        if (selected_create_room_button_ == CreateRoomButton::CREATE) {
+                            selected_create_room_button_ = CreateRoomButton::INPUT;
+                        } else if (selected_create_room_button_ == CreateRoomButton::BACK) {
+                            selected_create_room_button_ = CreateRoomButton::CREATE;
+                        }
+                    } else if (event.key.code == sf::Keyboard::Down) {
+                        if (selected_create_room_button_ == CreateRoomButton::INPUT) {
+                            selected_create_room_button_ = CreateRoomButton::CREATE;
+                        } else if (selected_create_room_button_ == CreateRoomButton::CREATE) {
+                            selected_create_room_button_ = CreateRoomButton::BACK;
+                        }
+                    } else if (event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) {
+                        if (selected_create_room_button_ == CreateRoomButton::INPUT) {
+                            is_typing_room_name_ = true;
+                            room_input_background_.setOutlineColor(sf::Color::Cyan);
+                        } else if (selected_create_room_button_ == CreateRoomButton::CREATE) {
+                            if (!current_room_name_input_.empty()) {
+                                state_manager.get_client().create_room(current_room_name_input_);
+                                current_mode_ = LobbyMode::IN_ROOM;
+                                selected_in_room_button_ = InRoomButton::START;
+                                is_typing_room_name_ = false;
+                                room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                                if (renderer_ref_) {
+                                    update_positions(renderer_ref_->get_window_size());
+                                }
+                            }
+                        } else if (selected_create_room_button_ == CreateRoomButton::BACK) {
+                            current_mode_ = LobbyMode::MAIN_MENU;
+                            is_typing_room_name_ = false;
+                            room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                            selected_main_menu_button_ = MainMenuButton::CREATE;
+                            if (renderer_ref_) {
+                                update_positions(renderer_ref_->get_window_size());
+                            }
+                        }
+                    } else if (event.key.code == sf::Keyboard::Escape) {
+                        current_mode_ = LobbyMode::MAIN_MENU;
+                        is_typing_room_name_ = false;
+                        room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
+                        selected_main_menu_button_ = MainMenuButton::CREATE;
+                    }
+                }
+            } else if (current_mode_ == LobbyMode::BROWSE_ROOMS) {
+                if (event.key.code == sf::Keyboard::Up) {
+                    if (selected_room_index_ > 0) {
+                        selected_room_index_--;
+                        update_room_list_display();
+                    } else if (selected_room_index_ == -1) {
+                        selected_room_index_ = static_cast<int>(available_rooms_.size()) - 1;
+                        update_room_list_display();
+                    }
+                } else if (event.key.code == sf::Keyboard::Down) {
+                    if (selected_room_index_ < static_cast<int>(available_rooms_.size()) - 1) {
+                        selected_room_index_++;
+                        update_room_list_display();
+                    }
+                } else if (event.key.code == sf::Keyboard::Return && selected_room_index_ >= 0 &&
+                           selected_room_index_ < static_cast<int>(available_rooms_.size())) {
+                    state_manager.get_client().join_room(available_rooms_[selected_room_index_].session_id);
+                    current_mode_ = LobbyMode::IN_ROOM;
+                    selected_in_room_button_ = InRoomButton::START;
+                } else if (event.key.code == sf::Keyboard::Escape) {
+                    current_mode_ = LobbyMode::MAIN_MENU;
+                    selected_main_menu_button_ = MainMenuButton::JOIN;
+                }
+            } else if (current_mode_ == LobbyMode::IN_ROOM) {
+                if (is_typing_name_) {
+                    if (event.key.code == sf::Keyboard::Return) {
+                        is_typing_name_ = false;
+                        input_background_.setOutlineColor(sf::Color(100, 100, 100));
+
+                        if (current_name_input_.empty()) {
+                            current_name_input_ = "Player " + std::to_string(local_player_id_);
+                        }
+                        connected_players_[local_player_id_] = current_name_input_;
+                        update_player_display();
+                        name_input_text_.setString(current_name_input_);
+
+                        state_manager.get_client().send_player_name_update(current_name_input_);
+                    }
+                } else if (is_typing_chat_) {
+                    if (event.key.code == sf::Keyboard::Return) {
+                        if (!current_chat_input_.empty()) {
+                            state_manager.get_client().send_chat_message(current_chat_input_);
+                            current_chat_input_.clear();
+                            chat_input_text_.setString("");
+                        }
+                    }
+                } else {
+                    if (event.key.code == sf::Keyboard::Up) {
+                        selected_in_room_button_ = InRoomButton::START;
+                    } else if (event.key.code == sf::Keyboard::Down) {
+                        selected_in_room_button_ = InRoomButton::LEAVE;
+                    } else if ((event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space)) {
+                        if (selected_in_room_button_ == InRoomButton::START && local_player_id_ == 1) {
+                            state_manager.get_client().send_game_start_request();
+                        } else if (selected_in_room_button_ == InRoomButton::LEAVE) {
+                            state_manager.get_client().leave_room();
+                            current_mode_ = LobbyMode::BROWSE_ROOMS;
+                            connected_players_.clear();
+                            player_count_ = 0;
+                            chat_messages_.clear();
+                            chat_message_texts_.clear();
+                            available_rooms_.clear();
+                            selected_room_index_ = -1;
+
+                            if (!state_manager.get_client().is_connected()) {
+                                state_manager.get_client().connect();
+                            }
+                            state_manager.get_client().request_room_list();
+                            update_room_list_display();
+                            if (renderer_ref_) {
+                                update_positions(renderer_ref_->get_window_size());
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (event.type == sf::Event::TextEntered) {
+            if (is_typing_room_name_) {
+                if (event.text.unicode < 128 && event.text.unicode > 31 && current_room_name_input_.length() < 30) {
+                    current_room_name_input_ += static_cast<char>(event.text.unicode);
+                    room_input_text_.setString(current_room_name_input_);
+                }
+            } else if (is_typing_name_) {
+                if (event.text.unicode < 128 && event.text.unicode > 31 && current_name_input_.length() < 16) {
+                    current_name_input_ += static_cast<char>(event.text.unicode);
+                    name_input_text_.setString(current_name_input_);
+                }
+            } else if (is_typing_chat_) {
+                if (event.text.unicode < 128 && event.text.unicode > 31 &&
+                    current_chat_input_.length() < MAX_CHAT_INPUT_LENGTH) {
+                    current_chat_input_ += static_cast<char>(event.text.unicode);
+                    if (current_chat_input_.length() > 40) {
+                        chat_input_text_.setString("..." +
+                                                   current_chat_input_.substr(current_chat_input_.length() - 37));
+                    } else {
+                        chat_input_text_.setString(current_chat_input_);
+                    }
+                }
             }
         }
     }
@@ -112,10 +725,123 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
 
 void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_manager, float delta_time) {
     (void)client;
-    (void)delta_time;
+
+    if (is_typing_room_name_ && sf::Keyboard::isKeyPressed(sf::Keyboard::BackSpace)) {
+        bool delete_char = false;
+
+        if (!was_room_backspace_pressed_) {
+            delete_char = true;
+            room_backspace_timer_ = 0.0f;
+            room_backspace_delay_ = INITIAL_BACKSPACE_DELAY;
+        } else {
+            room_backspace_timer_ += delta_time;
+            if (room_backspace_timer_ >= room_backspace_delay_) {
+                delete_char = true;
+                room_backspace_timer_ = 0.0f;
+                room_backspace_delay_ = REPEAT_BACKSPACE_DELAY;
+            }
+        }
+
+        if (delete_char && !current_room_name_input_.empty()) {
+            current_room_name_input_.pop_back();
+            room_input_text_.setString(current_room_name_input_);
+        }
+        was_room_backspace_pressed_ = true;
+    } else {
+        was_room_backspace_pressed_ = false;
+        room_backspace_timer_ = 0.0f;
+    }
+
+    if (is_typing_name_ && sf::Keyboard::isKeyPressed(sf::Keyboard::BackSpace)) {
+        bool delete_char = false;
+
+        if (!was_backspace_pressed_) {
+
+            delete_char = true;
+            backspace_timer_ = 0.0f;
+            backspace_delay_ = INITIAL_BACKSPACE_DELAY;
+        } else {
+
+            backspace_timer_ += delta_time;
+            if (backspace_timer_ >= backspace_delay_) {
+                delete_char = true;
+                backspace_timer_ = 0.0f;
+                backspace_delay_ = REPEAT_BACKSPACE_DELAY;
+            }
+        }
+
+        if (delete_char && !current_name_input_.empty()) {
+            current_name_input_.pop_back();
+            name_input_text_.setString(current_name_input_);
+        }
+        was_backspace_pressed_ = true;
+    } else {
+        was_backspace_pressed_ = false;
+        backspace_timer_ = 0.0f;
+    }
+
+    if (is_typing_chat_ && sf::Keyboard::isKeyPressed(sf::Keyboard::BackSpace)) {
+        bool delete_char = false;
+
+        if (!was_chat_backspace_pressed_) {
+            delete_char = true;
+            chat_backspace_timer_ = 0.0f;
+            chat_backspace_delay_ = INITIAL_BACKSPACE_DELAY;
+        } else {
+            chat_backspace_timer_ += delta_time;
+            if (chat_backspace_timer_ >= chat_backspace_delay_) {
+                delete_char = true;
+                chat_backspace_timer_ = 0.0f;
+                chat_backspace_delay_ = REPEAT_BACKSPACE_DELAY;
+            }
+        }
+
+        if (delete_char && !current_chat_input_.empty()) {
+            current_chat_input_.pop_back();
+            if (current_chat_input_.length() > 40) {
+                chat_input_text_.setString("..." + current_chat_input_.substr(current_chat_input_.length() - 37));
+            } else {
+                chat_input_text_.setString(current_chat_input_);
+            }
+        }
+        was_chat_backspace_pressed_ = true;
+    } else {
+        was_chat_backspace_pressed_ = false;
+        chat_backspace_timer_ = 0.0f;
+    }
+
+    if (local_player_id_ == 0 && client.is_connected()) {
+        local_player_id_ = client.get_player_id();
+        if (local_player_id_ != 0) {
+
+            if (current_name_input_.empty() || current_name_input_ == "Player" || current_name_input_ == "Player 0") {
+                current_name_input_ = "Player " + std::to_string(local_player_id_);
+                name_input_text_.setString(current_name_input_);
+                client.send_player_name_update(current_name_input_);
+            }
+        }
+    }
+
+    process_pending_events();
+
+    if (lobby_update_pending_.load()) {
+        int8_t count = pending_player_count_.load();
+        int8_t playerId = pending_your_player_id_.load();
+        player_count_ = static_cast<uint8_t>(count);
+        if (playerId > 0 && local_player_id_ == 0) {
+            local_player_id_ = static_cast<uint32_t>(playerId);
+        }
+        update_player_display();
+        lobby_update_pending_.store(false);
+    }
+
+    if (current_mode_ == LobbyMode::BROWSE_ROOMS && room_list_needs_update_.load()) {
+        update_room_list_display();
+        room_list_needs_update_.store(false);
+    }
 
     if (game_started_.load()) {
-        state_manager.change_state(std::make_unique<GameState>());
+        state_manager.change_state(std::make_unique<GameState>(true));
     }
 
     ColorBlindMode mode = renderer.get_accessibility_manager().get_current_mode();
@@ -157,36 +883,157 @@ void LobbyState::update(Renderer& renderer, Client& client, StateManager& state_
     } else {
         start_button_.setFillColor(start_normal);
     }
+
+    if (current_mode_ == LobbyMode::MAIN_MENU) {
+        sf::Color create_normal(50, 150, 50);
+        sf::Color create_selected(100, 200, 100);
+        sf::Color join_normal(100, 100, 200);
+        sf::Color join_selected(150, 150, 255);
+        sf::Color back_normal(150, 50, 50);
+        sf::Color back_selected(200, 100, 100);
+
+        create_button_.setFillColor(selected_main_menu_button_ == MainMenuButton::CREATE ? create_selected
+                                                                                         : create_normal);
+        join_button_.setFillColor(selected_main_menu_button_ == MainMenuButton::JOIN ? join_selected : join_normal);
+        back_button_.setFillColor(selected_main_menu_button_ == MainMenuButton::BACK ? back_selected : back_normal);
+    } else if (current_mode_ == LobbyMode::CREATE_ROOM) {
+        sf::Color input_normal(30, 30, 30);
+        sf::Color input_selected(60, 60, 100);
+        sf::Color create_room_normal(50, 150, 50);
+        sf::Color create_room_selected(100, 200, 100);
+        sf::Color back_normal(150, 50, 50);
+        sf::Color back_selected(200, 100, 100);
+
+        room_input_background_.setFillColor(selected_create_room_button_ == CreateRoomButton::INPUT ? input_selected
+                                                                                                    : input_normal);
+        create_room_button_.setFillColor(selected_create_room_button_ == CreateRoomButton::CREATE ? create_room_selected
+                                                                                                  : create_room_normal);
+        back_button_.setFillColor(selected_create_room_button_ == CreateRoomButton::BACK ? back_selected : back_normal);
+    } else if (current_mode_ == LobbyMode::BROWSE_ROOMS) {
+        sf::Color refresh_normal(100, 100, 150);
+        sf::Color refresh_selected(150, 150, 200);
+        sf::Color back_normal(150, 50, 50);
+        sf::Color back_selected(200, 100, 100);
+
+        refresh_button_.setFillColor(selected_browse_rooms_button_ == BrowseRoomsButton::REFRESH ? refresh_selected
+                                                                                                 : refresh_normal);
+        back_button_.setFillColor(selected_browse_rooms_button_ == BrowseRoomsButton::BACK ? back_selected
+                                                                                           : back_normal);
+
+        for (size_t i = 0; i < room_buttons_.size(); i++) {
+            if (static_cast<int>(i) == selected_room_index_) {
+                room_buttons_[i].setFillColor(sf::Color(150, 180, 100));
+            } else {
+                room_buttons_[i].setFillColor(sf::Color(80, 80, 120));
+            }
+        }
+    } else if (current_mode_ == LobbyMode::IN_ROOM) {
+        sf::Color start_normal(100, 150, 200);
+        sf::Color start_selected(150, 200, 255);
+        sf::Color leave_normal(180, 80, 80);
+        sf::Color leave_selected(220, 120, 120);
+
+        if (local_player_id_ == 1) {
+            start_button_.setFillColor(selected_in_room_button_ == InRoomButton::START ? start_selected : start_normal);
+        } else {
+            start_button_.setFillColor(sf::Color(80, 80, 80));
+        }
+        leave_room_button_.setFillColor(selected_in_room_button_ == InRoomButton::LEAVE ? leave_selected
+                                                                                        : leave_normal);
+    }
 }
 
 void LobbyState::render(Renderer& renderer, Client& /* client */) {
     renderer.clear();
 
     if (font_loaded_) {
-        renderer.draw_text(title_text_);
-        renderer.draw_text(waiting_text_);
-        renderer.draw_text(players_text_);
-        renderer.draw_text(player_list_text_);
-        if (player_count_ >= 2) {
-            renderer.draw_rectangle(start_button_);
-            renderer.draw_text(start_button_text_);
+        if (current_mode_ == LobbyMode::MAIN_MENU) {
+
+            renderer.draw_text(title_text_);
+            renderer.draw_rectangle(create_button_);
+            renderer.draw_text(create_button_text_);
+            renderer.draw_rectangle(join_button_);
+            renderer.draw_text(join_button_text_);
+        } else if (current_mode_ == LobbyMode::CREATE_ROOM) {
+
+            renderer.draw_text(title_text_);
+            renderer.draw_rectangle(room_input_background_);
+            renderer.draw_text(room_input_label_);
+            renderer.draw_text(room_input_text_);
+            renderer.draw_text(game_mode_label_);
+            renderer.draw_rectangle(game_mode_button_);
+            renderer.draw_text(game_mode_text_);
+            renderer.draw_text(difficulty_label_);
+            renderer.draw_rectangle(difficulty_button_);
+            renderer.draw_text(difficulty_text_);
+            renderer.draw_text(friendly_fire_label_);
+            renderer.draw_rectangle(friendly_fire_button_);
+            renderer.draw_text(friendly_fire_text_);
+            renderer.draw_rectangle(create_room_button_);
+            renderer.draw_text(create_room_button_text_);
+            renderer.draw_rectangle(back_button_);
+            renderer.draw_text(back_button_text_);
+        } else if (current_mode_ == LobbyMode::BROWSE_ROOMS) {
+
+            renderer.draw_text(rooms_title_text_);
+            for (const auto& button : room_buttons_) {
+                renderer.draw_rectangle(button);
+            }
+            for (const auto& text : room_texts_) {
+                renderer.draw_text(text);
+            }
+            renderer.draw_rectangle(refresh_button_);
+            renderer.draw_text(refresh_button_text_);
+            renderer.draw_rectangle(back_button_);
+            renderer.draw_text(back_button_text_);
+        } else if (current_mode_ == LobbyMode::IN_ROOM) {
+
+            renderer.draw_text(title_text_);
+            renderer.draw_text(waiting_text_);
+            renderer.draw_text(players_text_);
+            renderer.draw_text(player_list_text_);
+
+            if (local_player_id_ == 1) {
+                renderer.draw_rectangle(start_button_);
+                renderer.draw_text(start_button_text_);
+            }
+
+            renderer.draw_rectangle(leave_room_button_);
+            renderer.draw_text(leave_room_button_text_);
+
+            renderer.draw_rectangle(input_background_);
+            renderer.draw_text(name_input_label_);
+            renderer.draw_text(name_input_text_);
+
+            renderer.draw_rectangle(chat_background_);
+            renderer.draw_rectangle(chat_input_background_);
+            renderer.draw_text(chat_input_label_);
+            renderer.draw_text(chat_input_text_);
+            for (const auto& msg_text : chat_message_texts_) {
+                renderer.draw_text(msg_text);
+            }
         }
     }
 
     renderer.display();
 }
 
-void LobbyState::add_player(uint32_t player_id) {
-    if (std::find(connected_players_.begin(), connected_players_.end(), player_id) == connected_players_.end()) {
-        connected_players_.push_back(player_id);
-        update_player_display();
+void LobbyState::add_player(uint32_t player_id, const std::string& name) {
+    if (connected_players_.find(player_id) == connected_players_.end()) {
+        std::string final_name = name;
+        if (final_name.empty() || final_name == "Player" || final_name == "PLAYER" || final_name == "player" ||
+            final_name == "Player 0" || final_name == "PLAYER 0") {
+            final_name = "Player " + std::to_string(player_id);
+        }
+        connected_players_[player_id] = final_name;
+        set_player_count(static_cast<uint8_t>(connected_players_.size()));
     }
 }
 
 void LobbyState::remove_player(uint32_t player_id) {
-    connected_players_.erase(std::remove(connected_players_.begin(), connected_players_.end(), player_id),
-                             connected_players_.end());
-    update_player_display();
+    if (connected_players_.erase(player_id)) {
+        set_player_count(static_cast<uint8_t>(connected_players_.size()));
+    }
 }
 
 void LobbyState::set_player_count(uint8_t count) {
@@ -201,10 +1048,12 @@ void LobbyState::update_player_display() {
     players_text_.setString("Players: " + std::to_string(player_count_) + "/4");
 
     std::string player_list = "Connected: ";
-    for (size_t i = 0; i < connected_players_.size(); ++i) {
-        if (i > 0)
+    int idx = 0;
+    for (const auto& [id, name] : connected_players_) {
+        if (idx > 0)
             player_list += ", ";
-        player_list += "Player " + std::to_string(connected_players_[i]);
+        player_list += name;
+        idx++;
     }
     player_list_text_.setString(player_list);
 
@@ -214,24 +1063,273 @@ void LobbyState::update_player_display() {
 }
 
 void LobbyState::update_positions(const sf::Vector2u& window_size) {
-    float title_y = window_size.y * 0.1f;
-    float waiting_y = window_size.y * 0.35f;
-    float players_y = window_size.y * 0.45f;
-    float list_y = window_size.y * 0.53f;
-    float button_y = window_size.y * 0.7f;
+    float center_x = window_size.x / 2.0f;
+    float center_y = window_size.y / 2.0f;
 
-    title_text_.setPosition((window_size.x - title_text_.getLocalBounds().width) / 2.0f, title_y);
+    float title_y = 30.0f;
+    if (current_mode_ == LobbyMode::BROWSE_ROOMS) {
+        rooms_title_text_.setString("AVAILABLE ROOMS");
+        rooms_title_text_.setPosition((window_size.x - rooms_title_text_.getLocalBounds().width) / 2.0f, title_y);
+    } else {
+        title_text_.setString("R-TYPE MULTIPLAYER");
+        title_text_.setPosition((window_size.x - title_text_.getLocalBounds().width) / 2.0f, title_y);
+    }
+
+    float button_width = std::min(400.0f, window_size.x * 0.6f);
+    float button_height = 80.0f;
+    create_button_.setSize(sf::Vector2f(button_width, button_height));
+    create_button_.setPosition(center_x - button_width / 2, center_y - 60);
+    create_button_text_.setPosition(center_x - create_button_text_.getLocalBounds().width / 2.0f, center_y - 35);
+
+    join_button_.setSize(sf::Vector2f(button_width, button_height));
+    join_button_.setPosition(center_x - button_width / 2, center_y + 40);
+    join_button_text_.setPosition(center_x - join_button_text_.getLocalBounds().width / 2.0f, center_y + 65);
+
+    back_button_.setPosition(20, window_size.y - 70);
+    back_button_text_.setPosition(back_button_.getPosition().x +
+                                      (200 - back_button_text_.getLocalBounds().width) / 2.0f,
+                                  back_button_.getPosition().y + 15);
+
+    float input_width = std::min(400.0f, window_size.x * 0.6f);
+    room_input_label_.setPosition(center_x - input_width / 2, center_y - 80);
+    room_input_background_.setSize(sf::Vector2f(input_width, 40));
+    room_input_background_.setPosition(center_x - input_width / 2, center_y - 50);
+    room_input_text_.setPosition(center_x - input_width / 2 + 10, center_y - 45);
+
+    game_mode_label_.setPosition(center_x - input_width / 2, center_y + 10);
+    game_mode_button_.setPosition(center_x - input_width / 2 + 100, center_y + 5);
+    game_mode_text_.setPosition(game_mode_button_.getPosition().x +
+                                    (150 - game_mode_text_.getLocalBounds().width) / 2.0f,
+                                game_mode_button_.getPosition().y + 10);
+
+    difficulty_label_.setPosition(center_x - input_width / 2, center_y + 55);
+    difficulty_button_.setPosition(center_x - input_width / 2 + 140, center_y + 50);
+    difficulty_text_.setPosition(difficulty_button_.getPosition().x +
+                                     (150 - difficulty_text_.getLocalBounds().width) / 2.0f,
+                                 difficulty_button_.getPosition().y + 10);
+
+    friendly_fire_label_.setPosition(center_x - input_width / 2, center_y + 100);
+    friendly_fire_button_.setPosition(center_x - input_width / 2 + 170, center_y + 95);
+    friendly_fire_text_.setPosition(friendly_fire_button_.getPosition().x +
+                                        (150 - friendly_fire_text_.getLocalBounds().width) / 2.0f,
+                                    friendly_fire_button_.getPosition().y + 10);
+
+    create_room_button_.setSize(sf::Vector2f(250, 50));
+    create_room_button_.setPosition(center_x - 125, center_y + 150);
+    create_room_button_text_.setPosition(center_x - create_room_button_text_.getLocalBounds().width / 2.0f,
+                                         center_y + 165);
+
+    refresh_button_.setPosition(window_size.x - 270, 80);
+    refresh_button_text_.setPosition(refresh_button_.getPosition().x +
+                                         (250 - refresh_button_text_.getLocalBounds().width) / 2.0f,
+                                     refresh_button_.getPosition().y + 15);
+
+    update_room_list_display();
+
+    float waiting_y = window_size.y * 0.14f;
+    float players_y = waiting_y + 35.0f;
+    float list_y = players_y + 35.0f;
+    float input_y = list_y + 50.0f;
+    float start_button_y = input_y + 70.0f;
+
     waiting_text_.setPosition((window_size.x - waiting_text_.getLocalBounds().width) / 2.0f, waiting_y);
     players_text_.setPosition((window_size.x - players_text_.getLocalBounds().width) / 2.0f, players_y);
     player_list_text_.setPosition((window_size.x - player_list_text_.getLocalBounds().width) / 2.0f, list_y);
 
-    float button_width = std::min(300.0f, window_size.x * 0.25f);
-    float button_height = std::min(60.0f, window_size.y * 0.08f);
-    start_button_.setSize(sf::Vector2f(button_width, button_height));
-    start_button_.setPosition((window_size.x - button_width) / 2.0f, button_y);
-    start_button_text_.setPosition(
-        start_button_.getPosition().x + (button_width - start_button_text_.getLocalBounds().width) / 2.0f,
-        start_button_.getPosition().y + (button_height - start_button_text_.getLocalBounds().height) / 2.0f - 5.0f);
+    float name_box_width = std::min(320.0f, window_size.x * 0.45f);
+    input_background_.setSize(sf::Vector2f(name_box_width, 40.0f));
+    input_background_.setPosition(center_x - name_box_width / 2.0f, input_y);
+    name_input_label_.setPosition(center_x - name_input_label_.getLocalBounds().width / 2.0f, input_y - 24.0f);
+    name_input_text_.setPosition(input_background_.getPosition().x + 10.0f, input_y + 8.0f);
+
+    float start_button_width = std::min(260.0f, window_size.x * 0.4f);
+    float start_button_height = 60.0f;
+    start_button_.setSize(sf::Vector2f(start_button_width, start_button_height));
+    start_button_.setPosition(center_x - start_button_width / 2, start_button_y);
+    start_button_text_.setPosition(center_x - start_button_text_.getLocalBounds().width / 2.0f, start_button_y + 15.0f);
+
+    leave_room_button_.setPosition(window_size.x - 270, 20);
+    leave_room_button_text_.setPosition(leave_room_button_.getPosition().x +
+                                            (250 - leave_room_button_text_.getLocalBounds().width) / 2.0f,
+                                        leave_room_button_.getPosition().y + 15);
+
+    float chat_width = 600.0f;
+    float chat_height = 200.0f;
+    float chat_x = (window_size.x - chat_width) / 2.0f;
+    float chat_y = window_size.y - chat_height - 20.0f;
+
+    chat_background_.setPosition(chat_x, chat_y);
+    chat_input_background_.setPosition(chat_x, chat_y + chat_height + 5.0f);
+
+    float input_text_y = chat_y + chat_height + 5.0f + 13.0f;
+    chat_input_label_.setPosition(chat_x + 10, input_text_y);
+    chat_input_text_.setPosition(chat_x + 70, input_text_y);
+
+    update_chat_display();
+}
+
+void LobbyState::add_chat_message(const std::string& player_name, const std::string& message) {
+    chat_messages_.push_back({player_name, message});
+
+    if (chat_messages_.size() > MAX_CHAT_MESSAGES) {
+        chat_messages_.erase(chat_messages_.begin());
+    }
+
+    update_chat_display();
+}
+
+void LobbyState::update_chat_display() {
+    if (!font_loaded_)
+        return;
+
+    chat_message_texts_.clear();
+    chat_message_texts_.reserve(chat_messages_.size());
+
+    float chat_x = chat_background_.getPosition().x + 8.0f;
+    float chat_y = chat_background_.getPosition().y + 8.0f;
+    float line_height = 20.0f;
+
+    size_t start_idx = chat_messages_.size() > MAX_CHAT_MESSAGES ? chat_messages_.size() - MAX_CHAT_MESSAGES : 0;
+    size_t display_count = 0;
+
+    for (size_t i = start_idx; i < chat_messages_.size() && display_count < MAX_CHAT_MESSAGES; ++i, ++display_count) {
+        sf::Text msg_text;
+        msg_text.setFont(font_);
+        msg_text.setCharacterSize(13);
+
+        std::string name = chat_messages_[i].first;
+        std::string msg = chat_messages_[i].second;
+        if (name.length() > 16)
+            name = name.substr(0, 14) + "..";
+        if (msg.length() > 60)
+            msg = msg.substr(0, 57) + "...";
+
+        msg_text.setString(name + ": " + msg);
+        msg_text.setFillColor(sf::Color(200, 200, 200));
+        msg_text.setPosition(chat_x, chat_y + (static_cast<float>(display_count) * line_height));
+        chat_message_texts_.push_back(std::move(msg_text));
+    }
+}
+
+void LobbyState::process_pending_events() {
+    std::lock_guard<std::mutex> lock(pending_mutex_);
+
+    bool players_updated = false;
+    for (const auto& player : pending_player_joins_) {
+        add_player(player.first, player.second);
+        players_updated = true;
+    }
+    pending_player_joins_.clear();
+
+    for (const auto& update : pending_name_updates_) {
+        uint32_t player_id = update.first;
+        std::string name = update.second;
+
+        if (connected_players_.find(player_id) != connected_players_.end()) {
+            std::string final_name = name;
+            if (final_name.empty() || final_name == "Player" || final_name == "PLAYER" || final_name == "player" ||
+                final_name == "Player 0" || final_name == "PLAYER 0") {
+                final_name = "Player " + std::to_string(player_id);
+            }
+            connected_players_[player_id] = final_name;
+            players_updated = true;
+        }
+    }
+    pending_name_updates_.clear();
+
+    if (players_updated) {
+        update_player_display();
+    }
+
+    for (const auto& msg : pending_chat_messages_) {
+        add_chat_message(msg.first, msg.second);
+    }
+    pending_chat_messages_.clear();
+}
+
+void LobbyState::add_room(uint32_t session_id, uint8_t player_count, uint8_t max_players, uint8_t status,
+                          const std::string& room_name) {
+    std::lock_guard<std::mutex> lock(pending_mutex_);
+
+    std::string status_str = (status == 0) ? "waiting" : "playing";
+
+    std::cout << "[ROOM_LIST] Added room: " << room_name << " (ID: " << session_id
+              << ") - Players: " << (int)player_count << "/" << (int)max_players << std::endl;
+
+    for (auto& room : available_rooms_) {
+        if (room.session_id == session_id) {
+            room.player_count = player_count;
+            room.max_players = max_players;
+            room.status = status_str;
+            room.room_name = room_name;
+            room_list_needs_update_.store(true);
+            return;
+        }
+    }
+
+    RoomEntry entry;
+    entry.session_id = session_id;
+    entry.player_count = player_count;
+    entry.max_players = max_players;
+    entry.status = status_str;
+    entry.room_name = room_name;
+    available_rooms_.push_back(entry);
+
+    room_list_needs_update_.store(true);
+}
+
+void LobbyState::update_room_list_display() {
+    if (!font_loaded_ || !renderer_ref_)
+        return;
+
+    room_texts_.clear();
+    room_buttons_.clear();
+
+    sf::Vector2u window_size = renderer_ref_->get_window_size();
+    float start_y = 150.0f;
+    const float room_height = 70.0f;
+    const float room_spacing = 10.0f;
+    float room_width = std::min(800.0f, window_size.x - 100.0f);
+    float room_x = (window_size.x - room_width) / 2.0f;
+
+    for (size_t i = 0; i < available_rooms_.size() && i < 6; ++i) {
+        const auto& room = available_rooms_[i];
+        float y_pos = start_y + (static_cast<float>(i) * (room_height + room_spacing));
+
+        sf::RectangleShape room_bg;
+        room_bg.setSize(sf::Vector2f(room_width, room_height));
+        room_bg.setPosition(room_x, y_pos);
+
+        if (static_cast<int>(i) == selected_room_index_) {
+            room_bg.setFillColor(sf::Color(80, 80, 120, 180));
+            room_bg.setOutlineColor(sf::Color::Cyan);
+        } else if (room.status == "waiting") {
+            room_bg.setFillColor(sf::Color(50, 100, 50, 150));
+            room_bg.setOutlineColor(sf::Color(100, 200, 100));
+        } else {
+            room_bg.setFillColor(sf::Color(100, 50, 50, 100));
+            room_bg.setOutlineColor(sf::Color(200, 100, 100));
+        }
+        room_bg.setOutlineThickness(2);
+        room_buttons_.push_back(room_bg);
+
+        sf::Text name_text;
+        name_text.setFont(font_);
+        name_text.setString(room.room_name.empty() ? "Room " + std::to_string(room.session_id) : room.room_name);
+        name_text.setCharacterSize(24);
+        name_text.setFillColor(sf::Color::White);
+        name_text.setPosition(room_x + 20.0f, y_pos + 8.0f);
+        room_texts_.push_back(name_text);
+
+        sf::Text info_text;
+        info_text.setFont(font_);
+        info_text.setString("Players: " + std::to_string(room.player_count) + "/" + std::to_string(room.max_players) +
+                            " | Status: " + room.status);
+        info_text.setCharacterSize(16);
+        info_text.setFillColor(sf::Color(180, 180, 180));
+        info_text.setPosition(room_x + 20.0f, y_pos + 38.0f);
+        room_texts_.push_back(info_text);
+    }
 }
 
 } // namespace rtype::client

@@ -9,6 +9,9 @@
 #include "../../include/components/Weapon.hpp"
 #include "../../include/components/CollisionLayer.hpp"
 #include "../../include/components/ScreenMode.hpp"
+#include "../../include/components/MovementPattern.hpp"
+#include "../../include/components/AudioEvent.hpp"
+#include "../../include/components/GameRulesComponent.hpp"
 #include "../../../shared/utils/GameConfig.hpp"
 #include <random>
 #include <cmath>
@@ -19,6 +22,19 @@ namespace rtype::ecs {
 void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
     float maxX = rtype::config::MAP_MAX_X;
     float maxY = rtype::config::MAP_MAX_Y;
+
+    float hp_mult = 1.0f;
+    float speed_mult = 1.0f;
+    float fire_rate_mult = 1.0f;
+
+    auto rules_view = registry.view<component::GameRulesComponent>();
+    for (auto entity : rules_view) {
+        const auto& rules_comp = registry.getComponent<component::GameRulesComponent>(entity);
+        hp_mult = rules_comp.rules.enemy_hp_multiplier;
+        speed_mult = rules_comp.rules.enemy_speed_multiplier;
+        fire_rate_mult = rules_comp.rules.enemy_fire_rate_multiplier;
+        break;
+    }
 
     try {
         auto mapBoundsView = registry.view<component::MapBounds>();
@@ -37,7 +53,8 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
 
     auto view = registry.view<component::EnemySpawner>();
 
-    view.each([&registry, dt, maxX, maxY, this]([[maybe_unused]] auto entity, component::EnemySpawner& spawner) {
+    view.each([&registry, dt, maxX, maxY, hp_mult, speed_mult, fire_rate_mult, this]([[maybe_unused]] auto entity,
+                                                                                     component::EnemySpawner& spawner) {
         spawner.waveTimer += static_cast<float>(dt);
 
         if (spawner.currentLevel >= static_cast<int>(_levels.size()))
@@ -55,6 +72,42 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
         const auto& wave = level.waves[spawner.currentWave];
 
         while (spawner.currentEnemyIndex < static_cast<int>(wave.enemies.size())) {
+            if (spawner.currentWave == 0 && spawner.currentEnemyIndex == 0) {
+                bool isBossLevel = false;
+                if (!wave.enemies.empty()) {
+                    if (wave.enemies[0].type.find("Boss") != std::string::npos) {
+                        isBossLevel = true;
+                    }
+                }
+
+                if (isBossLevel) {
+                    if (!spawner.bossWarningActive && spawner.bossWarningTimer == 0.0f) {
+                        spawner.bossWarningActive = true;
+                        spawner.bossWarningTimer = 4.0f;
+
+                        auto playerView = registry.view<component::Position, component::Tag>();
+                        for (auto entity : playerView) {
+                            const auto& tag = registry.getComponent<component::Tag>(entity);
+                            if (tag.name == "Player") {
+                                auto& pos = registry.getComponent<component::Position>(entity);
+                                pos.x = 100.0f;
+                                pos.y = 540.0f;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (spawner.bossWarningActive) {
+                spawner.bossWarningTimer -= static_cast<float>(dt);
+                if (spawner.bossWarningTimer <= 0.0f) {
+                    spawner.bossWarningActive = false;
+                    spawner.bossWarningTimer = 0.0f;
+                } else {
+                    return;
+                }
+            }
+
             const auto& enemySpawn = wave.enemies[spawner.currentEnemyIndex];
             if (spawner.waveTimer >= enemySpawn.spawnTime) {
 
@@ -62,8 +115,8 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
 
                 float spawnX = enemySpawn.x;
                 float spawnY = enemySpawn.y;
-                float vx = enemySpawn.vx;
-                float vy = enemySpawn.vy;
+                float vx = enemySpawn.vx * speed_mult;
+                float vy = enemySpawn.vy * speed_mult;
                 std::string tag = enemySpawn.type;
 
                 float dirX = 0.0f;
@@ -92,26 +145,86 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                 } else if (tag == "Monster_0_Right") {
                     offX = 50.0f;
                     offY = 20.0f;
+                } else if (tag == "Boss_1") {
+                    offX = 0.0f;
+                    offY = 100.0f;
+                } else if (tag == "Monster_Wave_2_Left" || tag == "Monster_Wave_2_Right") {
+                    offX = 0.0f;
+                    offY = 0.0f;
+                } else if (tag == "Boss_2") {
+                    offX = 0.0f;
+                    offY = 256.0f;
                 }
 
                 registry.addComponent<component::Position>(enemy, spawnX, spawnY);
                 registry.addComponent<component::Velocity>(enemy, vx, vy);
-                registry.addComponent<component::HitBox>(enemy, 100.0f, 100.0f);
-                registry.addComponent<component::Health>(enemy, 5, 5);
+
                 registry.addComponent<component::Tag>(enemy, tag);
                 registry.addComponent<component::Collidable>(enemy, component::CollisionLayer::Enemy);
 
                 auto& weapon = registry.addComponent<component::Weapon>(enemy);
                 weapon.autoFire = true;
-                weapon.fireRate = enemySpawn.fireRate;
-                weapon.projectileSpeed = 500.0f;
+                weapon.fireRate = enemySpawn.fireRate / fire_rate_mult;
+                weapon.projectileSpeed = 500.0f * speed_mult;
                 weapon.damage = 10.0f;
                 weapon.projectileLifetime = 3.0f;
-                weapon.projectileTag = "Monster_0_Ball";
                 weapon.spawnOffsetX = offX;
                 weapon.spawnOffsetY = offY;
                 weapon.directionX = dirX;
                 weapon.directionY = dirY;
+
+                if (tag == "Boss_1") {
+                    int hp = static_cast<int>(1000 * hp_mult);
+                    registry.addComponent<component::HitBox>(enemy, 200.0f, 200.0f);
+                    registry.addComponent<component::Health>(enemy, hp, hp);
+                    registry.addComponent<component::MovementPattern>(
+                        enemy, component::MovementPatternType::RandomVertical, 0.0f, 200.0f * speed_mult, 1.0f);
+                    weapon.projectileTag = "Boss_1_Bayblade";
+                    weapon.projectilePattern = component::MovementPatternType::Circular;
+                    weapon.projectileAmplitude = 150.0f;
+                    weapon.projectileFrequency = 5.0f;
+                    weapon.damage = 50.0f;
+                    weapon.fireRate = 0.2f / fire_rate_mult;
+
+                    // Trigger boss music and roar
+                    auto musicEvent = registry.createEntity();
+                    registry.addComponent<component::AudioEvent>(musicEvent,
+                                                                 component::AudioEventType::BOSS_MUSIC_START);
+                    auto roarEvent = registry.createEntity();
+                    registry.addComponent<component::AudioEvent>(roarEvent, component::AudioEventType::BOSS_ROAR);
+                } else if (tag == "Boss_2") {
+                    int hp = static_cast<int>(1000 * hp_mult);
+                    registry.addComponent<component::HitBox>(enemy, 256.0f, 256.0f);
+                    registry.addComponent<component::Health>(enemy, hp, hp);
+                    registry.addComponent<component::MovementPattern>(enemy, component::MovementPatternType::None, 0.0f,
+                                                                      0.0f, 0.0f);
+                    weapon.projectileTag = "Boss_2_Projectile";
+                    weapon.projectilePattern = component::MovementPatternType::Circular;
+                    weapon.projectileAmplitude = 100.0f;
+                    weapon.projectileFrequency = 10.0f;
+                    weapon.damage = 20.0f;
+                    weapon.fireRate = 0.05f / fire_rate_mult;
+
+                    // Trigger boss music and roar
+                    auto musicEvent = registry.createEntity();
+                    registry.addComponent<component::AudioEvent>(musicEvent,
+                                                                 component::AudioEventType::BOSS_MUSIC_START);
+                    auto roarEvent = registry.createEntity();
+                    registry.addComponent<component::AudioEvent>(roarEvent, component::AudioEventType::BOSS_ROAR);
+                } else if (tag == "Monster_Wave_2_Left" || tag == "Monster_Wave_2_Right") {
+                    int hp = static_cast<int>(10 * hp_mult);
+                    registry.addComponent<component::HitBox>(enemy, 100.0f, 100.0f);
+                    registry.addComponent<component::Health>(enemy, hp, hp);
+                    registry.addComponent<component::MovementPattern>(enemy, component::MovementPatternType::Sinusoidal,
+                                                                      0.0f, 100.0f * speed_mult, 2.0f);
+                    weapon.projectileTag = "Monster_0_Ball";
+                    weapon.autoFire = false;
+                } else {
+                    int hp = static_cast<int>(5 * hp_mult);
+                    registry.addComponent<component::HitBox>(enemy, 100.0f, 100.0f);
+                    registry.addComponent<component::Health>(enemy, hp, hp);
+                    weapon.projectileTag = "Monster_0_Ball";
+                }
 
                 spawner.currentEnemyIndex++;
             } else {

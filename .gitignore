@@ -8,7 +8,9 @@ lib/
 # Executables
 r-type_client
 r-type_server
+doodle_jump
 unit_tests
+platformer_game
 *.exe
 *.out
 *.app
@@ -44,3 +46,6 @@ subject/
 external/
 .cache/
 documentation/doxygen/
+
+# Scoreboard
+client/saves/scoreboard.txt

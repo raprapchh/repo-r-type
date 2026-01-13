@@ -1,8 +1,9 @@
 #pragma once
 
 #include "../../shared/interfaces/ecs/ISystem.hpp"
+#include "../../shared/interfaces/rendering/IRenderer.hpp"
 #include "../Registry.hpp"
-#include <SFML/Graphics.hpp>
+#include <memory>
 
 namespace rtype::client {
 class AccessibilityManager;
@@ -12,14 +13,19 @@ namespace rtype::ecs {
 
 class RenderSystem : public ISystem {
   public:
-    RenderSystem(sf::RenderWindow& window, std::unordered_map<std::string, sf::Texture>& textures,
-                 rtype::client::AccessibilityManager* accessibility_mgr = nullptr);
+    explicit RenderSystem(std::shared_ptr<rtype::rendering::IRenderer> renderer = nullptr,
+                          rtype::client::AccessibilityManager* accessibility_mgr = nullptr);
+
     ~RenderSystem() override = default;
+
     void update(GameEngine::Registry& registry, double dt) override;
 
+    void set_renderer(std::shared_ptr<rtype::rendering::IRenderer> renderer);
+
+    std::shared_ptr<rtype::rendering::IRenderer> get_renderer() const;
+
   private:
-    sf::RenderWindow& window_;
-    std::unordered_map<std::string, sf::Texture>& textures_;
+    std::shared_ptr<rtype::rendering::IRenderer> renderer_;
     rtype::client::AccessibilityManager* accessibility_manager_;
 };
 

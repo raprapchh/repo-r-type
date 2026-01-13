@@ -11,7 +11,8 @@ enum class CollisionLayer : uint8_t {
     PlayerProjectile = 3,
     EnemyProjectile = 4,
     PowerUp = 5,
-    Obstacle = 6
+    Obstacle = 6,
+    Companion = 7
 };
 
 struct Collidable {
