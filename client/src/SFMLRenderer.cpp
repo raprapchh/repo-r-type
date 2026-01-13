@@ -106,4 +106,34 @@ sf::IntRect SFMLRenderer::calculate_texture_rect(const RenderData& data, uint32_
     return sf::IntRect(data.current_sprite * sprite_width, 0, sprite_width, sprite_height);
 }
 
+void SFMLRenderer::draw_parallax_background(const std::string& texture_name, float view_y) {
+    if (textures_.find(texture_name) == textures_.end()) {
+        return;
+    }
+
+    sf::Texture& texture = textures_.at(texture_name);
+    if (!texture.isRepeated()) {
+        texture.setRepeated(true);
+    }
+
+    sf::Vector2u size = window_.getSize();
+    float parallax_factor = 0.5f;
+    int texture_y = static_cast<int>(view_y * parallax_factor);
+
+    sf::IntRect texture_rect(0, -texture_y, size.x, size.y);
+
+    sf::Sprite sprite(texture, texture_rect);
+    sprite.setPosition(window_.mapPixelToCoords(sf::Vector2i(0, 0)));
+
+    sf::View current_view = window_.getView();
+    sf::Vector2f view_center = current_view.getCenter();
+    sf::Vector2f view_size = current_view.getSize();
+
+    sprite.setPosition(view_center.x - view_size.x / 2.0f, view_center.y - view_size.y / 2.0f);
+    sprite.setTextureRect(sf::IntRect(0, -static_cast<int>(view_y * parallax_factor), static_cast<int>(view_size.x),
+                                      static_cast<int>(view_size.y)));
+
+    window_.draw(sprite);
+}
+
 } // namespace rtype::rendering
