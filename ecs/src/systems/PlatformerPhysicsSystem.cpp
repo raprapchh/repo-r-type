@@ -42,19 +42,13 @@ void PlatformerPhysicsSystem::update(GameEngine::Registry& registry, double dt) 
             if (match_x) {
                 if (vel.vy > 0 && pos.y + hitbox.height <= plat_pos.y && next_y + hitbox.height >= plat_pos.y) {
                     pos.y = plat_pos.y - hitbox.height;
-                    vel.vy = 0;
-                    on_ground = true;
+                    vel.vy = jump.strength;
+                    on_ground = false;
                 }
             }
         }
 
         jump.can_jump = on_ground;
-
-        if (pos.y > 500) {
-            pos.y = 500;
-            vel.vy = 0;
-            jump.can_jump = true;
-        }
     }
 }
 

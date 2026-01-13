@@ -129,11 +129,30 @@ target_link_libraries(r-type_server PRIVATE
     rtype_ecs
     rtype_shared
     asio::asio
-    Threads::Threads
-    fmt::fmt
 )
 
+# 5. Platformer PoC
+add_executable(doodle_jump
+    platformer/main.cpp
+    client/src/SFMLRenderer.cpp
+    client/src/AccessibilityManager.cpp
+)
+target_include_directories(doodle_jump PRIVATE
+    ${CMAKE_SOURCE_DIR}/client/include
+    ${CMAKE_SOURCE_DIR}/ecs/include
+    ${CMAKE_SOURCE_DIR}/shared
+)
+target_link_libraries(doodle_jump PRIVATE
+    rtype_ecs
+    rtype_shared
+    sfml-graphics sfml-window sfml-system sfml-audio
+)
 
+if(UNIX)
+    target_link_libraries(r-type_server PRIVATE pthread)
+    target_link_libraries(r-type_client PRIVATE pthread)
+    target_link_libraries(doodle_jump PRIVATE pthread Threads::Threads fmt::fmt)
+endif()
 
 # Windows specifics
 if (WIN32)

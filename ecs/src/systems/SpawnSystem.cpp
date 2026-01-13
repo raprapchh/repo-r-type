@@ -10,6 +10,7 @@
 #include "../../include/components/CollisionLayer.hpp"
 #include "../../include/components/ScreenMode.hpp"
 #include "../../include/components/MovementPattern.hpp"
+#include "../../include/components/AudioEvent.hpp"
 #include "../../include/components/GameRulesComponent.hpp"
 #include "../../../shared/utils/GameConfig.hpp"
 #include <random>
@@ -184,6 +185,13 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                     weapon.projectileFrequency = 5.0f;
                     weapon.damage = 50.0f;
                     weapon.fireRate = 0.2f / fire_rate_mult;
+
+                    // Trigger boss music and roar
+                    auto musicEvent = registry.createEntity();
+                    registry.addComponent<component::AudioEvent>(musicEvent,
+                                                                 component::AudioEventType::BOSS_MUSIC_START);
+                    auto roarEvent = registry.createEntity();
+                    registry.addComponent<component::AudioEvent>(roarEvent, component::AudioEventType::BOSS_ROAR);
                 } else if (tag == "Boss_2") {
                     int hp = static_cast<int>(1000 * hp_mult);
                     registry.addComponent<component::HitBox>(enemy, 256.0f, 256.0f);
@@ -196,6 +204,13 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                     weapon.projectileFrequency = 10.0f;
                     weapon.damage = 20.0f;
                     weapon.fireRate = 0.05f / fire_rate_mult;
+
+                    // Trigger boss music and roar
+                    auto musicEvent = registry.createEntity();
+                    registry.addComponent<component::AudioEvent>(musicEvent,
+                                                                 component::AudioEventType::BOSS_MUSIC_START);
+                    auto roarEvent = registry.createEntity();
+                    registry.addComponent<component::AudioEvent>(roarEvent, component::AudioEventType::BOSS_ROAR);
                 } else if (tag == "Monster_Wave_2_Left" || tag == "Monster_Wave_2_Right") {
                     int hp = static_cast<int>(10 * hp_mult);
                     registry.addComponent<component::HitBox>(enemy, 100.0f, 100.0f);
