@@ -11,6 +11,10 @@ constexpr float OBSTACLE_SCALE = 6.0f;
 constexpr float FLOOR_OBSTACLE_WIDTH = 335.0f;
 constexpr float FLOOR_OBSTACLE_HEIGHT = 8.0f;
 
+constexpr float TRAIN_OBSTACLE_WIDTH = 288.0f;
+constexpr float TRAIN_OBSTACLE_HEIGHT = 100.0f;
+constexpr float TRAIN_OBSTACLE_SCALE = 1.0f;
+
 constexpr float PLAYER_WIDTH = 33.0f;
 constexpr float PLAYER_HEIGHT = 17.0f;
 constexpr float PLAYER_SCALE = 5.0f;

@@ -241,29 +241,40 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
 
         } else if (data.entity_type == rtype::net::EntityType::OBSTACLE) {
             std::string sprite_name = "obstacle_1";
-            if (data.sub_type == 1) {
-                sprite_name = "floor_obstacle";
-            }
-            registry.addComponent<rtype::ecs::component::Drawable>(
-                entity, sprite_name, static_cast<uint32_t>(0), static_cast<uint32_t>(0),
-                rtype::constants::OBSTACLE_SCALE, rtype::constants::OBSTACLE_SCALE);
+            float scale_x = rtype::constants::OBSTACLE_SCALE;
+            float scale_y = rtype::constants::OBSTACLE_SCALE;
             float obs_w = rtype::constants::OBSTACLE_WIDTH;
             float obs_h = rtype::constants::OBSTACLE_HEIGHT;
+            std::string tag_name = "Obstacle";
+
             if (data.sub_type == 1) {
+                sprite_name = "floor_obstacle";
                 obs_w = rtype::constants::FLOOR_OBSTACLE_WIDTH;
                 obs_h = rtype::constants::FLOOR_OBSTACLE_HEIGHT;
+                tag_name = "Obstacle_Floor";
+            } else if (data.sub_type == 2) {
+                sprite_name = "reverse_floor_obstacle";
+                obs_w = rtype::constants::FLOOR_OBSTACLE_WIDTH;
+                obs_h = rtype::constants::FLOOR_OBSTACLE_HEIGHT;
+                scale_x = rtype::constants::OBSTACLE_SCALE;
+                scale_y = rtype::constants::OBSTACLE_SCALE;
+                tag_name = "Obstacle_Train_3";
+            } else if (data.sub_type == 3) {
+                sprite_name = "reverse_obstacle1";
+                obs_w = rtype::constants::OBSTACLE_WIDTH;
+                obs_h = rtype::constants::OBSTACLE_HEIGHT;
+                scale_x = rtype::constants::OBSTACLE_SCALE;
+                scale_y = rtype::constants::OBSTACLE_SCALE;
+                tag_name = "Obstacle_Train_4";
             }
 
-            registry.addComponent<rtype::ecs::component::HitBox>(entity, obs_w * rtype::constants::OBSTACLE_SCALE,
-                                                                 obs_h * rtype::constants::OBSTACLE_SCALE);
+            registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
+                                                                   static_cast<uint32_t>(0), scale_x, scale_y);
+
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, obs_w * scale_x, obs_h * scale_y);
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::Obstacle);
-
-            if (data.sub_type == 1) {
-                registry.addComponent<rtype::ecs::component::Tag>(entity, "Obstacle_Floor");
-            } else {
-                registry.addComponent<rtype::ecs::component::Tag>(entity, "Obstacle");
-            }
+            registry.addComponent<rtype::ecs::component::Tag>(entity, tag_name);
         } else if (data.entity_type == rtype::net::EntityType::POWERUP) {
             std::string sprite_name = "force_pod";
             std::string tag_name = (data.sub_type == 1) ? "ForcePodItem" : "ForcePod";
