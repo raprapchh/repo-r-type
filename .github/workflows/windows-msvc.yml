@@ -61,28 +61,28 @@ jobs:
         name: r-type-windows-binaries
         path: dist/
 
-    - name: Install NSIS
-      run: choco install nsis -y
-      shell: pwsh
-
-    - name: Reload environment
-      run: refreshenv
-      shell: pwsh
-
-    - name: Build Installer (NSIS)
-      run: |
-        & 'C:\Program Files (x86)\NSIS\makensis.exe' "/DVERSION=${{ github.ref_name }}" 'installer/installer.nsi'
-      shell: pwsh
-
-    - name: Move Installer to dist
-      run: |
-        if (Test-Path 'R-Type-Installer.exe') {
-          if (-Not (Test-Path 'dist')) { New-Item -ItemType Directory -Path 'dist' | Out-Null }
-          Move-Item 'R-Type-Installer.exe' -Destination 'dist'
-        } else {
-          Write-Host 'R-Type-Installer.exe not found; skipping move.'
-        }
-      shell: pwsh
+#    - name: Install NSIS
+#      run: choco install nsis -y
+#      shell: pwsh
+#
+#    - name: Reload environment
+#      run: refreshenv
+#      shell: pwsh
+#
+#    - name: Build Installer (NSIS)
+#      run: |
+#        & 'C:\Program Files (x86)\NSIS\makensis.exe' "/DVERSION=${{ github.ref_name }}" 'installer/installer.nsi'
+#      shell: pwsh
+#
+#    - name: Move Installer to dist
+#      run: |
+#        if (Test-Path 'R-Type-Installer.exe') {
+#          if (-Not (Test-Path 'dist')) { New-Item -ItemType Directory -Path 'dist' | Out-Null }
+#          Move-Item 'R-Type-Installer.exe' -Destination 'dist'
+#        } else {
+#          Write-Host 'R-Type-Installer.exe not found; skipping move.'
+#        }
+#      shell: pwsh
 
     - name: Validate artifacts (move zero-byte files)
       run: |
