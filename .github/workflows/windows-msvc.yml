@@ -36,6 +36,13 @@ jobs:
         cp bin/windows/r-type_client.exe dist/
         cp bin/windows/r-type_server.exe dist/
 
+      # Copy runtime DLLs from vcpkg installed location (build-local or global)
+      if (Test-Path "build/vcpkg_installed/x64-windows/bin") {
+        Copy-Item -Path "build/vcpkg_installed/x64-windows/bin/*.dll" -Destination dist -Force -ErrorAction SilentlyContinue
+      } elseif (Test-Path "C:\\vcpkg\\installed\\x64-windows\\bin") {
+        Copy-Item -Path "C:\\vcpkg\\installed\\x64-windows\\bin\\*.dll" -Destination dist -Force -ErrorAction SilentlyContinue
+      }
+
         mkdir dist/client
         cp -r client/assets dist/client/
         cp -r client/fonts dist/client/
@@ -126,5 +133,6 @@ jobs:
       with:
         files: |
           dist.zip
+          dist\R-Type-Installer.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
