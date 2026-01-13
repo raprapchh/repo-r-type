@@ -1,18 +1,18 @@
-#include "../../include/systems/WeaponSystem.hpp"
-#include "../../include/components/MovementPattern.hpp"
-#include "../../include/components/Weapon.hpp"
-#include "../../include/components/Position.hpp"
-#include "../../include/components/Velocity.hpp"
-#include "../../include/components/Projectile.hpp"
-#include "../../include/components/HitBox.hpp"
-#include "../../include/components/Tag.hpp"
-#include "../../include/components/CollisionLayer.hpp"
-#include "../../include/components/ScreenMode.hpp"
-#include "../../include/components/AudioEvent.hpp"
-#include "../../shared/utils/GameConfig.hpp"
+#include "systems/WeaponSystem.hpp"
+#include "components/MovementPattern.hpp"
+#include "components/Weapon.hpp"
+#include "components/Position.hpp"
+#include "components/Velocity.hpp"
+#include "components/Projectile.hpp"
+#include "components/HitBox.hpp"
+#include "components/Tag.hpp"
+#include "components/CollisionLayer.hpp"
+#include "components/ScreenMode.hpp"
+#include "components/AudioEvent.hpp"
+#include "utils/GameConfig.hpp"
 #include <vector>
 #include <cmath>
-#include "../../../shared/utils/Logger.hpp"
+#include "utils/Logger.hpp"
 
 namespace rtype::ecs {
 

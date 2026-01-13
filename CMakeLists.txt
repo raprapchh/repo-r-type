@@ -86,7 +86,7 @@ endif()
 # ECS
 file(GLOB_RECURSE ECS_SRC CONFIGURE_DEPENDS ecs/src/*.cpp)
 add_library(rtype_ecs ${ECS_SRC})
-target_include_directories(rtype_ecs PUBLIC ecs/include)
+target_include_directories(rtype_ecs PUBLIC ecs/include ${CMAKE_SOURCE_DIR}/shared ${CMAKE_SOURCE_DIR}/client/include)
 target_link_libraries(rtype_ecs PUBLIC
     sfml-graphics
     sfml-window
@@ -106,7 +106,12 @@ target_include_directories(rtype_shared PUBLIC shared)
 # ─────────────────────────────
 file(GLOB_RECURSE CLIENT_SRC CONFIGURE_DEPENDS client/src/*.cpp)
 add_executable(r-type_client ${CLIENT_SRC})
-target_include_directories(r-type_client PRIVATE client/include)
+target_include_directories(r-type_client PRIVATE
+    ${CMAKE_SOURCE_DIR}/client/include
+    ${CMAKE_SOURCE_DIR}/ecs/include
+    ${CMAKE_SOURCE_DIR}/shared
+    ${CMAKE_SOURCE_DIR}/server/include
+)
 target_link_libraries(r-type_client PRIVATE
     rtype_ecs
     rtype_shared
@@ -124,7 +129,12 @@ target_link_libraries(r-type_client PRIVATE
 # ─────────────────────────────
 file(GLOB_RECURSE SERVER_SRC CONFIGURE_DEPENDS server/src/*.cpp)
 add_executable(r-type_server ${SERVER_SRC})
-target_include_directories(r-type_server PRIVATE server/include)
+target_include_directories(r-type_server PRIVATE
+    ${CMAKE_SOURCE_DIR}/server/include
+    ${CMAKE_SOURCE_DIR}/ecs/include
+    ${CMAKE_SOURCE_DIR}/shared
+    ${CMAKE_SOURCE_DIR}/client/include
+)
 target_link_libraries(r-type_server PRIVATE
     rtype_ecs
     rtype_shared

@@ -1,6 +1,6 @@
-#include "../include/LobbyState.hpp"
-#include "../include/GameState.hpp"
-#include "../include/States.hpp"
+#include "LobbyState.hpp"
+#include "GameState.hpp"
+#include "States.hpp"
 #include <iostream>
 #include <thread>
 #include <chrono>

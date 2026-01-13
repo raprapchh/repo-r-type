@@ -1,5 +1,5 @@
-#include "../include/Renderer.hpp"
-#include "../../shared/GameConstants.hpp"
+#include "Renderer.hpp"
+#include "GameConstants.hpp"
 #include <iostream>
 #include <algorithm>
 

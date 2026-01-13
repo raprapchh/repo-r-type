@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../shared/interfaces/ecs/ISystem.hpp"
-#include "../../shared/interfaces/rendering/IRenderer.hpp"
+#include "interfaces/ecs/ISystem.hpp"
+#include "interfaces/rendering/IRenderer.hpp"
 #include "../Registry.hpp"
 #include <memory>
 
