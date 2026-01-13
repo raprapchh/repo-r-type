@@ -3,7 +3,6 @@ name: Windows MSVC Build
 on:
   push:
     tags: [ "v*" ]
-  create: {}
   workflow_dispatch: {}
   pull_request:
     branches: [ "main", "dev", "feat/cross-platform" ]
