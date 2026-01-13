@@ -1,0 +1,138 @@
+name: Windows MSVC Build
+
+on:
+  push:
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main", "dev", "feat/cross-platform" ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Configure CMake
+      run: |
+        cmake -S . -B build `
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" `
+          -DVCPKG_TARGET_TRIPLET=x64-windows `
+          -DCMAKE_BUILD_TYPE=Release
+      shell: pwsh
+
+    - name: Build
+      run: cmake --build build --config Release
+      shell: pwsh
+
+    - name: Prepare Artifacts
+      run: |
+        mkdir dist
+        cp bin/windows/r-type_client.exe dist/
+        cp bin/windows/r-type_server.exe dist/
+
+      # Copy runtime DLLs from vcpkg installed location (build-local or global)
+      if (Test-Path "build/vcpkg_installed/x64-windows/bin") {
+        Copy-Item -Path "build/vcpkg_installed/x64-windows/bin/*.dll" -Destination dist -Force -ErrorAction SilentlyContinue
+      } elseif (Test-Path "C:\\vcpkg\\installed\\x64-windows\\bin") {
+        Copy-Item -Path "C:\\vcpkg\\installed\\x64-windows\\bin\\*.dll" -Destination dist -Force -ErrorAction SilentlyContinue
+      }
+
+        mkdir dist/client
+        cp -r client/assets dist/client/
+        cp -r client/fonts dist/client/
+        cp -r client/sprites dist/client/
+
+        mkdir dist/server
+        cp -r server/assets dist/server/
+
+        mkdir dist/config
+        cp -r config/* dist/config/
+      shell: pwsh
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: r-type-windows-binaries
+        path: dist/
+
+    - name: Install NSIS
+      run: choco install nsis -y
+      shell: pwsh
+
+    - name: Reload environment
+      run: refreshenv
+      shell: pwsh
+
+    - name: Build Installer (NSIS)
+      run: |
+        & 'C:\Program Files (x86)\NSIS\makensis.exe' "/DVERSION=${{ github.ref_name }}" 'installer/installer.nsi'
+      shell: pwsh
+
+    - name: Move Installer to dist
+      run: |
+        if (Test-Path 'R-Type-Installer.exe') {
+          if (-Not (Test-Path 'dist')) { New-Item -ItemType Directory -Path 'dist' | Out-Null }
+          Move-Item 'R-Type-Installer.exe' -Destination 'dist'
+        } else {
+          Write-Host 'R-Type-Installer.exe not found; skipping move.'
+        }
+      shell: pwsh
+
+    - name: Validate artifacts (move zero-byte files)
+      run: |
+        if (-Not (Test-Path 'dist')) { Write-Host 'dist not found'; exit 1 }
+        $zeros = Get-ChildItem -Path dist -Recurse -File | Where-Object { $_.Length -eq 0 }
+        if ($zeros.Count -gt 0) {
+          Write-Host 'WARNING: Found zero-byte files in dist — moving to dist/empty-files/ for inspection:'
+          $zeros | ForEach-Object { Write-Host $_.FullName }
+          $emptyDir = Join-Path -Path 'dist' -ChildPath 'empty-files'
+          if (-Not (Test-Path $emptyDir)) { New-Item -ItemType Directory -Path $emptyDir | Out-Null }
+          foreach ($f in $zeros) {
+            $rel = $f.FullName.Substring((Get-Item 'dist').FullName.Length).TrimStart('\','/')
+            $dest = Join-Path $emptyDir $rel
+            $destDir = Split-Path $dest -Parent
+            if (-Not (Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir | Out-Null }
+            Move-Item -Path $f.FullName -Destination $dest
+          }
+          Write-Host 'Zero-byte files moved to dist/empty-files/ — they will be excluded from the release archive.'
+        } else {
+          Write-Host 'No zero-byte files found in dist.'
+        }
+      shell: pwsh
+
+    - name: Archive dist (only non-empty files)
+      run: |
+        if (-Not (Test-Path 'dist')) { Write-Host 'dist not found'; exit 1 }
+        Remove-Item -Force -ErrorAction SilentlyContinue dist.zip
+        $files = Get-ChildItem -Path dist -Recurse -File | Where-Object { $_.Length -gt 0 }
+        if ($files.Count -eq 0) { Write-Host 'No non-empty files to archive'; exit 1 }
+        $paths = $files | ForEach-Object { $_.FullName }
+        Compress-Archive -Path $paths -DestinationPath dist.zip -Force
+        Get-Item dist.zip | Select-Object FullName,@{Name='SizeMB';Expression={[math]::Round($_.Length/1MB,3)}} | Format-Table -AutoSize
+      shell: pwsh
+
+    - name: List release candidate files
+      run: |
+        Write-Host '--- dist/ contents ---'
+        if (Test-Path 'dist') { Get-ChildItem -Path dist -Recurse | Sort-Object FullName | Select-Object @{Name='SizeMB';Expression={[math]::Round($_.Length/1MB,3)}},FullName | Format-Table -AutoSize }
+        else { Write-Host 'dist not found' }
+        Write-Host '--- bin/windows/ contents ---'
+        if (Test-Path 'bin/windows') { Get-ChildItem -Path bin/windows -Recurse | Sort-Object FullName | Select-Object @{Name='SizeMB';Expression={[math]::Round($_.Length/1MB,3)}},FullName | Format-Table -AutoSize }
+        else { Write-Host 'bin/windows not found' }
+      shell: pwsh
+
+    - name: Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          dist.zip
+          dist\R-Type-Installer.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

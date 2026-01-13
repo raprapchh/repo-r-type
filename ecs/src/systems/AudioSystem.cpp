@@ -6,10 +6,47 @@
 #include "../../include/components/Drawable.hpp"
 #include "../../include/components/Tag.hpp"
 #include <iostream>
+#include <thread>
+#include <chrono>
 
 namespace rtype::ecs {
 
 AudioSystem::AudioSystem() : current_music_id_("") {
+}
+
+AudioSystem::~AudioSystem() {
+    cleanup();
+}
+
+void AudioSystem::cleanup() {
+    // First, stop all music (streaming audio uses threads)
+    for (auto& pair : music_tracks_) {
+        if (pair.second) {
+            pair.second->stop();
+        }
+    }
+
+    // Stop all active sounds
+    for (auto& sound : active_sounds_) {
+        sound.stop();
+    }
+
+    // Small delay to let audio threads finish
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    // Clear sounds first (they reference buffers)
+    active_sounds_.clear();
+
+    // Explicitly reset each unique_ptr before clearing the map
+    for (auto& pair : music_tracks_) {
+        pair.second.reset();
+    }
+    music_tracks_.clear();
+
+    // Clear sound buffers last
+    sound_buffers_.clear();
+
+    current_music_id_.clear();
 }
 
 void AudioSystem::update(GameEngine::Registry& registry, double) {

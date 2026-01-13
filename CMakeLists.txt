@@ -1,25 +1,62 @@
 cmake_minimum_required(VERSION 3.20)
 project(rtype LANGUAGES CXX)
 
-# --- CONFIGURATION ---
+# ─────────────────────────────
+# vcpkg Integration
+# ─────────────────────────────
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE AND EXISTS "${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake")
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake")
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_compile_definitions(ASIO_STANDALONE)
-add_compile_options(-Wall -Wextra -Wpedantic)
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
+# Warnings
+if (MSVC)
+    add_compile_options(/W4)
+else()
+    add_compile_options(-Wall -Wextra)
+endif()
 
-# --- DEPENDENCIES ---
+# Platform Detection & Output Directories
+if (WIN32)
+    set(PLATFORM_NAME "windows")
+    add_compile_definitions(RTYPE_WINDOWS)
+else()
+    set(PLATFORM_NAME "linux")
+    add_compile_definitions(RTYPE_LINUX)
+endif()
 
-include(FetchContent)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
 
-# Asio (via vcpkg)
+# For multi-configuration generators (Visual Studio) ensure all configs output
+# to the same `bin/${PLATFORM_NAME}` directory so CI copy-step finds the exe
+if (CMAKE_CONFIGURATION_TYPES)
+    foreach(OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES})
+        string(TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG_UP)
+        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG_UP} ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
+        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG_UP} ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
+        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG_UP} ${CMAKE_SOURCE_DIR}/bin/${PLATFORM_NAME})
+    endforeach()
+endif()
+
+# ─────────────────────────────
+# Dependencies (vcpkg)
+# ─────────────────────────────
 find_package(asio CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(Threads REQUIRED)
+find_package(fmt CONFIG REQUIRED)
 
+# ─────────────────────────────
 # SFML 2.6.2 (via FetchContent - self-contained)
+# ─────────────────────────────
+include(FetchContent)
 FetchContent_Declare(
     SFML
     GIT_REPOSITORY https://github.com/SFML/SFML.git
@@ -33,55 +70,67 @@ set(SFML_BUILD_NETWORK FALSE CACHE BOOL "" FORCE)
 set(BUILD_SHARED_LIBS FALSE CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(SFML)
 
-# Catch2 (via vcpkg) - optional
+# Catch2
 find_package(Catch2 CONFIG QUIET)
-if(Catch2_FOUND)
+if(Catch2_FOUND OR TARGET Catch2::Catch2WithMain)
     enable_testing()
     add_subdirectory(tests)
 else()
-    message(WARNING "Catch2 not found. Tests will be skipped.")
+    message(STATUS "Catch2 not found, tests disabled")
 endif()
 
-# --- LIBRARIES ---
+# ─────────────────────────────
+# Libraries
+# ─────────────────────────────
 
-# 1. ECS Library
-file(GLOB_RECURSE ECS_SRC ${CMAKE_SOURCE_DIR}/ecs/src/*.cpp)
+# ECS
+file(GLOB_RECURSE ECS_SRC CONFIGURE_DEPENDS ecs/src/*.cpp)
 add_library(rtype_ecs ${ECS_SRC})
-target_include_directories(rtype_ecs PUBLIC ${CMAKE_SOURCE_DIR}/ecs/include)
-target_link_libraries(rtype_ecs PUBLIC sfml-graphics sfml-window sfml-system sfml-audio)
+target_include_directories(rtype_ecs PUBLIC ecs/include)
+target_link_libraries(rtype_ecs PUBLIC
+    sfml-graphics
+    sfml-window
+    sfml-system
+    sfml-audio
+    nlohmann_json::nlohmann_json
+    fmt::fmt
+)
 
-# 2. Shared Library
-file(GLOB_RECURSE SHARED_SRC ${CMAKE_SOURCE_DIR}/shared/*.cpp)
-if(SHARED_SRC)
-    add_library(rtype_shared ${SHARED_SRC})
-    target_include_directories(rtype_shared PUBLIC ${CMAKE_SOURCE_DIR}/shared)
-else()
-    add_library(rtype_shared INTERFACE)
-    target_include_directories(rtype_shared INTERFACE ${CMAKE_SOURCE_DIR}/shared)
-endif()
+# Shared
+file(GLOB_RECURSE SHARED_SRC CONFIGURE_DEPENDS shared/*.cpp)
+add_library(rtype_shared STATIC ${SHARED_SRC})
+target_include_directories(rtype_shared PUBLIC shared)
 
-# --- EXECUTABLES ---
-
-# 3. Client
-file(GLOB_RECURSE CLIENT_SRC ${CMAKE_SOURCE_DIR}/client/src/*.cpp)
+# ─────────────────────────────
+# Client executable
+# ─────────────────────────────
+file(GLOB_RECURSE CLIENT_SRC CONFIGURE_DEPENDS client/src/*.cpp)
 add_executable(r-type_client ${CLIENT_SRC})
-target_include_directories(r-type_client PRIVATE ${CMAKE_SOURCE_DIR}/client/include)
+target_include_directories(r-type_client PRIVATE client/include)
 target_link_libraries(r-type_client PRIVATE
     rtype_ecs
     rtype_shared
     asio::asio
-    sfml-graphics sfml-window sfml-system sfml-audio
+    Threads::Threads
+    sfml-graphics
+    sfml-window
+    sfml-system
+    sfml-audio
+    fmt::fmt
 )
 
-# 4. Server
-file(GLOB_RECURSE SERVER_SRC ${CMAKE_SOURCE_DIR}/server/src/*.cpp)
+# ─────────────────────────────
+# Server executable
+# ─────────────────────────────
+file(GLOB_RECURSE SERVER_SRC CONFIGURE_DEPENDS server/src/*.cpp)
 add_executable(r-type_server ${SERVER_SRC})
-target_include_directories(r-type_server PRIVATE ${CMAKE_SOURCE_DIR}/server/include)
+target_include_directories(r-type_server PRIVATE server/include)
 target_link_libraries(r-type_server PRIVATE
     rtype_ecs
     rtype_shared
-    rtype_shared
     asio::asio
+    Threads::Threads
+    fmt::fmt
 )
 
 # 5. Platformer PoC
@@ -104,5 +153,16 @@ target_link_libraries(doodle_jump PRIVATE
 if(UNIX)
     target_link_libraries(r-type_server PRIVATE pthread)
     target_link_libraries(r-type_client PRIVATE pthread)
-    target_link_libraries(doodle_jump PRIVATE pthread)
+    target_link_libraries(doodle_jump PRIVATE pthread Threads::Threads fmt::fmt)
+endif()
+# Windows specifics
+if (WIN32)
+    target_compile_definitions(r-type_client PRIVATE WIN32_LEAN_AND_MEAN)
+    target_compile_definitions(r-type_server PRIVATE WIN32_LEAN_AND_MEAN)
+    # Link sfml-main if it exists
+    if(TARGET SFML::Main)
+        target_link_libraries(r-type_client PRIVATE SFML::Main)
+    elseif(TARGET sfml-main)
+         target_link_libraries(r-type_client PRIVATE sfml-main)
+    endif()
 endif()
