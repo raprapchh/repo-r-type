@@ -5,6 +5,7 @@
 #include "../../shared/interfaces/network/IProtocolAdapter.hpp"
 #include "../../shared/interfaces/network/IMessageSerializer.hpp"
 #include "../../shared/net/Packet.hpp"
+#include "../../shared/utils/GameRules.hpp"
 #include <atomic>
 #include <map>
 #include <memory>
@@ -47,6 +48,7 @@ class Server {
     std::unordered_map<uint32_t, std::unique_ptr<GameSession>> sessions_;
     std::unordered_map<std::string, uint32_t> client_session_map_;
     std::unordered_map<uint32_t, std::string> session_names_;
+    std::unordered_map<uint32_t, rtype::config::GameRules> session_rules_;
     uint32_t next_session_id_;
 };
 

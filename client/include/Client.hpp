@@ -18,6 +18,7 @@
 #include "ScoreboardManager.hpp"
 #include "../../ecs/include/systems/AudioSystem.hpp"
 #include "../../ecs/include/SystemManager.hpp"
+#include "../../shared/utils/GameRules.hpp"
 
 namespace rtype::client {
 
@@ -34,6 +35,7 @@ class Client {
 
     void send_move(float vx, float vy);
     void send_shoot(int32_t x, int32_t y, int chargeLevel = 0);
+    void send_ping(uint64_t timestamp);
 
     bool is_connected() const {
         return connected_.load();
@@ -77,7 +79,10 @@ class Client {
     void set_lobby_update_callback(std::function<void(int8_t, int8_t)> callback);
 
     void request_room_list();
-    void create_room(const std::string& room_name, uint8_t max_players = 4);
+    void create_room(const std::string& room_name, uint8_t max_players = 4,
+                     rtype::config::GameMode mode = rtype::config::GameMode::COOP,
+                     rtype::config::Difficulty difficulty = rtype::config::Difficulty::NORMAL,
+                     bool friendly_fire = false);
     void join_room(uint32_t session_id);
 
     uint32_t get_player_id() const;

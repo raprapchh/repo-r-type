@@ -1,10 +1,12 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
-#include <memory>
-#include <unordered_map>
-#include <string>
+#include <array>
 #include <cstdint>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 #include "../../shared/net/MessageData.hpp"
 #include "AccessibilityManager.hpp"
 
@@ -26,6 +28,8 @@ struct Entity {
 
 class Renderer {
   public:
+    enum class Action { Up, Down, Left, Right, Shoot, Count };
+
     Renderer(uint32_t width = 1280, uint32_t height = 720);
     ~Renderer();
 
@@ -53,20 +57,25 @@ class Renderer {
     sf::Vector2f get_player_position(uint32_t player_id) const;
 
     bool is_moving_up() const {
-        return keys_[sf::Keyboard::Up];
+        return action_states_[action_index(Action::Up)];
     }
     bool is_moving_down() const {
-        return keys_[sf::Keyboard::Down];
+        return action_states_[action_index(Action::Down)];
     }
     bool is_moving_left() const {
-        return keys_[sf::Keyboard::Left];
+        return action_states_[action_index(Action::Left)];
     }
     bool is_moving_right() const {
-        return keys_[sf::Keyboard::Right];
+        return action_states_[action_index(Action::Right)];
     }
     bool is_shooting() const {
-        return keys_[sf::Keyboard::Space];
+        return action_states_[action_index(Action::Shoot)];
     }
+
+    void set_key_binding(Action action, sf::Keyboard::Key key);
+    sf::Keyboard::Key get_key_binding(Action action) const;
+    std::string get_key_name(sf::Keyboard::Key key) const;
+    std::string get_action_name(Action action) const;
 
     sf::Vector2f get_shoot_direction() const;
 
@@ -96,6 +105,12 @@ class Renderer {
     void load_fonts();
     void load_texture(const std::string& path, const std::string& name);
     sf::Sprite create_sprite(const Entity& entity);
+    void initialize_key_bindings();
+    void refresh_action_states();
+    static constexpr size_t action_index(Action action) {
+        return static_cast<size_t>(action);
+    }
+    std::string key_to_string(sf::Keyboard::Key key) const;
 
     std::unique_ptr<sf::RenderWindow> window_;
     sf::View view_;
@@ -106,7 +121,8 @@ class Renderer {
     sf::Text lives_text_;
     sf::Text wave_text_;
 
-    bool keys_[sf::Keyboard::KeyCount];
+    std::array<sf::Keyboard::Key, static_cast<size_t>(Action::Count)> key_bindings_{};
+    std::array<bool, static_cast<size_t>(Action::Count)> action_states_{};
     float background_x_;
     float background_x_stars_;
     float background_x_stars2_;
@@ -121,6 +137,7 @@ class Renderer {
     AccessibilityManager accessibility_manager_;
 
     bool stage_cleared_ = false;
+    bool game_finished_ = false;
     uint8_t cleared_stage_number_ = 1;
     float stage_cleared_timer_ = 0.0f;
 
@@ -131,6 +148,10 @@ class Renderer {
     bool is_stage_cleared() const {
         return stage_cleared_;
     }
+    bool is_game_finished() const {
+        return game_finished_;
+    }
+    bool is_victory_back_to_menu_clicked(const sf::Vector2f& mouse_pos) const;
 };
 
 } // namespace rtype::client

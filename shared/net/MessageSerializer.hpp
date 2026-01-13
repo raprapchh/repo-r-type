@@ -336,6 +336,9 @@ class MessageSerializer : public IMessageSerializer {
             serializer.write(static_cast<uint8_t>(data.room_name[i]));
         }
         serializer.write(data.max_players);
+        serializer.write(data.game_mode);
+        serializer.write(data.difficulty);
+        serializer.write(data.friendly_fire);
         return Packet(static_cast<uint16_t>(MessageType::CreateRoom), serializer.get_data());
     }
 
@@ -346,6 +349,9 @@ class MessageSerializer : public IMessageSerializer {
             data.room_name[i] = static_cast<char>(deserializer.read<uint8_t>());
         }
         data.max_players = deserializer.read<uint8_t>();
+        data.game_mode = deserializer.read<uint8_t>();
+        data.difficulty = deserializer.read<uint8_t>();
+        data.friendly_fire = deserializer.read<uint8_t>();
         return data;
     }
 
