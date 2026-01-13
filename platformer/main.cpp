@@ -118,11 +118,18 @@ int main() {
     sf::FloatRect textRect = lose_text.getLocalBounds();
     lose_text.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
 
-    sf::Text title_text("Doodle Jump", font, 60);
-    title_text.setFillColor(sf::Color::Blue);
-    sf::FloatRect titleRect = title_text.getLocalBounds();
-    title_text.setOrigin(titleRect.left + titleRect.width / 2.0f, titleRect.top + titleRect.height / 2.0f);
-    title_text.setPosition(400, 200);
+    sf::Texture title_texture;
+    if (!title_texture.loadFromFile("platformer/assets/doodle-jump@2x.png") &&
+        !title_texture.loadFromFile("assets/doodle-jump@2x.png") &&
+        !title_texture.loadFromFile("../platformer/assets/doodle-jump@2x.png") &&
+        !title_texture.loadFromFile("../assets/doodle-jump@2x.png")) {
+        std::cerr << "Failed to load title texture!" << std::endl;
+    }
+
+    sf::Sprite title_sprite(title_texture);
+    sf::FloatRect titleRect = title_sprite.getLocalBounds();
+    title_sprite.setOrigin(titleRect.width / 2.0f, titleRect.height / 2.0f);
+    title_sprite.setPosition(400, 200);
 
     sf::Texture play_texture;
     if (!play_texture.loadFromFile("platformer/assets/play@2x.png") &&
@@ -215,7 +222,7 @@ int main() {
         renderer_impl->draw_parallax_background("bck", view.getCenter().y);
         if (in_menu) {
             window.setView(window.getDefaultView());
-            window.draw(title_text);
+            window.draw(title_sprite);
             window.draw(play_sprite);
         } else if (!game_over) {
             render_system->update(registry, 0);
