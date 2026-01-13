@@ -8,6 +8,7 @@
 #include "../../shared/interfaces/network/IMessageSerializer.hpp"
 #include "../../shared/interfaces/network/IProtocolAdapter.hpp"
 #include "../../shared/net/Packet.hpp"
+#include "../../shared/utils/GameRules.hpp"
 #include <atomic>
 #include <chrono>
 #include <functional>
@@ -46,6 +47,14 @@ class GameSession {
 
     void set_session_empty_callback(std::function<void(uint32_t)> cb) {
         on_session_empty_ = std::move(cb);
+    }
+
+    void set_game_rules(const rtype::config::GameRules& rules) {
+        game_rules_ = rules;
+    }
+
+    const rtype::config::GameRules& get_game_rules() const {
+        return game_rules_;
     }
 
     size_t client_count() const;
@@ -100,6 +109,8 @@ class GameSession {
 
     std::chrono::steady_clock::time_point last_activity_;
     std::chrono::steady_clock::time_point empty_since_;
+
+    rtype::config::GameRules game_rules_;
 
     static constexpr double TARGET_TICK_RATE = 60.0;
     static constexpr std::chrono::duration<double> TICK_DURATION =
