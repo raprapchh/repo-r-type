@@ -124,16 +124,25 @@ int main() {
     title_text.setOrigin(titleRect.left + titleRect.width / 2.0f, titleRect.top + titleRect.height / 2.0f);
     title_text.setPosition(400, 200);
 
-    sf::RectangleShape play_button(sf::Vector2f(200, 60));
-    play_button.setFillColor(sf::Color::Green);
-    play_button.setOrigin(100, 30);
-    play_button.setPosition(400, 400);
+    sf::Texture play_texture;
+    if (!play_texture.loadFromFile("platformer/assets/play@2x.png") &&
+        !play_texture.loadFromFile("assets/play@2x.png") &&
+        !play_texture.loadFromFile("../platformer/assets/play@2x.png") &&
+        !play_texture.loadFromFile("../assets/play@2x.png")) {
+        std::cerr << "Failed to load play texture!" << std::endl;
+    }
+    sf::Texture play_on_texture;
+    if (!play_on_texture.loadFromFile("platformer/assets/play-on@2x.png") &&
+        !play_on_texture.loadFromFile("assets/play-on@2x.png") &&
+        !play_on_texture.loadFromFile("../platformer/assets/play-on@2x.png") &&
+        !play_on_texture.loadFromFile("../assets/play-on@2x.png")) {
+        std::cerr << "Failed to load play-on texture!" << std::endl;
+    }
 
-    sf::Text play_text("PLAY", font, 30);
-    play_text.setFillColor(sf::Color::White);
-    sf::FloatRect playRect = play_text.getLocalBounds();
-    play_text.setOrigin(playRect.left + playRect.width / 2.0f, playRect.top + playRect.height / 2.0f);
-    play_text.setPosition(400, 400);
+    sf::Sprite play_sprite(play_texture);
+    sf::FloatRect playRect = play_sprite.getLocalBounds();
+    play_sprite.setOrigin(playRect.width / 2.0f, playRect.height / 2.0f);
+    play_sprite.setPosition(400, 400);
 
     bool in_menu = true;
     bool game_over = false;
@@ -148,11 +157,21 @@ int main() {
                 if (event.mouseButton.button == sf::Mouse::Left) {
                     sf::Vector2i mousePos = sf::Mouse::getPosition(window);
                     sf::Vector2f worldPos = window.mapPixelToCoords(mousePos);
-                    if (play_button.getGlobalBounds().contains(worldPos)) {
+                    if (play_sprite.getGlobalBounds().contains(worldPos)) {
                         in_menu = false;
                         clock.restart();
                     }
                 }
+            }
+        }
+
+        if (in_menu) {
+            sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+            sf::Vector2f worldPos = window.mapPixelToCoords(mousePos);
+            if (play_sprite.getGlobalBounds().contains(worldPos)) {
+                play_sprite.setTexture(play_on_texture);
+            } else {
+                play_sprite.setTexture(play_texture);
             }
         }
 
@@ -197,8 +216,7 @@ int main() {
         if (in_menu) {
             window.setView(window.getDefaultView());
             window.draw(title_text);
-            window.draw(play_button);
-            window.draw(play_text);
+            window.draw(play_sprite);
         } else if (!game_over) {
             render_system->update(registry, 0);
         } else {

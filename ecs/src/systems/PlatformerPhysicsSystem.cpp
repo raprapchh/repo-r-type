@@ -39,8 +39,6 @@ void PlatformerPhysicsSystem::update(GameEngine::Registry& registry, double dt) 
 
             bool match_x = (pos.x + hitbox.width > plat_pos.x && pos.x < plat_pos.x + plat_box.width);
 
-            bool match_x = (pos.x + hitbox.width > plat_pos.x && pos.x < plat_pos.x + plat_box.width);
-
             if (match_x) {
                 if (vel.vy > 0 && pos.y + hitbox.height <= plat_pos.y && next_y + hitbox.height >= plat_pos.y) {
                     pos.y = plat_pos.y - hitbox.height;
