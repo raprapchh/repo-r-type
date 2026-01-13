@@ -2,7 +2,8 @@ name: Windows MSVC Build
 
 on:
   push:
-    tags: [ "v*" ]
+    tags:
+      - 'v*'
   workflow_dispatch: {}
   pull_request:
     branches: [ "main", "dev", "feat/cross-platform" ]
@@ -12,7 +13,6 @@ permissions:
 
 jobs:
   build:
-    # run only for tag refs or manual dispatch
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
 
