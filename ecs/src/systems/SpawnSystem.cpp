@@ -10,6 +10,7 @@
 #include "../../include/components/CollisionLayer.hpp"
 #include "../../include/components/ScreenMode.hpp"
 #include "../../include/components/MovementPattern.hpp"
+#include "../../include/components/AudioEvent.hpp"
 #include "../../../shared/utils/GameConfig.hpp"
 #include <random>
 #include <cmath>
@@ -168,6 +169,12 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                     weapon.projectileFrequency = 5.0f;
                     weapon.damage = 50.0f;
                     weapon.fireRate = 0.2f;
+
+                    // Trigger boss music and roar
+                    auto musicEvent = registry.createEntity();
+                    registry.addComponent<component::AudioEvent>(musicEvent, component::AudioEventType::BOSS_MUSIC_START);
+                    auto roarEvent = registry.createEntity();
+                    registry.addComponent<component::AudioEvent>(roarEvent, component::AudioEventType::BOSS_ROAR);
                 } else if (tag == "Boss_2") {
                     registry.addComponent<component::HitBox>(enemy, 256.0f, 256.0f);
                     registry.addComponent<component::Health>(enemy, 1000, 1000);
@@ -179,6 +186,12 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                     weapon.projectileFrequency = 10.0f;
                     weapon.damage = 20.0f;
                     weapon.fireRate = 0.05f;
+
+                    // Trigger boss music and roar
+                    auto musicEvent = registry.createEntity();
+                    registry.addComponent<component::AudioEvent>(musicEvent, component::AudioEventType::BOSS_MUSIC_START);
+                    auto roarEvent = registry.createEntity();
+                    registry.addComponent<component::AudioEvent>(roarEvent, component::AudioEventType::BOSS_ROAR);
                 } else if (tag == "Monster_Wave_2_Left" || tag == "Monster_Wave_2_Right") {
                     registry.addComponent<component::HitBox>(enemy, 100.0f, 100.0f);
                     registry.addComponent<component::Health>(enemy, 10, 10);

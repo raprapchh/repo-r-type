@@ -28,6 +28,8 @@ class AudioSystem : public ISystem {
     void initializeAudioAssets();
     void startBackgroundMusic();
     void stopBackgroundMusic();
+    void switchToBossMusic();
+    void switchToGameplayMusic();
 
   private:
     std::unordered_map<std::string, sf::SoundBuffer> sound_buffers_;

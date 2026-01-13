@@ -193,6 +193,9 @@ void LobbyState::on_enter(Renderer& renderer, Client& client) {
     player_count_ = 0;
     game_started_ = false;
 
+    // Start background music in lobby
+    client.get_audio_system().startBackgroundMusic();
+
     if (client.is_connected()) {
         add_player(client.get_player_id(), client.get_player_name());
         local_player_id_ = client.get_player_id();
