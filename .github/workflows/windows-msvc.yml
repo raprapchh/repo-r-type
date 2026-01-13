@@ -68,6 +68,12 @@ jobs:
       run: choco install nsis -y
       shell: pwsh
 
+    - name: Install inetc plugin
+      run: |
+        $url = "https://raw.githubusercontent.com/NSIS-Dev/inetc-plugin/master/Bin/inetc.dll"
+        $dest = "C:\Program Files (x86)\NSIS\Plugins\x86-unicode\inetc.dll"
+        Invoke-WebRequest -Uri $url -OutFile $dest
+      shell: pwsh
     - name: Reload environment
       run: refreshenv
       shell: pwsh
