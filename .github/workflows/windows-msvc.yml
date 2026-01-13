@@ -68,12 +68,33 @@ jobs:
       run: choco install nsis -y
       shell: pwsh
 
-    - name: Install inetc plugin
+    - name: Install INetC plugin
       run: |
-        $url = "https://raw.githubusercontent.com/NSIS-Dev/inetc-plugin/master/Bin/inetc.dll"
-        $dest = "C:\Program Files (x86)\NSIS\Plugins\x86-unicode\inetc.dll"
-        Invoke-WebRequest -Uri $url -OutFile $dest
+        $url = "https://github.com/DigitalMediaServer/NSIS-INetC-plugin/releases/download/v1.0.5.7/InetC.zip"
+        $tempZip = "$env:TEMP\InetC.zip"
+        $nsisPlugins = "C:\Program Files (x86)\NSIS\Plugins"
+
+        # Créer les dossiers x86-unicode et x86-ansi si absents
+        foreach ($sub in @("x86-unicode","x86-ansi")) {
+            $path = Join-Path $nsisPlugins $sub
+            if (-Not (Test-Path $path)) { New-Item -ItemType Directory -Path $path | Out-Null }
+        }
+
+        # Télécharger le zip
+        Invoke-WebRequest -Uri $url -OutFile $tempZip
+
+        # Extraire directement les DLL dans les bons dossiers
+        Expand-Archive -LiteralPath $tempZip -DestinationPath $env:TEMP\InetC -Force
+        Copy-Item -Path "$env:TEMP\InetC\x86-unicode\InetC.dll" -Destination "$nsisPlugins\x86-unicode\" -Force
+        Copy-Item -Path "$env:TEMP\InetC\x86-ansi\InetC.dll" -Destination "$nsisPlugins\x86-ansi\" -Force
+
+        # Nettoyer temporaire
+        Remove-Item -Path $tempZip -Force
+        Remove-Item -Path "$env:TEMP\InetC" -Recurse -Force
+
+        Write-Host "INetC.dll installed successfully!"
       shell: pwsh
+  
     - name: Reload environment
       run: refreshenv
       shell: pwsh
