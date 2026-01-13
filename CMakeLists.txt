@@ -49,36 +49,26 @@ endif()
 # Dependencies (vcpkg)
 # ─────────────────────────────
 find_package(asio CONFIG REQUIRED)
-find_package(EnTT CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Threads REQUIRED)
+find_package(fmt CONFIG REQUIRED)
 
-message(STATUS "Searching for SFML...")
-# vcpkg's SFMLConfig expects components to be requested; call with components
-find_package(SFML CONFIG COMPONENTS graphics window system audio QUIET)
-if(NOT SFML_FOUND)
-    message(STATUS "SFML CONFIG not found or incomplete, falling back to non-CONFIG search...")
-    find_package(SFML COMPONENTS graphics window system audio REQUIRED)
-else()
-    message(STATUS "SFML CONFIG found version ${SFML_VERSION}")
-endif()
-
-# Robust target mapping
-set(SFML_COMPONENTS Graphics Window System Audio)
-foreach(comp ${SFML_COMPONENTS})
-    string(TOLOWER ${comp} comp_lc)
-    if(NOT TARGET SFML::${comp})
-        if(TARGET SFML::${comp_lc})
-            message(STATUS "Mapping SFML::${comp_lc} to SFML::${comp}")
-            add_library(SFML::${comp} ALIAS SFML::${comp_lc})
-        elseif(TARGET sfml-${comp_lc})
-            message(STATUS "Mapping sfml-${comp_lc} to SFML::${comp}")
-            add_library(SFML::${comp} ALIAS sfml-${comp_lc})
-        else()
-            message(WARNING "Could not find target for SFML ${comp}")
-        endif()
-    endif()
-endforeach()
+# ─────────────────────────────
+# SFML 2.6.2 (via FetchContent - self-contained)
+# ─────────────────────────────
+include(FetchContent)
+FetchContent_Declare(
+    SFML
+    GIT_REPOSITORY https://github.com/SFML/SFML.git
+    GIT_TAG        2.6.2
+    GIT_SHALLOW    TRUE
+)
+set(SFML_BUILD_AUDIO TRUE CACHE BOOL "" FORCE)
+set(SFML_BUILD_GRAPHICS TRUE CACHE BOOL "" FORCE)
+set(SFML_BUILD_WINDOW TRUE CACHE BOOL "" FORCE)
+set(SFML_BUILD_NETWORK FALSE CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS FALSE CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(SFML)
 
 # Catch2
 find_package(Catch2 CONFIG QUIET)
@@ -98,17 +88,18 @@ file(GLOB_RECURSE ECS_SRC CONFIGURE_DEPENDS ecs/src/*.cpp)
 add_library(rtype_ecs ${ECS_SRC})
 target_include_directories(rtype_ecs PUBLIC ecs/include)
 target_link_libraries(rtype_ecs PUBLIC
-    SFML::Graphics
-    SFML::Window
-    SFML::System
-    SFML::Audio
-    EnTT::EnTT
+    sfml-graphics
+    sfml-window
+    sfml-system
+    sfml-audio
     nlohmann_json::nlohmann_json
+    fmt::fmt
 )
 
 # Shared
-add_library(rtype_shared INTERFACE)
-target_include_directories(rtype_shared INTERFACE shared)
+file(GLOB_RECURSE SHARED_SRC CONFIGURE_DEPENDS shared/*.cpp)
+add_library(rtype_shared STATIC ${SHARED_SRC})
+target_include_directories(rtype_shared PUBLIC shared)
 
 # ─────────────────────────────
 # Client executable
@@ -121,10 +112,11 @@ target_link_libraries(r-type_client PRIVATE
     rtype_shared
     asio::asio
     Threads::Threads
-    SFML::Graphics
-    SFML::Window
-    SFML::System
-    SFML::Audio
+    sfml-graphics
+    sfml-window
+    sfml-system
+    sfml-audio
+    fmt::fmt
 )
 
 # ─────────────────────────────
@@ -138,7 +130,10 @@ target_link_libraries(r-type_server PRIVATE
     rtype_shared
     asio::asio
     Threads::Threads
+    fmt::fmt
 )
+
+
 
 # Windows specifics
 if (WIN32)

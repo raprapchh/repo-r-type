@@ -27,6 +27,7 @@ class NetworkSystem {
     void handle_spawn(GameEngine::Registry& registry, const rtype::net::Packet& packet);
     void handle_move(GameEngine::Registry& registry, const rtype::net::Packet& packet);
     void handle_destroy(GameEngine::Registry& registry, const rtype::net::Packet& packet);
+    void handle_pong(GameEngine::Registry& registry, const rtype::net::Packet& packet);
 
     std::queue<rtype::net::Packet> packet_queue_;
     std::mutex packet_queue_mutex_;

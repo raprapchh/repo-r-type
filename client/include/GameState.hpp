@@ -2,12 +2,17 @@
 
 #include "States.hpp"
 #include <chrono>
+#include <memory>
+
+namespace sf {
+class Font;
+}
 
 namespace rtype::client {
 
 class GameState : public IState {
   public:
-    GameState();
+    explicit GameState(bool multiplayer = true);
     ~GameState() override = default;
 
     void handle_input(Renderer& renderer, StateManager& state_manager) override;
@@ -29,6 +34,9 @@ class GameState : public IState {
     Client* client_ = nullptr;
     bool game_over_ = false;
     bool all_players_dead_ = false;
+    bool score_saved_ = false;
+    int initial_player_count_ = 0;
+    uint32_t max_score_reached_ = 0;
     bool is_charging_ = false;
     std::chrono::steady_clock::time_point charge_start_time_;
 
@@ -43,6 +51,24 @@ class GameState : public IState {
 
     sf::RectangleShape accessibility_cycle_button_;
     sf::Text accessibility_cycle_text_;
+
+    bool multiplayer_ = true;
+    float spawn_timer_ = 0.0f;
+    float spawn_interval_ = 1.5f;
+    uint32_t next_enemy_id_ = 1000;
+    uint32_t next_projectile_id_ = 5000;
+    bool game_start_sent_ = false;
+
+    // FPS Counter (Developer Console)
+    std::shared_ptr<sf::Font> dev_font_;
+    bool dev_tools_visible_ = true;
+    GameEngine::entity_t fps_counter_entity_ = 0;
+    sf::Clock fps_clock_;
+
+    void spawn_enemy_solo(GameEngine::Registry& registry);
+    void spawn_player_projectile(GameEngine::Registry& registry, GameEngine::entity_t player_entity);
+    void createFpsCounter(GameEngine::Registry& registry, float windowWidth);
+    void createDevMetrics(GameEngine::Registry& registry, float windowWidth);
 };
 
 } // namespace rtype::client

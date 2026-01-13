@@ -1,6 +1,11 @@
 #include "../../include/systems/CollisionSystem.hpp"
-#include <iostream>
+#include "../../include/components/TextureAnimation.hpp"
+#include "../../include/components/EnemySpawner.hpp"
+#include "../../include/components/GameRulesComponent.hpp"
 #include <vector>
+#include <iostream>
+#include <cstdlib>
+#include <string>
 #include "../../include/components/Position.hpp"
 #include "../../include/components/HitBox.hpp"
 #include "../../include/components/CollisionLayer.hpp"
@@ -9,11 +14,33 @@
 #include "../../include/components/Score.hpp"
 #include "../../include/components/Lives.hpp"
 #include "../../include/components/Tag.hpp"
+#include "../../include/components/PowerUpType.hpp"
+#include "../../include/components/Parent.hpp"
+#include "../../include/components/SpawnEffect.hpp"
+#include "../../include/components/Drawable.hpp"
+#include "../../include/components/Weapon.hpp"
+#include "../../include/components/NetworkId.hpp"
+#include "../../include/components/Velocity.hpp"
+#include "../../include/components/AudioEvent.hpp"
+#include "../../include/components/HitFlash.hpp"
+#include "../../include/components/StageCleared.hpp"
 
 namespace rtype::ecs {
 
+void spawnForcePodItem(GameEngine::Registry& registry, float x, float y);
+void spawnForcePodCompanion(GameEngine::Registry& registry, GameEngine::entity_t playerId);
+
 void CollisionSystem::update(GameEngine::Registry& registry, double dt) {
     (void)dt;
+
+    bool friendly_fire_enabled = false;
+    auto rules_view = registry.view<component::GameRulesComponent>();
+    for (auto entity : rules_view) {
+        const auto& rules_comp = registry.getComponent<component::GameRulesComponent>(entity);
+        friendly_fire_enabled = rules_comp.rules.friendly_fire_enabled;
+        break;
+    }
+
     auto view = registry.view<component::Position, component::HitBox, component::Collidable>();
 
     std::vector<GameEngine::entity_t> entities;
@@ -61,7 +88,7 @@ void CollisionSystem::update(GameEngine::Registry& registry, double dt) {
                 continue;
             }
 
-            if (!ShouldCollide(collidable1.layer, collidable2.layer)) {
+            if (!ShouldCollide(collidable1.layer, collidable2.layer, friendly_fire_enabled)) {
                 continue;
             }
 
@@ -80,7 +107,8 @@ bool CollisionSystem::CheckAABBCollision(float x1, float y1, float w1, float h1,
     return (x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2);
 }
 
-bool CollisionSystem::ShouldCollide(component::CollisionLayer layer1, component::CollisionLayer layer2) {
+bool CollisionSystem::ShouldCollide(component::CollisionLayer layer1, component::CollisionLayer layer2,
+                                    bool friendly_fire_enabled) {
     using CL = component::CollisionLayer;
 
     if (layer1 == CL::None || layer2 == CL::None) {
@@ -114,6 +142,15 @@ bool CollisionSystem::ShouldCollide(component::CollisionLayer layer1, component:
         return true;
     if (layer1 == CL::EnemyProjectile && layer2 == CL::PlayerProjectile)
         return true;
+
+    if (friendly_fire_enabled) {
+        if (layer1 == CL::Player && layer2 == CL::Player)
+            return true;
+        if (layer1 == CL::Player && layer2 == CL::PlayerProjectile)
+            return true;
+        if (layer1 == CL::PlayerProjectile && layer2 == CL::Player)
+            return true;
+    }
 
     return false;
 }
@@ -167,14 +204,82 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
             auto& health = registry.getComponent<component::Health>(enemy_entity);
             health.hp -= 25;
 
+            if (registry.hasComponent<component::HitFlash>(enemy_entity)) {
+                auto& flash = registry.getComponent<component::HitFlash>(enemy_entity);
+                flash.active = true;
+                flash.timer = flash.duration;
+            } else {
+                registry.addComponent<component::HitFlash>(enemy_entity, 0.3f, 0.3f, true);
+            }
+
             if (health.hp <= 0) {
+                bool is_boss = false;
+                if (registry.hasComponent<component::Tag>(enemy_entity)) {
+                    const auto& enemyTag = registry.getComponent<component::Tag>(enemy_entity);
+                    if (enemyTag.name == "Boss_1") {
+                        is_boss = true;
+                        auto world_entity = registry.createEntity();
+                        registry.addComponent<component::StageCleared>(world_entity, 1);
+                        std::cout << "[STAGE CLEARED] Boss_1 defeated!" << std::endl;
+
+                        auto spawnerView = registry.view<component::EnemySpawner>();
+                        for (auto spawnerEntity : spawnerView) {
+                            auto& spawner = registry.getComponent<component::EnemySpawner>(spawnerEntity);
+                            spawner.currentLevel++;
+                            spawner.currentWave = 0;
+                            spawner.waveTimer = 0;
+                            spawner.currentEnemyIndex = 0;
+                            spawner.bossWarningActive = false;
+                            spawner.bossWarningTimer = 0.0f;
+                            std::cout << "Advancing to Level " << spawner.currentLevel + 1 << std::endl;
+                            break;
+                        }
+                    } else if (enemyTag.name == "Boss_2") {
+                        is_boss = true;
+                        auto world_entity = registry.createEntity();
+                        registry.addComponent<component::StageCleared>(world_entity, 2);
+                        std::cout << "[STAGE CLEARED] Boss_2 defeated!" << std::endl;
+                    }
+                }
+
                 if (scorer_id != 0) {
                     auto scorer_entity = static_cast<GameEngine::entity_t>(scorer_id);
                     if (registry.isValid(scorer_entity) && registry.hasComponent<component::Score>(scorer_entity)) {
-                        registry.addComponent<component::ScoreEvent>(scorer_entity, 100);
+                        registry.addComponent<component::ScoreEvent>(scorer_entity, is_boss ? 1000 : 100);
                     }
                 }
+
+                if (!is_boss && registry.hasComponent<component::Position>(enemy_entity)) {
+                    auto& enemyPos = registry.getComponent<component::Position>(enemy_entity);
+                    if (rand() % 100 < 30) {
+                        int podCount = 0;
+                        if (scorer_id != 0) {
+                            auto view = registry.view<component::Tag, component::Parent>();
+                            for (auto entity : view) {
+                                auto& tag = view.get<component::Tag>(entity);
+                                auto& parent = view.get<component::Parent>(entity);
+                                if (tag.name == "ForcePod" && parent.ownerId == scorer_id) {
+                                    podCount++;
+                                }
+                            }
+                            // Logger::instance().info("Drop Check: Scorer=" + std::to_string(scorer_id) + " Pods=" +
+                            // std::to_string(podCount));
+                        } else {
+                            // Logger::instance().warn("Drop Check: Scorer is 0!");
+                        }
+
+                        if (podCount < 2) {
+                            spawnForcePodItem(registry, enemyPos.x, enemyPos.y);
+                        }
+                    }
+                }
+
+                auto audio_entity = registry.createEntity();
+                registry.addComponent<component::AudioEvent>(audio_entity, component::AudioEventType::ENEMY_DEATH);
+
                 registry.destroyEntity(enemy_entity);
+            } else {
+                registry.addComponent<component::AudioEvent>(enemy_entity, component::AudioEventType::COLLISION_HIT);
             }
         }
     }
@@ -193,6 +298,8 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
             }
             health.hp -= 20;
 
+            registry.addComponent<component::AudioEvent>(player_entity, component::AudioEventType::PLAYER_DAMAGE);
+
             if (health.hp <= 0) {
                 if (!registry.hasComponent<component::Lives>(player_entity)) {
                     registry.destroyEntity(player_entity);
@@ -205,6 +312,15 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
         auto powerup_entity = (layer1 == CL::PowerUp) ? entity1 : entity2;
         auto player_entity = (layer1 == CL::Player) ? entity1 : entity2;
 
+        if (registry.hasComponent<component::PowerUpType>(powerup_entity)) {
+            auto& type = registry.getComponent<component::PowerUpType>(powerup_entity);
+            if (type.type == component::PowerUpTypeEnum::FORCE_POD) {
+                spawnForcePodCompanion(registry, player_entity);
+                registry.destroyEntity(powerup_entity);
+                return;
+            }
+        }
+
         if (registry.hasComponent<component::Health>(player_entity)) {
             auto& health = registry.getComponent<component::Health>(player_entity);
             health.hp += 30;
@@ -213,7 +329,23 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
             }
         }
 
+        auto audio_entity = registry.createEntity();
+        registry.addComponent<component::AudioEvent>(audio_entity, component::AudioEventType::POWERUP_COLLECT);
+
         registry.destroyEntity(powerup_entity);
+    }
+
+    if ((layer1 == CL::Companion && layer2 == CL::Enemy) || (layer1 == CL::Enemy && layer2 == CL::Companion)) {
+        auto enemy_entity = (layer1 == CL::Enemy) ? entity1 : entity2;
+
+        if (registry.hasComponent<component::Health>(enemy_entity)) {
+            auto& health = registry.getComponent<component::Health>(enemy_entity);
+            health.hp -= 100000;
+
+            if (health.hp <= 0) {
+                registry.destroyEntity(enemy_entity);
+            }
+        }
     }
 
     if ((layer1 == CL::Player && layer2 == CL::Obstacle) || (layer1 == CL::Obstacle && layer2 == CL::Player)) {
@@ -270,6 +402,123 @@ void CollisionSystem::HandleCollision(GameEngine::Registry& registry, GameEngine
             registry.destroyEntity(player_projectile);
         }
         registry.destroyEntity(enemy_projectile);
+    }
+
+    if (layer1 == CL::Player && layer2 == CL::Player) {
+        if (registry.hasComponent<component::Health>(entity1)) {
+            auto& health1 = registry.getComponent<component::Health>(entity1);
+            if (health1.hp > 0) {
+                health1.hp -= 10;
+                registry.addComponent<component::AudioEvent>(entity1, component::AudioEventType::PLAYER_DAMAGE);
+            }
+        }
+        if (registry.hasComponent<component::Health>(entity2)) {
+            auto& health2 = registry.getComponent<component::Health>(entity2);
+            if (health2.hp > 0) {
+                health2.hp -= 10;
+                registry.addComponent<component::AudioEvent>(entity2, component::AudioEventType::PLAYER_DAMAGE);
+            }
+        }
+    }
+
+    if ((layer1 == CL::PlayerProjectile && layer2 == CL::Player) ||
+        (layer1 == CL::Player && layer2 == CL::PlayerProjectile)) {
+        auto projectile_entity = (layer1 == CL::PlayerProjectile) ? entity1 : entity2;
+        auto player_entity = (layer1 == CL::Player) ? entity1 : entity2;
+
+        registry.destroyEntity(projectile_entity);
+
+        if (registry.hasComponent<component::Health>(player_entity)) {
+            auto& health = registry.getComponent<component::Health>(player_entity);
+            if (health.hp > 0) {
+                health.hp -= 15;
+                registry.addComponent<component::AudioEvent>(player_entity, component::AudioEventType::PLAYER_DAMAGE);
+
+                if (health.hp <= 0) {
+                    if (!registry.hasComponent<component::Lives>(player_entity)) {
+                        registry.destroyEntity(player_entity);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void spawnForcePodItem(GameEngine::Registry& registry, float x, float y) {
+    auto item = registry.createEntity();
+    registry.addComponent<component::Position>(item, x, y);
+    registry.addComponent<component::Velocity>(item, -50.0f, 0.0f); // Slow drift left
+    registry.addComponent<component::Drawable>(item, "force_pod_0", 0, 0, 32, 32, 2.5f, 2.5f);
+    std::vector<std::string> Frames;
+    for (int i = 0; i < 13; ++i)
+        Frames.push_back("force_pod_" + std::to_string(i));
+    registry.addComponent<component::TextureAnimation>(item, Frames, 0.04f, true);
+    registry.addComponent<component::PowerUpType>(item, component::PowerUpTypeEnum::FORCE_POD);
+    registry.addComponent<component::Collidable>(item, component::CollisionLayer::PowerUp);
+    registry.addComponent<component::HitBox>(item, 64.0f, 64.0f);
+    registry.addComponent<component::Tag>(item, "ForcePodItem");
+    registry.addComponent<component::SpawnEffect>(item);
+}
+
+void spawnForcePodCompanion(GameEngine::Registry& registry, GameEngine::entity_t playerId) {
+    auto pod = registry.createEntity();
+    auto& playerPos = registry.getComponent<component::Position>(playerId);
+    int podCount = 0;
+    auto view = registry.view<component::Tag, component::Parent>();
+    for (auto entity : view) {
+        auto& tag = view.get<component::Tag>(entity);
+        auto& parent = view.get<component::Parent>(entity);
+        if (tag.name == "ForcePod" && parent.ownerId == static_cast<size_t>(playerId)) {
+            podCount++;
+        }
+    }
+
+    if (podCount >= 2) {
+        return;
+    }
+
+    float offsetX = 0.0f;
+    float offsetY = (podCount == 0) ? -50.0f : 100.0f; // 1st = Top (-50), 2nd = Bottom (+100) to avoid overlap
+    registry.addComponent<component::Position>(pod, playerPos.x + offsetX, playerPos.y + offsetY);
+    registry.addComponent<component::Velocity>(pod, 0.0f, 0.0f);
+    registry.addComponent<component::Parent>(pod, static_cast<std::size_t>(playerId), offsetX, offsetY);
+
+    auto& drawable = registry.addComponent<component::Drawable>(pod, "force_pod_0", 0, 0, 32, 32, 2.5f, 2.5f);
+    drawable.current_sprite = 0;
+    drawable.sprite_index = 0;
+
+    if (drawable.texture_name.empty()) {
+        std::cerr << "[WARNING] Force Pod spawned with invalid Sprite ID/Name!" << std::endl;
+    }
+
+    std::vector<std::string> podFrames;
+    for (int i = 0; i < 13; ++i)
+        podFrames.push_back("force_pod_" + std::to_string(i));
+    registry.addComponent<component::TextureAnimation>(pod, podFrames, 0.04f, true);
+    auto& weapon = registry.addComponent<component::Weapon>(pod);
+    std::string pTag = (podCount == 0) ? "PodProjectile" : "PodProjectileRed";
+    weapon.projectileTag = pTag;
+    weapon.fireRate = 0.3f;
+    weapon.projectileSpeed = 1000.0f;
+    weapon.damage = 15.0f;
+    weapon.spawnOffsetX = 16.0f;
+    weapon.spawnOffsetY = 0.0f;
+    registry.addComponent<component::Collidable>(pod, component::CollisionLayer::Companion);
+    registry.addComponent<component::HitBox>(pod, 64.0f, 64.0f);
+    registry.addComponent<component::Tag>(pod, "ForcePod");
+
+    if (podCount == 1) {
+        auto itemView = registry.view<component::Tag>();
+        std::vector<GameEngine::entity_t> itemsToRemove;
+        for (auto entity : itemView) {
+            const auto& tag = itemView.get<component::Tag>(entity);
+            if (tag.name == "ForcePodItem") {
+                itemsToRemove.push_back(entity);
+            }
+        }
+        for (auto entity : itemsToRemove) {
+            registry.destroyEntity(entity);
+        }
     }
 }
 
