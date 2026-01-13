@@ -54,10 +54,10 @@ void load_level(GameEngine::Registry& registry, const std::string& path) {
             float x = col * 288.0f, y = row * 100.0f;
             if (c == '1' || c == '2' || c == '3' || c == '4') {
                 auto e = registry.createEntity();
-                
+
                 float w, h;
                 std::string tag;
-                
+
                 if (c == '2') {
                     w = rtype::constants::FLOOR_OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE;
                     h = rtype::constants::FLOOR_OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE;
@@ -75,7 +75,7 @@ void load_level(GameEngine::Registry& registry, const std::string& path) {
                     h = rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE;
                     tag = "Obstacle";
                 }
-                
+
                 registry.addComponent<rtype::ecs::component::Position>(e, x, y);
                 registry.addComponent<rtype::ecs::component::HitBox>(e, w, h);
                 registry.addComponent<rtype::ecs::component::Collidable>(

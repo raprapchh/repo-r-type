@@ -90,7 +90,8 @@ void BroadcastSystem::broadcast_spawns(const std::map<std::string, ClientInfo>& 
                 type = rtype::net::EntityType::PROJECTILE;
             } else if (registry_.hasComponent<rtype::ecs::component::Tag>(entity_idx)) {
                 const auto& tag = registry_.getComponent<rtype::ecs::component::Tag>(entity_idx);
-                if (tag.name == "Obstacle" || tag.name == "Obstacle_Floor" || tag.name == "Obstacle_Train_3" || tag.name == "Obstacle_Train_4") {
+                if (tag.name == "Obstacle" || tag.name == "Obstacle_Floor" || tag.name == "Obstacle_Train_3" ||
+                    tag.name == "Obstacle_Train_4") {
                     type = rtype::net::EntityType::OBSTACLE;
                     if (tag.name == "Obstacle_Floor")
                         sub_type = 1;

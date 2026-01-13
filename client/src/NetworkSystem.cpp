@@ -268,12 +268,10 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 tag_name = "Obstacle_Train_4";
             }
 
-            registry.addComponent<rtype::ecs::component::Drawable>(
-                entity, sprite_name, static_cast<uint32_t>(0), static_cast<uint32_t>(0),
-                scale_x, scale_y);
+            registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
+                                                                   static_cast<uint32_t>(0), scale_x, scale_y);
 
-            registry.addComponent<rtype::ecs::component::HitBox>(entity, obs_w * scale_x,
-                                                                 obs_h * scale_y);
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, obs_w * scale_x, obs_h * scale_y);
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::Obstacle);
             registry.addComponent<rtype::ecs::component::Tag>(entity, tag_name);
