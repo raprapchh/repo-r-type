@@ -13,6 +13,7 @@
 #include "../../ecs/include/components/NetworkInterpolation.hpp"
 #include "../../ecs/include/components/AudioEvent.hpp"
 #include "../../ecs/include/components/HitFlash.hpp"
+#include "../../ecs/include/components/PingStats.hpp"
 #include <chrono>
 #include <iostream>
 
@@ -53,6 +54,9 @@ void NetworkSystem::update(GameEngine::Registry& registry, std::mutex& registry_
             break;
         case rtype::net::MessageType::EntityDestroy:
             handle_destroy(registry, packet);
+            break;
+        case rtype::net::MessageType::Pong:
+            handle_pong(registry, packet);
             break;
         default:
             break;
@@ -441,6 +445,32 @@ void NetworkSystem::handle_destroy(GameEngine::Registry& registry, const rtype::
             } catch (const std::exception& e) {
                 continue;
             }
+        }
+    } catch (const std::exception& e) {
+    }
+}
+
+void NetworkSystem::handle_pong(GameEngine::Registry& registry, const rtype::net::Packet& packet) {
+    try {
+        if (packet.body.size() < sizeof(uint64_t)) {
+            return;
+        }
+        uint64_t sent_time_us = 0;
+        std::memcpy(&sent_time_us, packet.body.data(), sizeof(uint64_t));
+        auto view = registry.view<rtype::ecs::component::PingStats>();
+
+        auto now = std::chrono::steady_clock::now();
+        auto sent_time_pt = std::chrono::time_point<std::chrono::steady_clock>(std::chrono::microseconds(sent_time_us));
+        auto rtt_us = std::chrono::duration_cast<std::chrono::microseconds>(now - sent_time_pt).count();
+        float rtt_ms = static_cast<float>(rtt_us) / 1000.0f;
+
+        if (rtt_ms < 0)
+            rtt_ms = 0.0f;
+
+        for (auto entity : view) {
+            auto& stats = registry.getComponent<rtype::ecs::component::PingStats>(entity);
+            stats.lastPingMs = rtt_ms;
+            stats.pingRequested = false;
         }
     } catch (const std::exception& e) {
     }
