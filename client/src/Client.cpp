@@ -14,6 +14,7 @@
 #include "../../ecs/include/components/Score.hpp"
 #include "../../ecs/include/components/Tag.hpp"
 #include "../../ecs/include/components/NetworkInterpolation.hpp"
+#include "../../ecs/include/components/PingStats.hpp"
 #include "../../ecs/include/systems/MovementSystem.hpp"
 #include "../../ecs/include/systems/TextureAnimationSystem.hpp"
 #include <iostream>
@@ -513,7 +514,27 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
     case rtype::net::MessageType::Pong: {
         try {
             auto pong_data = serializer.deserialize_ping_pong(packet);
-            (void)pong_data;
+
+            // Calculate RTT
+            auto now = std::chrono::steady_clock::now();
+            uint64_t sent_time_us = pong_data.timestamp;
+            auto sent_time_pt =
+                std::chrono::time_point<std::chrono::steady_clock>(std::chrono::microseconds(sent_time_us));
+            auto rtt_us = std::chrono::duration_cast<std::chrono::microseconds>(now - sent_time_pt).count();
+            float rtt_ms = static_cast<float>(rtt_us) / 1000.0f;
+
+            if (rtt_ms < 0)
+                rtt_ms = 0.0f;
+
+            // Update PingStats component (non-blocking)
+            if (registry_mutex_.try_lock()) {
+                auto view = registry_.view<rtype::ecs::component::PingStats>();
+                for (auto entity : view) {
+                    auto& stats = registry_.getComponent<rtype::ecs::component::PingStats>(entity);
+                    stats.lastPingMs = rtt_ms;
+                }
+                registry_mutex_.unlock();
+            }
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing Pong packet: " << e.what() << std::endl;
         }
@@ -639,6 +660,16 @@ void Client::send_shoot(int32_t x, int32_t y, int chargeLevel) {
     udp_client_->send(packet_data);
 }
 
+void Client::send_ping(uint64_t timestamp) {
+    if (!connected_.load())
+        return;
+    rtype::net::MessageSerializer serializer;
+    rtype::net::PingPongData ping_data(timestamp);
+    rtype::net::Packet ping_packet = serializer.serialize_ping(ping_data);
+    std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(ping_packet);
+    udp_client_->send(packet_data);
+}
+
 void Client::send_game_start_request() {
     if (!connected_.load())
         return;
@@ -710,9 +741,12 @@ void Client::request_room_list() {
     udp_client_->send(packet_data);
 }
 
-void Client::create_room(const std::string& room_name, uint8_t max_players) {
+void Client::create_room(const std::string& room_name, uint8_t max_players, rtype::config::GameMode mode,
+                         rtype::config::Difficulty difficulty, bool friendly_fire) {
     rtype::net::MessageSerializer serializer;
-    rtype::net::CreateRoomData create_data(room_name, max_players);
+    rtype::net::CreateRoomData create_data(room_name, max_players, static_cast<uint8_t>(mode),
+                                           static_cast<uint8_t>(difficulty),
+                                           friendly_fire ? static_cast<uint8_t>(1) : static_cast<uint8_t>(0));
     rtype::net::Packet create_packet = serializer.serialize_create_room(create_data);
     std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(create_packet);
     udp_client_->send(packet_data);

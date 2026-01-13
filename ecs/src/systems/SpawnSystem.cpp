@@ -11,6 +11,7 @@
 #include "../../include/components/ScreenMode.hpp"
 #include "../../include/components/MovementPattern.hpp"
 #include "../../include/components/AudioEvent.hpp"
+#include "../../include/components/GameRulesComponent.hpp"
 #include "../../../shared/utils/GameConfig.hpp"
 #include <random>
 #include <cmath>
@@ -21,6 +22,19 @@ namespace rtype::ecs {
 void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
     float maxX = rtype::config::MAP_MAX_X;
     float maxY = rtype::config::MAP_MAX_Y;
+
+    float hp_mult = 1.0f;
+    float speed_mult = 1.0f;
+    float fire_rate_mult = 1.0f;
+
+    auto rules_view = registry.view<component::GameRulesComponent>();
+    for (auto entity : rules_view) {
+        const auto& rules_comp = registry.getComponent<component::GameRulesComponent>(entity);
+        hp_mult = rules_comp.rules.enemy_hp_multiplier;
+        speed_mult = rules_comp.rules.enemy_speed_multiplier;
+        fire_rate_mult = rules_comp.rules.enemy_fire_rate_multiplier;
+        break;
+    }
 
     try {
         auto mapBoundsView = registry.view<component::MapBounds>();
@@ -39,7 +53,8 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
 
     auto view = registry.view<component::EnemySpawner>();
 
-    view.each([&registry, dt, maxX, maxY, this]([[maybe_unused]] auto entity, component::EnemySpawner& spawner) {
+    view.each([&registry, dt, maxX, maxY, hp_mult, speed_mult, fire_rate_mult, this]([[maybe_unused]] auto entity,
+                                                                                     component::EnemySpawner& spawner) {
         spawner.waveTimer += static_cast<float>(dt);
 
         if (spawner.currentLevel >= static_cast<int>(_levels.size()))
@@ -100,8 +115,8 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
 
                 float spawnX = enemySpawn.x;
                 float spawnY = enemySpawn.y;
-                float vx = enemySpawn.vx;
-                float vy = enemySpawn.vy;
+                float vx = enemySpawn.vx * speed_mult;
+                float vy = enemySpawn.vy * speed_mult;
                 std::string tag = enemySpawn.type;
 
                 float dirX = 0.0f;
@@ -149,8 +164,8 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
 
                 auto& weapon = registry.addComponent<component::Weapon>(enemy);
                 weapon.autoFire = true;
-                weapon.fireRate = enemySpawn.fireRate;
-                weapon.projectileSpeed = 500.0f;
+                weapon.fireRate = enemySpawn.fireRate / fire_rate_mult;
+                weapon.projectileSpeed = 500.0f * speed_mult;
                 weapon.damage = 10.0f;
                 weapon.projectileLifetime = 3.0f;
                 weapon.spawnOffsetX = offX;
@@ -159,16 +174,17 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                 weapon.directionY = dirY;
 
                 if (tag == "Boss_1") {
+                    int hp = static_cast<int>(1000 * hp_mult);
                     registry.addComponent<component::HitBox>(enemy, 200.0f, 200.0f);
-                    registry.addComponent<component::Health>(enemy, 1000, 1000);
+                    registry.addComponent<component::Health>(enemy, hp, hp);
                     registry.addComponent<component::MovementPattern>(
-                        enemy, component::MovementPatternType::RandomVertical, 0.0f, 200.0f, 1.0f);
+                        enemy, component::MovementPatternType::RandomVertical, 0.0f, 200.0f * speed_mult, 1.0f);
                     weapon.projectileTag = "Boss_1_Bayblade";
                     weapon.projectilePattern = component::MovementPatternType::Circular;
                     weapon.projectileAmplitude = 150.0f;
                     weapon.projectileFrequency = 5.0f;
                     weapon.damage = 50.0f;
-                    weapon.fireRate = 0.2f;
+                    weapon.fireRate = 0.2f / fire_rate_mult;
 
                     // Trigger boss music and roar
                     auto musicEvent = registry.createEntity();
@@ -177,8 +193,9 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                     auto roarEvent = registry.createEntity();
                     registry.addComponent<component::AudioEvent>(roarEvent, component::AudioEventType::BOSS_ROAR);
                 } else if (tag == "Boss_2") {
+                    int hp = static_cast<int>(1000 * hp_mult);
                     registry.addComponent<component::HitBox>(enemy, 256.0f, 256.0f);
-                    registry.addComponent<component::Health>(enemy, 1000, 1000);
+                    registry.addComponent<component::Health>(enemy, hp, hp);
                     registry.addComponent<component::MovementPattern>(enemy, component::MovementPatternType::None, 0.0f,
                                                                       0.0f, 0.0f);
                     weapon.projectileTag = "Boss_2_Projectile";
@@ -186,7 +203,7 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                     weapon.projectileAmplitude = 100.0f;
                     weapon.projectileFrequency = 10.0f;
                     weapon.damage = 20.0f;
-                    weapon.fireRate = 0.05f;
+                    weapon.fireRate = 0.05f / fire_rate_mult;
 
                     // Trigger boss music and roar
                     auto musicEvent = registry.createEntity();
@@ -195,15 +212,17 @@ void SpawnSystem::update(GameEngine::Registry& registry, double dt) {
                     auto roarEvent = registry.createEntity();
                     registry.addComponent<component::AudioEvent>(roarEvent, component::AudioEventType::BOSS_ROAR);
                 } else if (tag == "Monster_Wave_2_Left" || tag == "Monster_Wave_2_Right") {
+                    int hp = static_cast<int>(10 * hp_mult);
                     registry.addComponent<component::HitBox>(enemy, 100.0f, 100.0f);
-                    registry.addComponent<component::Health>(enemy, 10, 10);
+                    registry.addComponent<component::Health>(enemy, hp, hp);
                     registry.addComponent<component::MovementPattern>(enemy, component::MovementPatternType::Sinusoidal,
-                                                                      0.0f, 100.0f, 2.0f);
+                                                                      0.0f, 100.0f * speed_mult, 2.0f);
                     weapon.projectileTag = "Monster_0_Ball";
                     weapon.autoFire = false;
                 } else {
+                    int hp = static_cast<int>(5 * hp_mult);
                     registry.addComponent<component::HitBox>(enemy, 100.0f, 100.0f);
-                    registry.addComponent<component::Health>(enemy, 5, 5);
+                    registry.addComponent<component::Health>(enemy, hp, hp);
                     weapon.projectileTag = "Monster_0_Ball";
                 }
 

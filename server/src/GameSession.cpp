@@ -17,6 +17,7 @@
 #include "../../ecs/include/components/MapBounds.hpp"
 #include "../../ecs/include/components/CollisionLayer.hpp"
 #include "../../ecs/include/components/PlayerName.hpp"
+#include "../../ecs/include/components/GameRulesComponent.hpp"
 #include "../../ecs/include/systems/MovementSystem.hpp"
 #include "../../ecs/include/systems/BoundarySystem.hpp"
 #include "../../ecs/include/systems/CollisionSystem.hpp"
@@ -111,6 +112,10 @@ void GameSession::start() {
         registry_.addComponent<rtype::ecs::component::MapBounds>(boundsEntity, rtype::config::MAP_MIN_X,
                                                                  rtype::config::MAP_MIN_Y, rtype::config::MAP_MAX_X,
                                                                  rtype::config::MAP_MAX_Y);
+
+        auto rulesEntity = registry_.createEntity();
+        registry_.addComponent<rtype::ecs::component::GameRulesComponent>(rulesEntity, game_rules_);
+
         load_level(registry_, "server/assets/map.txt");
 
         auto spawner = registry_.createEntity();

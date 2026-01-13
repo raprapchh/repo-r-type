@@ -8,6 +8,14 @@ SFMLRenderer::SFMLRenderer(sf::RenderWindow& window, std::unordered_map<std::str
 }
 
 void SFMLRenderer::draw_sprite(const RenderData& data) {
+    if (data.texture_name == "__RECTANGLE__") {
+        sf::RectangleShape rect(sf::Vector2f(data.rect_width, data.rect_height));
+        rect.setPosition(data.x, data.y);
+        rect.setFillColor(sf::Color(data.color_r, data.color_g, data.color_b, data.color_a));
+        window_.draw(rect);
+        return;
+    }
+
     if (textures_.find(data.texture_name) == textures_.end()) {
         return;
     }
@@ -44,6 +52,12 @@ bool SFMLRenderer::is_open() const {
 }
 
 bool SFMLRenderer::get_texture_size(const std::string& texture_name, uint32_t& out_width, uint32_t& out_height) const {
+    if (texture_name == "__RECTANGLE__") {
+        out_width = 100;
+        out_height = 100;
+        return true;
+    }
+
     auto it = textures_.find(texture_name);
     if (it == textures_.end()) {
         return false;

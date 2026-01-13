@@ -68,6 +68,7 @@ class GameState : public IState {
     void spawn_enemy_solo(GameEngine::Registry& registry);
     void spawn_player_projectile(GameEngine::Registry& registry, GameEngine::entity_t player_entity);
     void createFpsCounter(GameEngine::Registry& registry, float windowWidth);
+    void createDevMetrics(GameEngine::Registry& registry, float windowWidth);
 };
 
 } // namespace rtype::client
