@@ -40,18 +40,19 @@ struct PlayerShootData {
 };
 
 struct PlayerJoinData {
+    uint32_t session_id;
     uint32_t player_id;
     char player_name[17];
 
-    PlayerJoinData() : player_id(0) {
+    PlayerJoinData() : session_id(0), player_id(0) {
         memset(player_name, 0, sizeof(player_name));
     }
 
-    explicit PlayerJoinData(uint32_t id) : player_id(id) {
+    PlayerJoinData(uint32_t session, uint32_t id) : session_id(session), player_id(id) {
         memset(player_name, 0, sizeof(player_name));
     }
 
-    PlayerJoinData(uint32_t id, const std::string& name) : player_id(id) {
+    PlayerJoinData(uint32_t session, uint32_t id, const std::string& name) : session_id(session), player_id(id) {
         memset(player_name, 0, sizeof(player_name));
         strncpy(player_name, name.c_str(), 16);
     }
@@ -81,6 +82,24 @@ struct PlayerNameData {
     }
 };
 
+struct ChatMessageData {
+    uint32_t player_id;
+    char player_name[17];
+    char message[128];
+
+    ChatMessageData() : player_id(0) {
+        memset(player_name, 0, sizeof(player_name));
+        memset(message, 0, sizeof(message));
+    }
+
+    ChatMessageData(uint32_t id, const std::string& name, const std::string& msg) : player_id(id) {
+        memset(player_name, 0, sizeof(player_name));
+        memset(message, 0, sizeof(message));
+        strncpy(player_name, name.c_str(), 16);
+        strncpy(message, msg.c_str(), 127);
+    }
+};
+
 struct EntitySpawnData {
     uint32_t entity_id;
     uint16_t entity_type;
@@ -107,12 +126,13 @@ struct EntityMoveData {
     float position_y;
     float velocity_x;
     float velocity_y;
+    uint8_t flags; // Bit 0: is_hit (for flash effect)
 
-    EntityMoveData() : entity_id(0), position_x(0.0f), position_y(0.0f), velocity_x(0.0f), velocity_y(0.0f) {
+    EntityMoveData() : entity_id(0), position_x(0.0f), position_y(0.0f), velocity_x(0.0f), velocity_y(0.0f), flags(0) {
     }
 
-    EntityMoveData(uint32_t id, float x, float y, float vx, float vy)
-        : entity_id(id), position_x(x), position_y(y), velocity_x(vx), velocity_y(vy) {
+    EntityMoveData(uint32_t id, float x, float y, float vx, float vy, uint8_t f = 0)
+        : entity_id(id), position_x(x), position_y(y), velocity_x(vx), velocity_y(vy), flags(f) {
     }
 };
 
@@ -203,6 +223,84 @@ constexpr uint8_t LOBBY = 0;
 constexpr uint8_t PLAYING = 1;
 constexpr uint8_t PAUSED = 2;
 constexpr uint8_t GAME_OVER = 3;
+constexpr uint8_t BOSS_WARNING = 4;
+constexpr uint8_t STAGE_CLEARED = 5;
 } // namespace GameState
+
+struct StageClearedData {
+    uint8_t stage_number;
+
+    StageClearedData() : stage_number(1) {
+    }
+    explicit StageClearedData(uint8_t stage) : stage_number(stage) {
+    }
+};
+
+struct RoomInfoData {
+    uint32_t session_id;
+    uint8_t player_count;
+    uint8_t max_players;
+    uint8_t status; // 0=lobby, 1=playing
+    char room_name[32];
+
+    RoomInfoData() : session_id(0), player_count(0), max_players(4), status(0) {
+        memset(room_name, 0, sizeof(room_name));
+    }
+
+    RoomInfoData(uint32_t id, uint8_t count, uint8_t max, uint8_t stat, const std::string& name)
+        : session_id(id), player_count(count), max_players(max), status(stat) {
+        memset(room_name, 0, sizeof(room_name));
+        strncpy(room_name, name.c_str(), 31);
+    }
+};
+
+struct ListRoomsData {
+    uint8_t dummy; // Empty request
+    ListRoomsData() : dummy(0) {
+    }
+};
+
+struct CreateRoomData {
+    char room_name[32];
+    uint8_t max_players;
+    uint8_t game_mode;     // 0=COOP, 1=PVP, 2=PVE
+    uint8_t difficulty;    // 0=EASY, 1=NORMAL, 2=HARD
+    uint8_t friendly_fire; // 0=disabled, 1=enabled
+
+    CreateRoomData() : max_players(4), game_mode(0), difficulty(1), friendly_fire(0) {
+        memset(room_name, 0, sizeof(room_name));
+    }
+
+    CreateRoomData(const std::string& name, uint8_t max)
+        : max_players(max), game_mode(0), difficulty(1), friendly_fire(0) {
+        memset(room_name, 0, sizeof(room_name));
+        strncpy(room_name, name.c_str(), 31);
+    }
+
+    CreateRoomData(const std::string& name, uint8_t max, uint8_t mode, uint8_t diff, uint8_t ff)
+        : max_players(max), game_mode(mode), difficulty(diff), friendly_fire(ff) {
+        memset(room_name, 0, sizeof(room_name));
+        strncpy(room_name, name.c_str(), 31);
+    }
+};
+
+struct JoinRoomData {
+    uint32_t session_id;
+
+    JoinRoomData() : session_id(0) {
+    }
+    explicit JoinRoomData(uint32_t id) : session_id(id) {
+    }
+};
+
+struct LobbyUpdateData {
+    int8_t playerCount;
+    int8_t yourPlayerId;
+
+    LobbyUpdateData() : playerCount(0), yourPlayerId(-1) {
+    }
+    LobbyUpdateData(int8_t count, int8_t playerId) : playerCount(count), yourPlayerId(playerId) {
+    }
+};
 
 } // namespace rtype::net

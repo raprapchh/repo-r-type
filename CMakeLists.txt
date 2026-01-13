@@ -136,6 +136,7 @@ target_include_directories(r-type_server PRIVATE server/include)
 target_link_libraries(r-type_server PRIVATE
     rtype_ecs
     rtype_shared
+    rtype_shared
     asio::asio
     Threads::Threads
 )

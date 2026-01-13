@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <unordered_map>
 #include <vector>
-#include "../../../shared/utils/Logger.hpp"
 
 namespace rtype::ecs::component {
 
@@ -28,6 +27,7 @@ struct Drawable {
     std::string last_state = "";
     uint32_t animation_index = 0;
     bool loop;
+    float rotation = 0.0f;
 
     Drawable()
         : texture_name(""), sprite_index(0), animation_frame(0), current_sprite(0), scale_x(1.0f), scale_y(1.0f),
@@ -46,12 +46,6 @@ struct Drawable {
         : texture_name(name), sprite_index(index), animation_frame(frame), current_sprite(frame), scale_x(sx),
           scale_y(sy), rect_x(rx), rect_y(ry), rect_width(rw), rect_height(rh), animation_timer(0.0f),
           frame_count(frames), animation_speed(speed), loop(loop_anim) {
-        Logger::instance().debug("Drawable created with name: " + name + ", sx: " + std::to_string(sx) +
-                                 ", sy: " + std::to_string(sy) + ", rx: " + std::to_string(rx) +
-                                 ", ry: " + std::to_string(ry) + ", rw: " + std::to_string(rw) +
-                                 ", rh: " + std::to_string(rh) + ", frames: " + std::to_string(frames) +
-                                 ", speed: " + std::to_string(speed) + ", loop: " + std::to_string(loop) +
-                                 ", index: " + std::to_string(index) + ", frame: " + std::to_string(frame));
     }
 };
 

@@ -1,4 +1,5 @@
 #include "../include/NetworkSystem.hpp"
+#include "../../ecs/include/components/TextureAnimation.hpp"
 #include "../../shared/net/MessageData.hpp"
 #include "../../ecs/include/components/HitBox.hpp"
 #include "../../ecs/include/components/CollisionLayer.hpp"
@@ -10,7 +11,11 @@
 #include "../../ecs/include/components/Weapon.hpp"
 #include "../../ecs/include/components/Tag.hpp"
 #include "../../ecs/include/components/NetworkInterpolation.hpp"
+#include "../../ecs/include/components/AudioEvent.hpp"
+#include "../../ecs/include/components/HitFlash.hpp"
+#include "../../ecs/include/components/PingStats.hpp"
 #include <chrono>
+#include <iostream>
 
 namespace rtype::client {
 
@@ -49,6 +54,9 @@ void NetworkSystem::update(GameEngine::Registry& registry, std::mutex& registry_
             break;
         case rtype::net::MessageType::EntityDestroy:
             handle_destroy(registry, packet);
+            break;
+        case rtype::net::MessageType::Pong:
+            handle_pong(registry, packet);
             break;
         default:
             break;
@@ -89,6 +97,11 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             registry.addComponent<rtype::ecs::component::HitBox>(entity, 165.0f, 110.0f);
         } else if (data.entity_type == rtype::net::EntityType::ENEMY) {
             std::string sprite_name = "enemy_basic";
+            float scale = 4.0f;
+            int frameW = 0;
+            int frameH = 0;
+
+            int frameCount = 1;
             if (data.sub_type == 1)
                 sprite_name = "monster_0-top";
             else if (data.sub_type == 2)
@@ -97,11 +110,58 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 sprite_name = "monster_0-left";
             else if (data.sub_type == 4)
                 sprite_name = "monster_0-right";
+            else if (data.sub_type == 5) {
+                sprite_name = "monster-wave-2-left";
+                frameW = 33;
+                frameH = 36;
+                scale = 3.0f;
+                frameCount = 8;
+            } else if (data.sub_type == 6) {
+                sprite_name = "monster-wave-2-right";
+                frameW = 33;
+                frameH = 36;
+                scale = 3.0f;
+                frameCount = 8;
+            } else if (data.sub_type == 100) {
+                sprite_name = "boss_1";
+                frameW = 161;
+                frameH = 219;
+                scale = 2.0f;
+                frameCount = 4;
+            } else if (data.sub_type == 101) {
+                sprite_name = "boss_2";
+                frameW = 0;
+                frameH = 0;
+                scale = 2.0f;
+                scale = 2.0f;
+                frameCount = 1;
+            }
 
-            registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
-                                                                   static_cast<uint32_t>(0), 4.0f, 4.0f);
-            registry.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
-            registry.addComponent<rtype::ecs::component::HitBox>(entity, 100.0f, 100.0f);
+            registry.addComponent<rtype::ecs::component::Drawable>(
+                entity, sprite_name, static_cast<uint32_t>(0), static_cast<uint32_t>(0), static_cast<uint32_t>(frameW),
+                static_cast<uint32_t>(frameH), scale, scale, frameCount, 0.1f, true);
+
+            if (data.sub_type == 101) {
+                auto& drawable = registry.getComponent<rtype::ecs::component::Drawable>(entity);
+                drawable.rotation = 270.0f;
+            }
+
+            float hp = 100.0f;
+            float hitboxW = 100.0f;
+            float hitboxH = 100.0f;
+
+            if (data.sub_type == 100) {
+                hp = 500.0f;
+                hitboxW = 200.0f;
+                hitboxH = 200.0f;
+            } else if (data.sub_type == 101) {
+                hp = 5000.0f;
+                hitboxW = 256.0f;
+                hitboxH = 256.0f;
+            }
+
+            registry.addComponent<rtype::ecs::component::Health>(entity, hp, hp);
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, hitboxW, hitboxH);
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::Enemy);
             registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, data.position_x, data.position_y,
@@ -140,6 +200,38 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
 
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, frameW, frameH, 3.0f,
                                                                        3.0f, 2, 0.05f, false);
+            } else if (data.sub_type == 20) {
+                sprite_name = "boss_1_bayblade";
+                width = 46.0f;
+                height = 42.0f;
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 23, 21, 2.0f, 2.0f, 4,
+                                                                       0.1f, true);
+            } else if (data.sub_type == 21) {
+                sprite_name = "boss_1_attack";
+                width = 42.0f;
+                height = 40.0f;
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 21, 20, 2.0f, 2.0f, 8,
+                                                                       0.1f, true);
+            } else if (data.sub_type == 22) {
+                sprite_name = "boss_2_projectile";
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 0, 0, 3.0f, 3.0f, 1,
+                                                                       0.1f, false);
+            } else if (data.sub_type == 23) {
+                sprite_name = "boss_2_projectile_2";
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 0, 0, 4.0f, 4.0f, 1,
+                                                                       0.1f, false);
+            } else if (data.sub_type == 30 || data.sub_type == 31) {
+                if (data.sub_type == 31) {
+                    sprite_name = "pod_projectile_red_0";
+                    width = 36.0f;
+                    height = 13.0f;
+                } else {
+                    sprite_name = "pod_projectile_0";
+                    width = 34.0f;
+                    height = 19.0f;
+                }
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, width, height, 2.5f,
+                                                                       2.5f, 1, 0.1f, false);
             } else {
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 29, 33, 3.0f, 3.0f, 4,
                                                                        0.05f, false);
@@ -167,14 +259,31 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::Obstacle);
 
-            // Add Tag so ParallaxSystem can move it
             if (data.sub_type == 1) {
-                registry.addComponent<rtype::ecs::component::Tag>(
-                    entity,
-                    "Obstacle_Floor"); // Or just "Obstacle" if ParallaxSystem checks that? ParallaxSystem checks both.
+                registry.addComponent<rtype::ecs::component::Tag>(entity, "Obstacle_Floor");
             } else {
                 registry.addComponent<rtype::ecs::component::Tag>(entity, "Obstacle");
             }
+        } else if (data.entity_type == rtype::net::EntityType::POWERUP) {
+            std::string sprite_name = "force_pod";
+            std::string tag_name = (data.sub_type == 1) ? "ForcePodItem" : "ForcePod";
+
+            registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name + "_0", static_cast<uint32_t>(0),
+                                                                   static_cast<uint32_t>(0), static_cast<uint32_t>(0),
+                                                                   static_cast<uint32_t>(0), 2.5f, 2.5f);
+            std::vector<std::string> frames;
+            for (int i = 0; i < 13; ++i)
+                frames.push_back(sprite_name + "_" + std::to_string(i));
+            registry.addComponent<rtype::ecs::component::TextureAnimation>(entity, frames, 0.04f, true);
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, 64.0f, 64.0f);
+            if (data.sub_type == 1) {
+                registry.addComponent<rtype::ecs::component::Collidable>(
+                    entity, rtype::ecs::component::CollisionLayer::PowerUp);
+            } else {
+                registry.addComponent<rtype::ecs::component::Collidable>(
+                    entity, rtype::ecs::component::CollisionLayer::Companion);
+            }
+            registry.addComponent<rtype::ecs::component::Tag>(entity, tag_name);
         }
 
     } catch (const std::exception& e) {
@@ -201,6 +310,25 @@ void NetworkSystem::handle_move(GameEngine::Registry& registry, const rtype::net
             y = data.position_y;
             vx = data.velocity_x;
             vy = data.velocity_y;
+
+            if (data.flags & 0x01) {
+                auto view = registry.view<rtype::ecs::component::NetworkId>();
+                for (auto entity : view) {
+                    GameEngine::entity_t ecs_entity = static_cast<GameEngine::entity_t>(entity);
+                    auto& net_id = registry.getComponent<rtype::ecs::component::NetworkId>(ecs_entity);
+                    if (net_id.id == entity_id) {
+                        if (registry.hasComponent<rtype::ecs::component::HitFlash>(ecs_entity)) {
+                            auto& flash = registry.getComponent<rtype::ecs::component::HitFlash>(ecs_entity);
+                            flash.active = true;
+                            flash.timer = flash.duration;
+                        } else {
+                            registry.addComponent<rtype::ecs::component::HitFlash>(ecs_entity, 0.3f, 0.3f, true);
+                        }
+                        std::cout << "[HitFlash] Received for entity " << entity_id << std::endl;
+                        break;
+                    }
+                }
+            }
         }
 
         auto view = registry.view<rtype::ecs::component::NetworkId>();
@@ -307,6 +435,9 @@ void NetworkSystem::handle_destroy(GameEngine::Registry& registry, const rtype::
                         explosion_drawable.animation_sequences["explosion"] = {5, 4, 3, 2, 1, 0};
                         explosion_drawable.current_state = "explosion";
                         explosion_drawable.animation_frame = 5;
+
+                        registry.addComponent<rtype::ecs::component::AudioEvent>(
+                            explosion_entity, rtype::ecs::component::AudioEventType::EXPLOSION);
                     }
                     registry.destroyEntity(entity_id_ecs);
                     return;
@@ -314,6 +445,32 @@ void NetworkSystem::handle_destroy(GameEngine::Registry& registry, const rtype::
             } catch (const std::exception& e) {
                 continue;
             }
+        }
+    } catch (const std::exception& e) {
+    }
+}
+
+void NetworkSystem::handle_pong(GameEngine::Registry& registry, const rtype::net::Packet& packet) {
+    try {
+        if (packet.body.size() < sizeof(uint64_t)) {
+            return;
+        }
+        uint64_t sent_time_us = 0;
+        std::memcpy(&sent_time_us, packet.body.data(), sizeof(uint64_t));
+        auto view = registry.view<rtype::ecs::component::PingStats>();
+
+        auto now = std::chrono::steady_clock::now();
+        auto sent_time_pt = std::chrono::time_point<std::chrono::steady_clock>(std::chrono::microseconds(sent_time_us));
+        auto rtt_us = std::chrono::duration_cast<std::chrono::microseconds>(now - sent_time_pt).count();
+        float rtt_ms = static_cast<float>(rtt_us) / 1000.0f;
+
+        if (rtt_ms < 0)
+            rtt_ms = 0.0f;
+
+        for (auto entity : view) {
+            auto& stats = registry.getComponent<rtype::ecs::component::PingStats>(entity);
+            stats.lastPingMs = rtt_ms;
+            stats.pingRequested = false;
         }
     } catch (const std::exception& e) {
     }

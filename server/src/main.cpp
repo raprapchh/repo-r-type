@@ -1,14 +1,12 @@
 #include "Server.hpp"
-#include "../../ecs/include/Registry.hpp"
-#include "../../ecs/include/components/Position.hpp"
-#include "../../ecs/include/components/Velocity.hpp"
 #include <csignal>
 #include <iostream>
 #include <string>
 #include <memory>
+#include <ctime>
+#include <cstdlib>
 
 std::unique_ptr<rtype::server::Server> g_server;
-GameEngine::Registry g_registry;
 
 void signal_handler(int signal) {
     if (signal == SIGINT) {
@@ -21,6 +19,7 @@ void signal_handler(int signal) {
 }
 
 int main(int argc, char* argv[]) {
+    std::srand(std::time(nullptr));
     std::signal(SIGINT, signal_handler);
 
     try {
@@ -29,7 +28,7 @@ int main(int argc, char* argv[]) {
             port = static_cast<unsigned int>(std::stoi(argv[1]));
         }
 
-        g_server = std::make_unique<rtype::server::Server>(g_registry, port);
+        g_server = std::make_unique<rtype::server::Server>(port);
         g_server->run();
     } catch (const std::exception& e) {
         std::cerr << "Server error: " << e.what() << std::endl;

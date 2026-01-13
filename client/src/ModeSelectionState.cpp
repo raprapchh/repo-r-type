@@ -82,8 +82,28 @@ void ModeSelectionState::handle_input(Renderer& renderer, StateManager& state_ma
                 handle_button_click(mouse_pos, state_manager);
             }
         } else if (event.type == sf::Event::KeyPressed) {
-            if (event.key.code == sf::Keyboard::Escape) {
-                renderer.close_window();
+            if (event.key.code == sf::Keyboard::Up) {
+                if (selected_button_ == SelectedButton::MULTIPLAYER) {
+                    selected_button_ = SelectedButton::SOLO;
+                } else if (selected_button_ == SelectedButton::BACK) {
+                    selected_button_ = SelectedButton::MULTIPLAYER;
+                }
+            } else if (event.key.code == sf::Keyboard::Down) {
+                if (selected_button_ == SelectedButton::SOLO) {
+                    selected_button_ = SelectedButton::MULTIPLAYER;
+                } else if (selected_button_ == SelectedButton::MULTIPLAYER) {
+                    selected_button_ = SelectedButton::BACK;
+                }
+            } else if (event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) {
+                if (selected_button_ == SelectedButton::SOLO) {
+                    state_manager.change_state(std::make_unique<GameState>(false));
+                } else if (selected_button_ == SelectedButton::MULTIPLAYER) {
+                    state_manager.change_state(std::make_unique<LobbyState>());
+                } else if (selected_button_ == SelectedButton::BACK) {
+                    state_manager.change_state(std::make_unique<MenuState>());
+                }
+            } else if (event.key.code == sf::Keyboard::Escape) {
+                state_manager.change_state(std::make_unique<MenuState>());
             }
         }
     }
@@ -91,7 +111,7 @@ void ModeSelectionState::handle_input(Renderer& renderer, StateManager& state_ma
 
 void ModeSelectionState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager& state_manager) {
     if (solo_button_.getGlobalBounds().contains(mouse_pos)) {
-        state_manager.change_state(std::make_unique<GameState>());
+        state_manager.change_state(std::make_unique<GameState>(false));
     } else if (multiplayer_button_.getGlobalBounds().contains(mouse_pos)) {
         state_manager.change_state(std::make_unique<LobbyState>());
     } else if (back_button_.getGlobalBounds().contains(mouse_pos)) {
@@ -109,27 +129,35 @@ void ModeSelectionState::update(Renderer& renderer, Client& client, StateManager
 
     sf::Color button_normal(100, 150, 200);
     sf::Color button_hover(120, 170, 220);
+    sf::Color button_selected(200, 200, 0);
     sf::Color back_normal(150, 150, 150);
     sf::Color back_hover(170, 170, 170);
+    sf::Color back_selected(200, 200, 0);
 
     switch (mode) {
     case ColorBlindMode::Deuteranopia:
         button_normal = sf::Color(0, 0, 255);
         button_hover = sf::Color(50, 50, 255);
+        button_selected = sf::Color(0, 255, 255);
         back_normal = sf::Color(255, 165, 0);
         back_hover = sf::Color(255, 185, 20);
+        back_selected = sf::Color(0, 255, 255);
         break;
     case ColorBlindMode::Protanopia:
         button_normal = sf::Color(0, 100, 255);
         button_hover = sf::Color(50, 120, 255);
+        button_selected = sf::Color(0, 255, 255);
         back_normal = sf::Color(255, 255, 0);
         back_hover = sf::Color(255, 255, 50);
+        back_selected = sf::Color(0, 255, 255);
         break;
     case ColorBlindMode::Tritanopia:
         button_normal = sf::Color(255, 0, 0);
         button_hover = sf::Color(255, 50, 50);
+        button_selected = sf::Color(0, 255, 255);
         back_normal = sf::Color(0, 200, 200);
         back_hover = sf::Color(0, 220, 220);
+        back_selected = sf::Color(255, 255, 0);
         break;
     case ColorBlindMode::None:
     default:
@@ -138,18 +166,24 @@ void ModeSelectionState::update(Renderer& renderer, Client& client, StateManager
 
     if (solo_button_.getGlobalBounds().contains(mouse_pos)) {
         solo_button_.setFillColor(button_hover);
+    } else if (selected_button_ == SelectedButton::SOLO) {
+        solo_button_.setFillColor(button_selected);
     } else {
         solo_button_.setFillColor(button_normal);
     }
 
     if (multiplayer_button_.getGlobalBounds().contains(mouse_pos)) {
         multiplayer_button_.setFillColor(button_hover);
+    } else if (selected_button_ == SelectedButton::MULTIPLAYER) {
+        multiplayer_button_.setFillColor(button_selected);
     } else {
         multiplayer_button_.setFillColor(button_normal);
     }
 
     if (back_button_.getGlobalBounds().contains(mouse_pos)) {
         back_button_.setFillColor(back_hover);
+    } else if (selected_button_ == SelectedButton::BACK) {
+        back_button_.setFillColor(back_selected);
     } else {
         back_button_.setFillColor(back_normal);
     }

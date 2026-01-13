@@ -35,15 +35,8 @@ Before building the project, ensure you have the following installed:
 - **C++ Compiler** (supporting C++20)
 - **CMake** (v3.20 or newer)
 - **Git**
-- **SFML 2.6.x** (system library)
 
-### Installing SFML (Fedora)
-
-```bash
-sudo dnf install SFML-devel
-```
-
-> **Note:** This project uses **vcpkg** as a package manager for dependencies (ASIO, EnTT, Catch2). These are installed automatically during the build process. SFML uses the system library as it depends on platform-specific components (OpenGL, X11).
+> **Note:** This project is **self-contained**. All dependencies (SFML, Asio, Catch2) are managed automatically via **vcpkg** and **FetchContent**. No manual library installation is required.
 
 <br>
 
@@ -58,14 +51,20 @@ sudo dnf install SFML-devel
 
 2. **Build the project:**
    We provide a helper script to automate the build process.
+
    ```bash
    chmod +x ./build.sh
    ./build.sh
    ```
 
-   _Alternatively, you can build manually:_
+   _Alternatively, to build manually without the script:_
 
    ```bash
+   # 1. Setup vcpkg (if not already done by build.sh)
+   git clone https://github.com/microsoft/vcpkg.git
+   ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
+   # 2. Configure and build
    cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake
    cmake --build build --parallel
    ```
