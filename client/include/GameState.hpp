@@ -58,6 +58,8 @@ class GameState : public IState {
     uint32_t next_enemy_id_ = 1000;
     uint32_t next_projectile_id_ = 5000;
     bool game_start_sent_ = false;
+    float laser_energy_ = 3.0f;
+    bool is_firing_laser_ = false;
 
     // FPS Counter (Developer Console)
     std::shared_ptr<sf::Font> dev_font_;

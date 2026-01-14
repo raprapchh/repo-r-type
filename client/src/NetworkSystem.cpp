@@ -232,6 +232,12 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 }
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, width, height, 2.5f,
                                                                        2.5f, 1, 0.1f, false);
+            } else if (data.sub_type == 40) {
+                sprite_name = "laser";
+                width = 100.0f;
+                height = 20.0f;
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 0, 0, 1.0f, 1.0f, 8,
+                                                                       0.1f, true);
             } else {
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 29, 33, 3.0f, 3.0f, 4,
                                                                        0.05f, false);

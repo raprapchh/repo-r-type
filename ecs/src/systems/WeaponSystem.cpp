@@ -174,8 +174,21 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
                         hitBoxH = 120.0f;
                         damage = 40.0f;
                         break;
+                    case 4:
+                        projectileTag = "Laser";
+                        hitBoxW = 100.0f;
+                        hitBoxH = 20.0f;
+                        damage = 50.0f;
+                        break;
                     }
                 }
+            }
+
+            if (weapon.chargeLevel == 4) {
+                projectileTag = "Laser";
+                hitBoxW = 100.0f;
+                hitBoxH = 20.0f;
+                damage = 50.0f;
             }
 
             component::CollisionLayer projLayer = component::CollisionLayer::PlayerProjectile;

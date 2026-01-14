@@ -175,6 +175,10 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         }
                     }
                 }
+            } else if (event.key.code == sf::Keyboard::R) {
+                if (client_) {
+                    client_->send_shoot(0, 0, 4);
+                }
             } else if (event.key.code == renderer.get_key_binding(Renderer::Action::Shoot)) {
                 if (!is_charging_) {
                     is_charging_ = true;
@@ -260,6 +264,12 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
             }
         }
     }
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::R)) {
+        is_firing_laser_ = true;
+    } else {
+        is_firing_laser_ = false;
+    }
     if (is_charging_) {
         auto now = std::chrono::steady_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - charge_start_time_).count();
@@ -280,6 +290,23 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
     }
 
     client.update(delta_time);
+
+    if (is_firing_laser_) {
+        if (laser_energy_ > 0.0f) {
+            laser_energy_ -= delta_time;
+            if (laser_energy_ < 0.0f)
+                laser_energy_ = 0.0f;
+            if (client_) {
+                client_->send_shoot(0, 0, 4);
+            }
+        }
+    } else {
+        laser_energy_ += delta_time * 0.5f; // Recharge in 2 seconds (1.0 / 0.5 = 2.0)
+        if (laser_energy_ > 1.0f)
+            laser_energy_ = 1.0f;
+    }
+    renderer.set_laser_energy(laser_energy_);
+
     renderer.update(delta_time);
 
     GameEngine::Registry& registry = client.get_registry();

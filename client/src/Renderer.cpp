@@ -234,6 +234,14 @@ void Renderer::update_animations(float delta_time) {
                 entity.animation_frame = (entity.animation_frame + 1) % 2;
             }
         }
+        // Laser animation (8 frames)
+        if (entity.type == rtype::net::EntityType::PROJECTILE && entity.sub_type == 40) {
+            entity.animation_timer += delta_time;
+            if (entity.animation_timer >= 0.1f) {
+                entity.animation_timer = 0.0f;
+                entity.animation_frame = (entity.animation_frame + 1) % 8;
+            }
+        }
 
         // Decrement hit flash timer
         if (entity.hit_flash_timer > 0.0f) {
@@ -317,6 +325,9 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
         } else if (entity.sub_type == 31) {
             texture_name = "pod_projectile_red_" + std::to_string(entity.animation_frame % 2);
             sprite.setScale(2.5f, 2.5f);
+        } else if (entity.sub_type == 40) {
+            texture_name = "laser";
+            sprite.setScale(5.0f, 5.0f);
         } else {
             texture_name = "shot";
         }
@@ -349,6 +360,9 @@ sf::Sprite Renderer::create_sprite(const Entity& entity) {
                 texture_name = "pod_projectile_" + std::to_string(entity.animation_frame % 2);
                 sprite.setTextureRect(sf::IntRect(0, 0, 34, 19));
             }
+        } else if (entity.sub_type == 40) {
+            sprite.setTextureRect(sf::IntRect(entity.animation_frame * 100, 0, 100, 20));
+            sprite.setScale(5.0f, 5.0f);
         } else {
             texture_name = "shot";
         }
@@ -407,6 +421,22 @@ void Renderer::draw_ui() {
         charge_bar_fg.setPosition(10.0f, 70.0f);
         window_->draw(charge_bar_fg);
     }
+
+    float laser_percentage = laser_energy_ / 1.0f;
+    if (laser_percentage < 0.0f)
+        laser_percentage = 0.0f;
+    if (laser_percentage > 1.0f)
+        laser_percentage = 1.0f;
+
+    sf::RectangleShape laser_bar_bg(sf::Vector2f(200.0f, 20.0f));
+    laser_bar_bg.setFillColor(sf::Color(50, 50, 50));
+    laser_bar_bg.setPosition(10.0f, 100.0f); // Position below charge bar
+    window_->draw(laser_bar_bg);
+
+    sf::RectangleShape laser_bar_fg(sf::Vector2f(200.0f * laser_percentage, 20.0f));
+    laser_bar_fg.setFillColor(sf::Color(255, 50, 50)); // Red color for laser
+    laser_bar_fg.setPosition(10.0f, 100.0f);
+    window_->draw(laser_bar_fg);
 
     window_->setView(current_view);
 
@@ -621,6 +651,7 @@ void Renderer::load_sprites() {
     load_texture("client/sprites/r-typesheet32-ezgif.com-crop.gif", "boss_2");
     load_texture("client/sprites/r-typesheet14-boss-2-proj.gif", "boss_2_projectile");
     load_texture("client/sprites/monster_3-boss2-proj-2.gif", "boss_2_projectile_2");
+    load_texture("client/sprites/r-typesheet43-lazer.gif", "laser");
     for (int i = 0; i < 13; i++) {
         std::string path =
             "client/sprites/force_pod/tile" + std::string(i < 10 ? "00" : "0") + std::to_string(i) + ".png";
