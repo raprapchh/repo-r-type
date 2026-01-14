@@ -6,7 +6,7 @@
 
 namespace rtype::client {
 
-enum class StateType { Menu, ModeSelection, Lobby, Game, Scoreboard };
+enum class StateType { Menu, ModeSelection, SoloSettings, Lobby, Game, Scoreboard };
 
 class StateManager;
 
