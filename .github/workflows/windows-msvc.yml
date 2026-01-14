@@ -95,6 +95,39 @@ jobs:
         Write-Host "INetC.dll installed successfully!"
       shell: pwsh
   
+    - name: Install nsisunz plugin
+      run: |
+        $url = "https://nsis.sourceforge.io/mediawiki/images/1/1c/Nsisunz.zip"
+        $tempZip = "$env:TEMP\Nsisunz.zip"
+        $nsisPlugins = "C:\Program Files (x86)\NSIS\Plugins"
+
+        # Télécharger le zip
+        Invoke-WebRequest -Uri $url -OutFile $tempZip
+
+        # Extraire
+        Expand-Archive -LiteralPath $tempZip -DestinationPath $env:TEMP\Nsisunz -Force
+
+        # Trouver et copier les DLLs
+        $extractedPath = "$env:TEMP\Nsisunz"
+        $unicodeDll = Get-ChildItem -Path $extractedPath -Filter "nsisunz.dll" -Recurse | Where-Object { $_.FullName -like "*Unicode*" } | Select-Object -First 1
+        $ansiDll = Get-ChildItem -Path $extractedPath -Filter "nsisunz.dll" -Recurse | Where-Object { $_.FullName -notlike "*Unicode*" } | Select-Object -First 1
+
+        if ($unicodeDll) {
+            Copy-Item -Path $unicodeDll.FullName -Destination "$nsisPlugins\x86-unicode\" -Force
+            Write-Host "Installed Unicode nsisunz.dll from $($unicodeDll.FullName)"
+        }
+        if ($ansiDll) {
+            Copy-Item -Path $ansiDll.FullName -Destination "$nsisPlugins\x86-ansi\" -Force
+            Write-Host "Installed ANSI nsisunz.dll from $($ansiDll.FullName)"
+        }
+
+        # Nettoyer
+        Remove-Item -Path $tempZip -Force
+        Remove-Item -Path "$env:TEMP\Nsisunz" -Recurse -Force
+
+        Write-Host "nsisunz.dll installed successfully!"
+      shell: pwsh
+
     - name: Reload environment
       run: refreshenv
       shell: pwsh
