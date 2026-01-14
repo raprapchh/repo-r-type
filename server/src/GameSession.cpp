@@ -733,6 +733,8 @@ uint16_t GameSession::get_projectile_subtype(const std::string& tag_name) {
         return 30;
     if (tag_name == "PodProjectileRed")
         return 31;
+    if (tag_name == "Laser")
+        return 40;
     return 0;
 }
 

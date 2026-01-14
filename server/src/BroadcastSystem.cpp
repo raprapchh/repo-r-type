@@ -147,7 +147,17 @@ void BroadcastSystem::broadcast_spawns(const std::map<std::string, ClientInfo>& 
                         sub_type = 30;
                     else if (tag.name == "PodProjectileRed") {
                         sub_type = 31;
+                    } else if (tag.name == "Laser") {
+                        sub_type = 40;
                     }
+                }
+            }
+
+            if (registry_.hasComponent<rtype::ecs::component::Tag>(entity_idx)) {
+                const auto& tag = registry_.getComponent<rtype::ecs::component::Tag>(entity_idx);
+                if (tag.name == "Laser") {
+                    type = rtype::net::EntityType::PROJECTILE;
+                    sub_type = 40;
                 }
             }
 
@@ -379,6 +389,9 @@ void BroadcastSystem::send_initial_state(const std::string& ip, uint16_t port) {
             } else if (tag.name == "PodProjectileRed") {
                 type = rtype::net::EntityType::PROJECTILE;
                 sub_type = 31;
+            } else if (tag.name == "Laser") {
+                type = rtype::net::EntityType::PROJECTILE;
+                sub_type = 40;
             }
         }
 
