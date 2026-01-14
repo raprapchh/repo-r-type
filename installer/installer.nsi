@@ -1,0 +1,103 @@
+; Installer for R-Type Clone
+!include "MUI2.nsh"
+
+Name "R-Type Clone"
+OutFile "R-Type-Installer.exe"
+InstallDir "$PROGRAMFILES\R-TypeClone"
+InstallDirRegKey HKCU "Software\R-TypeClone" ""
+RequestExecutionLevel admin
+
+; Download URL must be provided at build time with makensis /DDOWNLOAD_URL="https://.../dist.zip"
+!ifndef DOWNLOAD_URL
+    !define DOWNLOAD_URL "https://github.com/OWNER/REPO/releases/download/latest/dist.zip"
+!endif
+
+!define MUI_ABORTWARNING
+!define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
+!define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
+
+!insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_DIRECTORY
+!insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_PAGE_FINISH
+
+!insertmacro MUI_UNPAGE_WELCOME
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_INSTFILES
+!insertmacro MUI_UNPAGE_FINISH
+
+!insertmacro MUI_LANGUAGE "French"
+
+Section "Application" SEC01
+    SetOutPath "$INSTDIR"
+
+        ; Web installer: download release archive and extract
+        CreateDirectory "$INSTDIR"
+
+        ; Download dist.zip from the release URL into the installation folder
+        DetailPrint "Téléchargement des fichiers depuis: ${DOWNLOAD_URL}"
+        ; Retry loop: up to 3 attempts with 3s delay
+        StrCpy $R9 0
+    DownloadRetryLoop:
+        inetc::get /caption "Téléchargement des ressources" /popup "${DOWNLOAD_URL}" "${DOWNLOAD_URL}" "$INSTDIR\\dist.zip" /end
+        Pop $0
+        StrCmp $0 "OK" DownloadSucceeded
+        IntOp $R9 $R9 + 1
+        DetailPrint "Téléchargement échoué: $0 (tentative $R9/3)"
+        StrCmp $R9 "3" DownloadFailed
+        Sleep 3000
+        Goto DownloadRetryLoop
+    DownloadFailed:
+        MessageBox MB_OK|MB_ICONEXCLAMATION "Échec du téléchargement des ressources après 3 tentatives: $0"
+        Abort
+    DownloadSucceeded:
+
+        ; Try to unzip using nsisunz plugin
+        DetailPrint "Extraction des fichiers..."
+        nsisunz::UnzipToLog "$INSTDIR\\dist.zip" "$INSTDIR"
+        Pop $0
+        StrCmp $0 "success" 0 +3
+            MessageBox MB_OK|MB_ICONEXCLAMATION "Échec de l'extraction: $0"
+            Abort
+
+        ; Cleanup archive
+        Delete "$INSTDIR\\dist.zip"
+
+    WriteUninstaller "$INSTDIR\Uninstall.exe"
+
+    WriteRegStr HKCU "Software\R-TypeClone" "" "$INSTDIR"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\R-TypeClone" "DisplayName" "R-Type Clone"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\R-TypeClone" "UninstallString" "$INSTDIR\Uninstall.exe"
+SectionEnd
+
+Section "Raccourcis" SEC02
+    CreateDirectory "$SMPROGRAMS\R-Type Clone"
+    CreateShortcut "$SMPROGRAMS\R-Type Clone\R-Type Client.lnk" "$INSTDIR\r-type_client.exe"
+    CreateShortcut "$SMPROGRAMS\R-Type Clone\R-Type Server.lnk" "$INSTDIR\r-type_server.exe"
+    CreateShortcut "$SMPROGRAMS\R-Type Clone\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
+    CreateShortcut "$DESKTOP\R-Type Client.lnk" "$INSTDIR\r-type_client.exe"
+SectionEnd
+
+Section "Uninstall"
+    Delete "$INSTDIR\r-type_client.exe"
+    Delete "$INSTDIR\r-type_server.exe"
+    Delete "$INSTDIR\Uninstall.exe"
+
+    RMDir /r "$INSTDIR\client"
+    RMDir /r "$INSTDIR\server"
+    RMDir /r "$INSTDIR\config"
+    RMDir "$INSTDIR"
+
+    Delete "$SMPROGRAMS\R-Type Clone\R-Type Client.lnk"
+    Delete "$SMPROGRAMS\R-Type Clone\R-Type Server.lnk"
+    Delete "$SMPROGRAMS\R-Type Clone\Uninstall.lnk"
+    RMDir "$SMPROGRAMS\R-Type Clone"
+    Delete "$DESKTOP\R-Type Client.lnk"
+
+    DeleteRegKey HKCU "Software\R-TypeClone"
+    DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\R-TypeClone"
+SectionEnd
+
+Function .onInstSuccess
+    MessageBox MB_OK "Installation de R-Type Clone terminée avec succès !"
+FunctionEnd

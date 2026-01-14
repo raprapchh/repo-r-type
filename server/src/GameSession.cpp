@@ -1,34 +1,34 @@
-#include "../include/GameSession.hpp"
-#include "../shared/net/Protocol.hpp"
-#include "../../shared/GameConstants.hpp"
-#include "../../shared/utils/GameConfig.hpp"
-#include "../../shared/utils/Logger.hpp"
-#include "../../ecs/include/components/Position.hpp"
-#include "../../ecs/include/components/Velocity.hpp"
-#include "../../ecs/include/components/Weapon.hpp"
-#include "../../ecs/include/components/HitBox.hpp"
-#include "../../ecs/include/components/Health.hpp"
-#include "../../ecs/include/components/NetworkId.hpp"
-#include "../../ecs/include/components/EnemySpawner.hpp"
-#include "../../ecs/include/components/Score.hpp"
-#include "../../ecs/include/components/Tag.hpp"
-#include "../../ecs/include/components/Lives.hpp"
-#include "../../ecs/include/components/Projectile.hpp"
-#include "../../ecs/include/components/MapBounds.hpp"
-#include "../../ecs/include/components/CollisionLayer.hpp"
-#include "../../ecs/include/components/PlayerName.hpp"
-#include "../../ecs/include/components/GameRulesComponent.hpp"
-#include "../../ecs/include/systems/MovementSystem.hpp"
-#include "../../ecs/include/systems/BoundarySystem.hpp"
-#include "../../ecs/include/systems/CollisionSystem.hpp"
-#include "../../ecs/include/systems/WeaponSystem.hpp"
-#include "../../ecs/include/systems/SpawnSystem.hpp"
-#include "../../ecs/include/systems/MobSystem.hpp"
-#include "../../ecs/include/systems/ForcePodSystem.hpp"
-#include "../../ecs/include/systems/SpawnEffectSystem.hpp"
-#include "../../ecs/include/systems/ScoreSystem.hpp"
-#include "../../ecs/include/systems/LivesSystem.hpp"
-#include "../../ecs/include/systems/ProjectileSystem.hpp"
+#include "GameSession.hpp"
+#include "net/Protocol.hpp"
+#include "GameConstants.hpp"
+#include "utils/GameConfig.hpp"
+#include "utils/Logger.hpp"
+#include "components/Position.hpp"
+#include "components/Velocity.hpp"
+#include "components/Weapon.hpp"
+#include "components/HitBox.hpp"
+#include "components/Health.hpp"
+#include "components/NetworkId.hpp"
+#include "components/EnemySpawner.hpp"
+#include "components/Score.hpp"
+#include "components/Tag.hpp"
+#include "components/Lives.hpp"
+#include "components/Projectile.hpp"
+#include "components/MapBounds.hpp"
+#include "components/CollisionLayer.hpp"
+#include "components/PlayerName.hpp"
+#include "components/GameRulesComponent.hpp"
+#include "systems/MovementSystem.hpp"
+#include "systems/BoundarySystem.hpp"
+#include "systems/CollisionSystem.hpp"
+#include "systems/WeaponSystem.hpp"
+#include "systems/SpawnSystem.hpp"
+#include "systems/MobSystem.hpp"
+#include "systems/ForcePodSystem.hpp"
+#include "systems/SpawnEffectSystem.hpp"
+#include "systems/ScoreSystem.hpp"
+#include "systems/LivesSystem.hpp"
+#include "systems/ProjectileSystem.hpp"
 #include <fstream>
 #include <string>
 #include <vector>
@@ -52,19 +52,36 @@ void load_level(GameEngine::Registry& registry, const std::string& path) {
             if (c == ' ')
                 continue;
             float x = col * 288.0f, y = row * 100.0f;
-            bool is_floor = (c == '2');
             if (c == '1' || c == '2' || c == '3' || c == '4') {
                 auto e = registry.createEntity();
+
+                float w, h;
+                std::string tag;
+
+                if (c == '2') {
+                    w = rtype::constants::FLOOR_OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE;
+                    h = rtype::constants::FLOOR_OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE;
+                    tag = "Obstacle_Floor";
+                } else if (c == '3') {
+                    w = rtype::constants::FLOOR_OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE;
+                    h = rtype::constants::FLOOR_OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE;
+                    tag = "Obstacle_Train_3";
+                } else if (c == '4') {
+                    w = rtype::constants::OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE;
+                    h = rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE;
+                    tag = "Obstacle_Train_4";
+                } else {
+                    w = rtype::constants::OBSTACLE_WIDTH * rtype::constants::OBSTACLE_SCALE;
+                    h = rtype::constants::OBSTACLE_HEIGHT * rtype::constants::OBSTACLE_SCALE;
+                    tag = "Obstacle";
+                }
+
                 registry.addComponent<rtype::ecs::component::Position>(e, x, y);
-                float w = (is_floor ? rtype::constants::FLOOR_OBSTACLE_WIDTH : rtype::constants::OBSTACLE_WIDTH) *
-                          rtype::constants::OBSTACLE_SCALE;
-                float h = (is_floor ? rtype::constants::FLOOR_OBSTACLE_HEIGHT : rtype::constants::OBSTACLE_HEIGHT) *
-                          rtype::constants::OBSTACLE_SCALE;
                 registry.addComponent<rtype::ecs::component::HitBox>(e, w, h);
                 registry.addComponent<rtype::ecs::component::Collidable>(
                     e, rtype::ecs::component::CollisionLayer::Obstacle);
                 registry.addComponent<rtype::ecs::component::NetworkId>(e, next_id++);
-                registry.addComponent<rtype::ecs::component::Tag>(e, is_floor ? "Obstacle_Floor" : "Obstacle");
+                registry.addComponent<rtype::ecs::component::Tag>(e, tag);
                 registry.addComponent<rtype::ecs::component::Velocity>(e, -100.0f, 0.0f);
             }
         }

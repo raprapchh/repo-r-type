@@ -1,6 +1,6 @@
-#include "../../include/systems/ScoreSystem.hpp"
-#include "../../include/components/Score.hpp"
-#include "../../shared/utils/Logger.hpp"
+#include "systems/ScoreSystem.hpp"
+#include "components/Score.hpp"
+#include "utils/Logger.hpp"
 
 namespace rtype::ecs {
 

@@ -80,12 +80,14 @@ Before building the project, ensure you have the following installed:
 
 ## 🎮 Usage
 
+After building, the binaries are located in `./bin/linux/`.
+
 ### 1. Start the Server
 
 The server manages the game state and synchronization. Run it first.
 
 ```bash
-./r-type_server [port]
+./bin/linux/r-type_server [port]
 ```
 
 _(Default port is 4242)_
@@ -95,7 +97,7 @@ _(Default port is 4242)_
 Launch the client to connect to the server.
 
 ```bash
-./r-type_client [ip] [port]
+./bin/linux/r-type_client [ip] [port]
 ```
 
 - **ip**: The IP address of the server (default: `127.0.0.1` or `localhost`).
@@ -123,7 +125,7 @@ The codebase is modularized for clarity and scalability:
 - **`client/`**: manages rendering (SFML), input handling, and interpolation.
 - **`ecs/`**: The core Entity Component System library (Entities, Components, Systems).
 - **`shared/`**: Common resources, network protocols, and data structures.
-- **`config/`**: JSON/YAML configuration files for game balancing.
+- **`config/`**: JSON configuration files for game balancing.
 - **`documentation/`**: Developer guides and technical documentation.
 
 <br>

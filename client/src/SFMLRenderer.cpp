@@ -1,4 +1,4 @@
-#include "../include/SFMLRenderer.hpp"
+#include "SFMLRenderer.hpp"
 #include <algorithm>
 
 namespace rtype::rendering {

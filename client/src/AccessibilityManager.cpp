@@ -1,5 +1,5 @@
-#include "../include/AccessibilityManager.hpp"
-#include "../../shared/net/MessageData.hpp"
+#include "AccessibilityManager.hpp"
+#include "net/MessageData.hpp"
 
 namespace rtype::client {
 

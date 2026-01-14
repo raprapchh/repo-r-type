@@ -3,14 +3,14 @@
 #include <queue>
 #include <memory>
 #include <mutex>
-#include "../../shared/net/Packet.hpp"
-#include "../../shared/net/MessageSerializer.hpp"
-#include "../../ecs/include/Registry.hpp"
-#include "../../ecs/include/components/Position.hpp"
-#include "../../ecs/include/components/Velocity.hpp"
-#include "../../ecs/include/components/NetworkId.hpp"
-#include "../../ecs/include/components/Drawable.hpp"
-#include "../../ecs/include/components/Controllable.hpp"
+#include "net/Packet.hpp"
+#include "net/MessageSerializer.hpp"
+#include "Registry.hpp"
+#include "components/Position.hpp"
+#include "components/Velocity.hpp"
+#include "components/NetworkId.hpp"
+#include "components/Drawable.hpp"
+#include "components/Controllable.hpp"
 
 namespace rtype::client {
 

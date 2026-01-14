@@ -7,7 +7,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "../../shared/net/MessageData.hpp"
+#include "net/MessageData.hpp"
 #include "AccessibilityManager.hpp"
 
 namespace rtype::client {

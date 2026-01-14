@@ -1,8 +1,8 @@
-#include "../../include/systems/ForcePodSystem.hpp"
-#include "../../include/components/Parent.hpp"
-#include "../../include/components/Position.hpp"
-#include "../../include/components/Weapon.hpp"
-#include "../../include/components/Tag.hpp"
+#include "systems/ForcePodSystem.hpp"
+#include "components/Parent.hpp"
+#include "components/Position.hpp"
+#include "components/Weapon.hpp"
+#include "components/Tag.hpp"
 
 namespace rtype::ecs {
 

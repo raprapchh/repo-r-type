@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <memory>
-#include "../../shared/interfaces/ecs/ISystem.hpp"
+#include "interfaces/ecs/ISystem.hpp"
 
 namespace GameEngine {
 

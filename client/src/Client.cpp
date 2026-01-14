@@ -1,22 +1,22 @@
 #include "Client.hpp"
-#include "../shared/net/ProtocolAdapter.hpp"
-#include "../shared/net/MessageSerializer.hpp"
-#include "../../shared/GameConstants.hpp"
-#include "../../ecs/include/components/NetworkId.hpp"
-#include "../../ecs/include/components/Position.hpp"
-#include "../../ecs/include/components/Velocity.hpp"
-#include "../../ecs/include/components/Drawable.hpp"
-#include "../../ecs/include/components/Controllable.hpp"
-#include "../../ecs/include/components/HitBox.hpp"
-#include "../../ecs/include/components/CollisionLayer.hpp"
-#include "../../ecs/include/components/Lives.hpp"
-#include "../../ecs/include/components/Health.hpp"
-#include "../../ecs/include/components/Score.hpp"
-#include "../../ecs/include/components/Tag.hpp"
-#include "../../ecs/include/components/NetworkInterpolation.hpp"
-#include "../../ecs/include/components/PingStats.hpp"
-#include "../../ecs/include/systems/MovementSystem.hpp"
-#include "../../ecs/include/systems/TextureAnimationSystem.hpp"
+#include "net/ProtocolAdapter.hpp"
+#include "net/MessageSerializer.hpp"
+#include "GameConstants.hpp"
+#include "components/NetworkId.hpp"
+#include "components/Position.hpp"
+#include "components/Velocity.hpp"
+#include "components/Drawable.hpp"
+#include "components/Controllable.hpp"
+#include "components/HitBox.hpp"
+#include "components/CollisionLayer.hpp"
+#include "components/Lives.hpp"
+#include "components/Health.hpp"
+#include "components/Score.hpp"
+#include "components/Tag.hpp"
+#include "components/NetworkInterpolation.hpp"
+#include "components/PingStats.hpp"
+#include "systems/MovementSystem.hpp"
+#include "systems/TextureAnimationSystem.hpp"
 #include <iostream>
 #include <chrono>
 #include <algorithm>
@@ -58,6 +58,7 @@ void Client::set_player_join_callback(std::function<void(uint32_t, const std::st
 }
 
 Client::~Client() {
+    audio_system_.cleanup();
     disconnect();
 }
 

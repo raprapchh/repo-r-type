@@ -1,7 +1,7 @@
 #pragma once
 
 #include "States.hpp"
-#include "../../shared/utils/GameRules.hpp"
+#include "utils/GameRules.hpp"
 #include <SFML/Graphics.hpp>
 #include <atomic>
 #include <map>

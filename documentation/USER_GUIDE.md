@@ -11,6 +11,7 @@ This project offers a retro gaming experience with modern technology: smooth gra
 ### Who is this guide for?
 
 This guide is intended for **all players** who want to install and play R-Type, whether they are:
+
 - Casual players looking for a nostalgic experience.
 - Multiplayer gamers wanting to challenge their friends online.
 - Users concerned with accessibility (colorblind modes available).
@@ -29,16 +30,19 @@ Before starting, make sure your system has:
 - **Internet Connection**: Required for downloading dependencies and online play.
 
 **Required Software** (automatic installation via build script):
+
 - A modern C++ compiler (automatically installed if missing).
 - CMake and Git (usually pre-installed on Linux).
 
 **System Dependencies** (Linux only):
 On Fedora, install SFML with this command:
+
 ```bash
 sudo dnf install SFML-devel
 ```
 
 On Ubuntu/Debian:
+
 ```bash
 sudo apt-get install libsfml-dev
 ```
@@ -70,6 +74,7 @@ chmod +x ./build.sh
 ```
 
 **This script will automatically**:
+
 1. Download and configure the `vcpkg` package manager.
 2. Install the required libraries (EnTT, ASIO, SFML).
 3. Compile the game server and client.
@@ -80,14 +85,15 @@ chmod +x ./build.sh
 
 #### Step 3: Verify the installation
 
-If everything went well, you should see two executable files in the root folder:
+If everything went well, you should see two executable files in the `./bin/linux/` folder:
 
 - `r-type_server`: The game server.
 - `r-type_client`: The client (player interface).
 
 To find them, type:
+
 ```bash
-ls -lh r-type_*
+ls -lh ./bin/linux/r-type_*
 ```
 
 ---
@@ -99,24 +105,28 @@ ls -lh r-type_*
 If you want to test the game solo or host a game for your friends:
 
 **Terminal 1: Start the server**
+
 ```bash
-./r-type_server 4242
+./bin/linux/r-type_server 4242
 ```
 
 > **Explanation**: `4242` is the network port on which the server listens. You can choose another port if needed (between 1024 and 65535).
 
 You should see a message like:
+
 ```
 Server started on port 4242
 Waiting for players...
 ```
 
 **Terminal 2: Start the client (player 1)**
+
 ```bash
-./r-type_client 127.0.0.1 4242
+./bin/linux/r-type_client 127.0.0.1 4242
 ```
 
 > **Explanation**:
+>
 > - `127.0.0.1`: Local IP address (your own computer).
 > - `4242`: Port used by the server (must match).
 
@@ -129,12 +139,14 @@ The game opens with the main menu.
 **If you are the host (the one who starts the server)**:
 
 1. Find your public or local IP address:
+
    - **Local IP** (same Wi-Fi network): `ifconfig` (Linux) or `ipconfig` (Windows).
    - **Public IP** (Internet): Search "my IP" on Google.
 
 2. Start the server:
+
    ```bash
-   ./r-type_server 4242
+   ./bin/linux/r-type_server 4242
    ```
 
 3. Share your IP and port with your friends.
@@ -142,13 +154,15 @@ The game opens with the main menu.
 **If you are a guest player**:
 
 Ask the host for their IP address and port, then run:
+
 ```bash
-./r-type_client <HOST_IP> <PORT>
+./bin/linux/r-type_client <HOST_IP> <PORT>
 ```
 
 Example:
+
 ```bash
-./r-type_client 192.168.1.42 4242
+./bin/linux/r-type_client 192.168.1.42 4242
 ```
 
 ---
@@ -158,9 +172,11 @@ Example:
 Once in the game:
 
 - **Movement**:
+
   - Arrow keys **OR** WASD (QWERTY keyboard) **OR** ZQSD (AZERTY keyboard).
 
 - **Shoot**:
+
   - Press **Space**.
 
 - **Menu**:
@@ -175,18 +191,21 @@ Once in the game:
 ### 3.1. Network Multiplayer (up to 4 players)
 
 #### Why use it?
+
 Face waves of enemies with your friends! Multiplayer mode offers a cooperative experience where up to **4 players** can play simultaneously in the same game.
 
 #### How to use it?
 
 1. **One of you starts the server**:
+
    ```bash
-   ./r-type_server 4242
+   ./bin/linux/r-type_server 4242
    ```
 
 2. **Each player connects** with the client:
+
    ```bash
-   ./r-type_client <SERVER_IP> 4242
+   ./bin/linux/r-type_client <SERVER_IP> 4242
    ```
 
 3. **In the game menu**:
@@ -201,9 +220,11 @@ Face waves of enemies with your friends! Multiplayer mode offers a cooperative e
 ### 3.2. Accessibility Modes (Colorblindness)
 
 #### Why use it?
+
 R-Type includes visual modes adapted for colorblind people, so everyone can enjoy the game in the best conditions.
 
 #### Available mode types:
+
 - **Deuteranopia**: Difficulty perceiving green.
 - **Protanopia**: Difficulty perceiving red.
 - **Tritanopia**: Difficulty perceiving blue.
@@ -223,6 +244,7 @@ The colors of enemies, projectiles and effects will be automatically adjusted.
 ### 3.3. Weapon and Shooting System
 
 #### Why use it?
+
 The weapon system is at the heart of the gameplay. Shoot enemies to destroy them, collect power-ups to improve your firepower.
 
 #### How does it work?
@@ -234,6 +256,7 @@ The weapon system is at the heart of the gameplay. Shoot enemies to destroy them
   - Special trajectory shots.
 
 **Strategy example**:
+
 - Stay mobile to avoid enemy fire.
 - Focus your fire on the most dangerous enemies.
 - Collect power-ups as soon as they appear.
@@ -243,11 +266,13 @@ The weapon system is at the heart of the gameplay. Shoot enemies to destroy them
 ### 3.4. Lives and Score System
 
 #### Why is it important?
+
 Each player starts with a limited number of **lives**. Losing all your lives means the end of the game (Game Over). The **score** measures your performance.
 
 #### How does it work?
 
 - **Lives**:
+
   - You start with **3 lives**.
   - A life is lost when your ship collides with an enemy or a projectile.
   - Earn bonus lives by reaching certain score milestones.
@@ -264,16 +289,19 @@ Each player starts with a limited number of **lives**. Losing all your lives mea
 ### 3.5. Enemies and Bosses
 
 #### Why is it exciting?
+
 The game offers **multiple enemy types** with varied behaviors, as well as **formidable bosses** at the end of levels.
 
 #### Enemy types:
 
 - **Standard enemies** (monster_0 to monster_4):
+
   - Predictable movements.
   - Simple shots.
   - Easy to destroy.
 
 - **Advanced enemies**:
+
   - Complex trajectories.
   - Multiple shots.
   - Increased resistance.
@@ -295,12 +323,14 @@ The game offers **multiple enemy types** with varied behaviors, as well as **for
 ### 3.6. Visual and Sound Effects
 
 #### Why is it immersive?
+
 R-Type features **animated explosions**, **particle effects**, and **realistic shooting sounds** for an authentic arcade experience.
 
 #### Features:
 
 - **Explosions**: Detailed GIF animations when enemies are destroyed.
 - **Sounds**:
+
   - `shoot.wav`: Shooting sound.
   - Add your own sounds to the `client/assets/audio/` folder.
 
@@ -320,7 +350,7 @@ By default, the server uses **port 4242** and broadcasts the game state **20 tim
 #### Change the server port:
 
 ```bash
-./r-type_server 8080
+./bin/linux/r-type_server 8080
 ```
 
 > **Warning**: Clients must use the same port.
@@ -352,6 +382,7 @@ constexpr float SCREEN_HEIGHT = 1080.0f;
 ```
 
 Then recompile:
+
 ```bash
 ./build.sh
 ```
@@ -368,11 +399,13 @@ A JSON configuration file is planned at the location:
 `/home/jbbsh/repo-r-type/config/game.json`
 
 **Current status**: The file is empty (placeholder). It will allow in the future to customize:
+
 - Enemy speed.
 - Starting number of lives.
 - Power-up spawn rate.
 
 **Planned format**:
+
 ```json
 {
   "player": {
@@ -395,12 +428,15 @@ A JSON configuration file is planned at the location:
 You can customize the game by replacing sprites and sounds.
 
 #### Sprites:
+
 Place your PNG/GIF files in `/home/jbbsh/repo-r-type/client/sprites/` and reference them in the code.
 
 #### Sounds:
+
 Add your WAV files to `/home/jbbsh/repo-r-type/client/assets/audio/`.
 
 **Example**: Replace the shooting sound:
+
 1. Rename your file to `shoot.wav`.
 2. Replace the existing file in `client/assets/audio/shoot.wav`.
 3. Restart the client.
@@ -414,9 +450,11 @@ Add your WAV files to `/home/jbbsh/repo-r-type/client/assets/audio/`.
 **Cause**: Port 4242 is already in use by another application.
 
 **Solution**:
+
 1. Choose another port:
+
    ```bash
-   ./r-type_server 5000
+   ./bin/linux/r-type_server 5000
    ```
 
 2. Or stop the process using port 4242:
@@ -430,6 +468,7 @@ Add your WAV files to `/home/jbbsh/repo-r-type/client/assets/audio/`.
 ### ❓ Client won't connect to server ("Connection refused")
 
 **Possible causes**:
+
 1. The server is not running.
 2. The IP address or port is incorrect.
 3. A firewall is blocking the connection.
@@ -440,10 +479,12 @@ Add your WAV files to `/home/jbbsh/repo-r-type/client/assets/audio/`.
    In the server terminal, you should see "Server started on port...".
 
 2. **Check the IP and port**:
+
    - Local IP: `127.0.0.1`
    - Network IP: Use `ifconfig` (Linux) or `ipconfig` (Windows).
 
 3. **Temporarily disable the firewall** (Linux):
+
    ```bash
    sudo ufw allow 4242
    ```
@@ -455,6 +496,7 @@ Add your WAV files to `/home/jbbsh/repo-r-type/client/assets/audio/`.
 ### ❓ Game is choppy / laggy
 
 **Possible causes**:
+
 1. Unstable network connection.
 2. Overloaded server (too many players or insufficient resources).
 3. Underpowered computer.
@@ -462,9 +504,11 @@ Add your WAV files to `/home/jbbsh/repo-r-type/client/assets/audio/`.
 **Solutions**:
 
 1. **Check your ping**:
+
    ```bash
    ping <SERVER_IP>
    ```
+
    A ping >100ms may cause stuttering.
 
 2. **Close resource-heavy applications** (browser, streaming).
@@ -476,22 +520,27 @@ Add your WAV files to `/home/jbbsh/repo-r-type/client/assets/audio/`.
 ### ❓ Compilation error when running ./build.sh
 
 **Possible causes**:
+
 1. Missing system dependencies (SFML).
 2. C++ compiler too old.
 
 **Solutions**:
 
 1. **Install SFML**:
+
    - Fedora: `sudo dnf install SFML-devel`
    - Ubuntu: `sudo apt-get install libsfml-dev`
 
 2. **Check compiler version**:
+
    ```bash
    g++ --version
    ```
+
    You need **g++ 10+** or **clang 12+**.
 
    To install a recent version (Ubuntu):
+
    ```bash
    sudo apt-get install g++-11
    export CXX=g++-11
@@ -503,17 +552,20 @@ Add your WAV files to `/home/jbbsh/repo-r-type/client/assets/audio/`.
 ### ❓ No sound in the game
 
 **Possible causes**:
+
 1. Missing audio file.
 2. Problem with the system's audio system.
 
 **Solutions**:
 
 1. **Verify the file exists**:
+
    ```bash
    ls client/assets/audio/shoot.wav
    ```
 
 2. **Test system sound**:
+
    ```bash
    paplay /usr/share/sounds/alsa/Front_Center.wav
    ```
@@ -542,5 +594,5 @@ If you encounter a problem not covered by this guide:
 
 **Happy gaming! 🚀**
 
-*Documentation written for R-Type - Version 1.0*
-*Last updated: December 2025*
+_Documentation written for R-Type - Version 1.0_
+_Last updated: December 2025_

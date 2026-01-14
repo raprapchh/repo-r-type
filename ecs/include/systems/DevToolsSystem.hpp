@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../../shared/interfaces/ecs/ISystem.hpp"
+#include "interfaces/ecs/ISystem.hpp"
 #include "../Registry.hpp"
 
 namespace rtype::ecs {

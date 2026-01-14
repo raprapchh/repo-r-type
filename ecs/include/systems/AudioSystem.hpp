@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../shared/interfaces/ecs/ISystem.hpp"
+#include "interfaces/ecs/ISystem.hpp"
 #include "../Registry.hpp"
 #include "../components/AudioEvent.hpp"
 #include <SFML/Audio.hpp>
@@ -14,7 +14,9 @@ namespace rtype::ecs {
 class AudioSystem : public ISystem {
   public:
     AudioSystem();
-    ~AudioSystem() override = default;
+    ~AudioSystem() override;
+
+    void cleanup();
 
     void update(GameEngine::Registry& registry, double dt) override;
 

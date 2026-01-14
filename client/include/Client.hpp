@@ -9,16 +9,16 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include "../shared/net/Protocol.hpp"
-#include "../shared/interfaces/network/IProtocolAdapter.hpp"
-#include "../shared/interfaces/network/IMessageSerializer.hpp"
+#include "net/Protocol.hpp"
+#include "interfaces/network/IProtocolAdapter.hpp"
+#include "interfaces/network/IMessageSerializer.hpp"
 #include "NetworkSystem.hpp"
 #include "UdpClient.hpp"
 #include "Renderer.hpp"
 #include "ScoreboardManager.hpp"
-#include "../../ecs/include/systems/AudioSystem.hpp"
-#include "../../ecs/include/SystemManager.hpp"
-#include "../../shared/utils/GameRules.hpp"
+#include "systems/AudioSystem.hpp"
+#include "SystemManager.hpp"
+#include "utils/GameRules.hpp"
 
 namespace rtype::client {
 

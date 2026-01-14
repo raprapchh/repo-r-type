@@ -4,20 +4,20 @@
 #include <iostream>
 #include <vector>
 
-#include "../ecs/include/Registry.hpp"
-#include "../ecs/include/components/Position.hpp"
-#include "../ecs/include/components/Velocity.hpp"
-#include "../ecs/include/components/Drawable.hpp"
-#include "../ecs/include/components/Controllable.hpp"
-#include "../ecs/include/components/HitBox.hpp"
-#include "../ecs/include/components/CollisionLayer.hpp"
-#include "../ecs/include/components/Tag.hpp"
-#include "../ecs/include/components/Gravity.hpp"
-#include "../ecs/include/components/Jump.hpp"
-#include "../client/include/SFMLRenderer.hpp"
-#include "../ecs/include/systems/RenderSystem.hpp"
-#include "../ecs/include/systems/MovementSystem.hpp"
-#include "../ecs/include/systems/PlatformerPhysicsSystem.hpp"
+#include "Registry.hpp"
+#include "components/Position.hpp"
+#include "components/Velocity.hpp"
+#include "components/Drawable.hpp"
+#include "components/Controllable.hpp"
+#include "components/HitBox.hpp"
+#include "components/CollisionLayer.hpp"
+#include "components/Tag.hpp"
+#include "components/Gravity.hpp"
+#include "components/Jump.hpp"
+#include "SFMLRenderer.hpp"
+#include "systems/RenderSystem.hpp"
+#include "systems/MovementSystem.hpp"
+#include "systems/PlatformerPhysicsSystem.hpp"
 
 int main() {
     GameEngine::Registry registry;
