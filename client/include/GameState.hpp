@@ -1,6 +1,7 @@
 #pragma once
 
 #include "States.hpp"
+#include "utils/GameRules.hpp"
 #include <chrono>
 #include <memory>
 
@@ -12,7 +13,8 @@ namespace rtype::client {
 
 class GameState : public IState {
   public:
-    explicit GameState(bool multiplayer = true);
+    explicit GameState(bool multiplayer = true,
+                       rtype::config::Difficulty difficulty = rtype::config::Difficulty::NORMAL, uint8_t lives = 3);
     ~GameState() override = default;
 
     void handle_input(Renderer& renderer, StateManager& state_manager) override;
@@ -53,6 +55,8 @@ class GameState : public IState {
     sf::Text accessibility_cycle_text_;
 
     bool multiplayer_ = true;
+    rtype::config::Difficulty solo_difficulty_ = rtype::config::Difficulty::NORMAL;
+    uint8_t solo_lives_ = 3;
     float spawn_timer_ = 0.0f;
     float spawn_interval_ = 1.5f;
     uint32_t next_enemy_id_ = 1000;

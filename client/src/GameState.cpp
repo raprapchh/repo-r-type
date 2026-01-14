@@ -39,7 +39,8 @@
 
 namespace rtype::client {
 
-GameState::GameState(bool multiplayer) : multiplayer_(multiplayer) {
+GameState::GameState(bool multiplayer, rtype::config::Difficulty difficulty, uint8_t lives)
+    : multiplayer_(multiplayer), solo_difficulty_(difficulty), solo_lives_(lives) {
     setup_pause_ui();
 }
 
@@ -68,7 +69,8 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
             auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                               std::chrono::system_clock::now().time_since_epoch())
                               .count();
-            client.create_room("SOLO-" + std::to_string(now_ms));
+            client.create_room("SOLO-" + std::to_string(now_ms), 1, rtype::config::GameMode::COOP, solo_difficulty_,
+                               false, solo_lives_);
         }
         game_start_sent_ = false;
 
