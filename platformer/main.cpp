@@ -51,6 +51,16 @@ int main() {
         textures["player_right"] = player_right_texture;
     }
 
+    sf::Texture player_up_texture;
+    if (!player_up_texture.loadFromFile("platformer/assets/player_up.png") &&
+        !player_up_texture.loadFromFile("assets/player_up.png") &&
+        !player_up_texture.loadFromFile("../platformer/assets/player_up.png") &&
+        !player_up_texture.loadFromFile("../assets/player_up.png")) {
+        std::cerr << "Failed to load player_up texture!" << std::endl;
+    } else {
+        textures["player_up"] = player_up_texture;
+    }
+
     sf::Texture bck_texture;
     if (!bck_texture.loadFromFile("platformer/assets/bck.png") && !bck_texture.loadFromFile("assets/bck.png") &&
         !bck_texture.loadFromFile("../platformer/assets/bck.png") && !bck_texture.loadFromFile("../assets/bck.png")) {
@@ -218,13 +228,37 @@ int main() {
 
             auto& vel = registry.getComponent<rtype::ecs::component::Velocity>(player);
             vel.vx = 0;
+
+            static std::string last_horizontal_facing = "player_right";
+            if (registry.getComponent<rtype::ecs::component::Drawable>(player).texture_name == "player_left") {
+                last_horizontal_facing = "player_left";
+            }
+            if (registry.getComponent<rtype::ecs::component::Drawable>(player).texture_name == "player_right") {
+                last_horizontal_facing = "player_right";
+            }
+
+            bool moving_horizontal = false;
+
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
                 vel.vx = -400.0f;
                 registry.getComponent<rtype::ecs::component::Drawable>(player).texture_name = "player_left";
+                last_horizontal_facing = "player_left";
+                moving_horizontal = true;
             }
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
                 vel.vx = 400.0f;
                 registry.getComponent<rtype::ecs::component::Drawable>(player).texture_name = "player_right";
+                last_horizontal_facing = "player_right";
+                moving_horizontal = true;
+            }
+
+            // Handle Up sprite
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
+                registry.getComponent<rtype::ecs::component::Drawable>(player).texture_name = "player_up";
+            } else if (!moving_horizontal) {
+                // Revert to facing if not actively moving left/right and not holding up
+                // (Though if moving left/right, the above blocks handle the sprite)
+                registry.getComponent<rtype::ecs::component::Drawable>(player).texture_name = last_horizontal_facing;
             }
 
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
@@ -236,8 +270,6 @@ int main() {
 
                 if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
                     dirY = -1.0f;
-                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
-                    dirY = 1.0f;
                 if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
                     dirX = -1.0f;
                 if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
