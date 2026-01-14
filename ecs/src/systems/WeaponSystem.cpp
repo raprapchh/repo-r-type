@@ -130,7 +130,7 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
                 }
             }
 
-            if (!is_player) {
+            if (!is_player && !weapon.ignoreScroll) {
                 vx -= rtype::config::SCROLL_SPEED;
             }
             float damage = weapon.damage;
@@ -138,7 +138,10 @@ void WeaponSystem::update(GameEngine::Registry& registry, double dt) {
             float hitBoxW = 0.0f;
             float hitBoxH = 0.0f;
 
-            if (!is_player) {
+            if (weapon.projectileWidth > 0.0f && weapon.projectileHeight > 0.0f) {
+                hitBoxW = weapon.projectileWidth;
+                hitBoxH = weapon.projectileHeight;
+            } else if (!is_player) {
                 hitBoxW = 70.0f;
                 hitBoxH = 70.0f;
             } else {

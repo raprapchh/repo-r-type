@@ -18,6 +18,10 @@
 #include "systems/RenderSystem.hpp"
 #include "systems/MovementSystem.hpp"
 #include "systems/PlatformerPhysicsSystem.hpp"
+#include "systems/WeaponSystem.hpp"
+#include "systems/ProjectileSystem.hpp"
+#include "components/Weapon.hpp"
+#include "components/Projectile.hpp"
 
 int main() {
     GameEngine::Registry registry;
@@ -65,11 +69,23 @@ int main() {
         textures["green_platform"] = green_platform_texture;
     }
 
+    sf::Texture projectile_texture;
+    if (!projectile_texture.loadFromFile("platformer/assets/projectile.png") &&
+        !projectile_texture.loadFromFile("assets/projectile.png") &&
+        !projectile_texture.loadFromFile("../platformer/assets/projectile.png") &&
+        !projectile_texture.loadFromFile("../assets/projectile.png")) {
+        std::cerr << "Failed to load projectile texture!" << std::endl;
+    } else {
+        textures["projectile"] = projectile_texture;
+    }
+
     auto renderer_impl = std::make_shared<rtype::rendering::SFMLRenderer>(window, textures);
     auto render_system = std::make_shared<rtype::ecs::RenderSystem>(renderer_impl, nullptr);
 
     auto movement_system = std::make_shared<rtype::ecs::MovementSystem>();
     auto physics_system = std::make_shared<rtype::ecs::PlatformerPhysicsSystem>();
+    auto weapon_system = std::make_shared<rtype::ecs::WeaponSystem>();
+    auto projectile_system = std::make_shared<rtype::ecs::ProjectileSystem>();
 
     auto player = registry.createEntity();
     registry.addComponent<rtype::ecs::component::Position>(player, 200.0f, 400.0f);
@@ -79,7 +95,22 @@ int main() {
     registry.addComponent<rtype::ecs::component::Controllable>(player);
     registry.addComponent<rtype::ecs::component::Gravity>(player);
     registry.addComponent<rtype::ecs::component::Jump>(player);
-    registry.addComponent<rtype::ecs::component::Tag>(player, "Player");
+    registry.addComponent<rtype::ecs::component::Jump>(player);
+    registry.addComponent<rtype::ecs::component::Tag>(player, "PlatformerPlayer");
+
+    auto& weapon = registry.addComponent<rtype::ecs::component::Weapon>(player);
+    weapon.projectileTag = "projectile";
+    weapon.projectileWidth = 16.0f;
+    weapon.projectileHeight = 16.0f;
+    weapon.ignoreScroll = true;
+    weapon.fireRate = 0.2f;
+    weapon.projectileSpeed = 1200.0f;
+    weapon.projectileLifetime = 2.0f;
+    weapon.directionX = 0.0f;
+    weapon.directionY = -1.0f;
+    weapon.damage = 10.0f;
+    weapon.spawnOffsetX = 62.0f;
+    weapon.spawnOffsetY = 0.0f;
 
     struct PlatformConfig {
         float x, y, width, height;
@@ -196,8 +227,56 @@ int main() {
                 registry.getComponent<rtype::ecs::component::Drawable>(player).texture_name = "player_right";
             }
 
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
+                auto& weapon = registry.getComponent<rtype::ecs::component::Weapon>(player);
+                weapon.isShooting = true;
+
+                float dirX = 0.0f;
+                float dirY = 0.0f;
+
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
+                    dirY = -1.0f;
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Down))
+                    dirY = 1.0f;
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left))
+                    dirX = -1.0f;
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right))
+                    dirX = 1.0f;
+
+                if (dirX == 0.0f && dirY == 0.0f) {
+                    auto& drawable = registry.getComponent<rtype::ecs::component::Drawable>(player);
+                    if (drawable.texture_name == "player_left") {
+                        dirX = -1.0f;
+                    } else {
+                        dirX = 1.0f;
+                    }
+                }
+
+                weapon.directionX = dirX;
+                weapon.directionY = dirY;
+
+                float spawnX = 62.0f - 8.0f;
+                float spawnY = 60.0f - 8.0f;
+
+                if (dirX > 0)
+                    spawnX = 124.0f;
+                if (dirX < 0)
+                    spawnX = -16.0f;
+                if (dirY > 0)
+                    spawnY = 120.0f;
+                if (dirY < 0)
+                    spawnY = -16.0f;
+
+                weapon.spawnOffsetX = spawnX;
+                weapon.spawnOffsetY = spawnY;
+            } else {
+                registry.getComponent<rtype::ecs::component::Weapon>(player).isShooting = false;
+            }
+
             physics_system->update(registry, dt);
             movement_system->update(registry, dt);
+            weapon_system->update(registry, dt);
+            projectile_system->update(registry, dt);
 
             auto& pos = registry.getComponent<rtype::ecs::component::Position>(player);
             auto& hitbox = registry.getComponent<rtype::ecs::component::HitBox>(player);
@@ -226,6 +305,15 @@ int main() {
             window.draw(play_sprite);
         } else if (!game_over) {
             render_system->update(registry, 0);
+
+            auto projectiles = registry.view<rtype::ecs::component::Projectile, rtype::ecs::component::Position>();
+            for (auto entity : projectiles) {
+                auto& pos = registry.getComponent<rtype::ecs::component::Position>(entity);
+                sf::CircleShape circle(5.0f);
+                circle.setFillColor(sf::Color::Black);
+                circle.setPosition(pos.x, pos.y);
+                window.draw(circle);
+            }
         } else {
             lose_text.setPosition(view.getCenter());
             window.draw(lose_text);
