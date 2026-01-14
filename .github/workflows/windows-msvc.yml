@@ -97,51 +97,45 @@ jobs:
   
     - name: Install nsisunz plugin
       run: |
-        $url = "https://nsis.sourceforge.io/mediawiki/images/1/1c/Nsisunz.zip"
-        $tempZip = "$env:TEMP\Nsisunz.zip"
+        $unicodeUrl = "https://nsis.sourceforge.io/mediawiki/images/5/5a/NSISunzU.zip"
+        $ansiUrl = "https://nsis.sourceforge.io/mediawiki/images/1/1c/Nsisunz.zip"
         $nsisPlugins = "C:\Program Files (x86)\NSIS\Plugins"
 
-        # Télécharger le zip
-        Invoke-WebRequest -Uri $url -OutFile $tempZip
-        if (-Not (Test-Path $tempZip)) { Write-Error "Failed to download nsisunz.zip"; exit 1 }
-
-        # Extraire
-        $extractedPath = "$env:TEMP\Nsisunz"
-        if (Test-Path $extractedPath) { Remove-Item -Path $extractedPath -Recurse -Force }
-        Expand-Archive -LiteralPath $tempZip -DestinationPath $extractedPath -Force
-
-        # Debug: List extracted files
-        Write-Host "Extracted files in $extractedPath :"
-        Get-ChildItem -Path $extractedPath -Recurse | Select-Object FullName
-
-        # Trouver et copier les DLLs
-        $unicodeDll = Get-ChildItem -Path $extractedPath -Filter "nsisunz.dll" -Recurse | Where-Object { $_.FullName -match "Release_Unicode" -or $_.FullName -match "Unicode" } | Select-Object -First 1
-        $ansiDll = Get-ChildItem -Path $extractedPath -Filter "nsisunz.dll" -Recurse | Where-Object { $_.FullName -match "Release" -and $_.FullName -notmatch "Unicode" } | Select-Object -First 1
-
+        # Install Unicode version (Highest priority for modern NSIS)
+        $tempZipU = "$env:TEMP\NsisunzU.zip"
+        Invoke-WebRequest -Uri $unicodeUrl -OutFile $tempZipU
+        $extractedPathU = "$env:TEMP\NsisunzU"
+        Expand-Archive -LiteralPath $tempZipU -DestinationPath $extractedPathU -Force
+        
+        $unicodeDll = Get-ChildItem -Path $extractedPathU -Filter "nsisunz.dll" -Recurse | Select-Object -First 1
         if ($unicodeDll) {
             Copy-Item -Path $unicodeDll.FullName -Destination "$nsisPlugins\x86-unicode\nsisunz.dll" -Force
-            Write-Host "Installed Unicode nsisunz.dll from $($unicodeDll.FullName) to $nsisPlugins\x86-unicode\"
-        } else {
-            Write-Warning "Unicode nsisunz.dll not found!"
+            Write-Host "Installed Unicode nsisunz.dll to x86-unicode"
         }
 
+        # Install ANSI version (Optional but good for compatibility)
+        $tempZipA = "$env:TEMP\Nsisunz.zip"
+        Invoke-WebRequest -Uri $ansiUrl -OutFile $tempZipA
+        $extractedPathA = "$env:TEMP\Nsisunz"
+        Expand-Archive -LiteralPath $tempZipA -DestinationPath $extractedPathA -Force
+        
+        $ansiDll = Get-ChildItem -Path $extractedPathA -Filter "nsisunz.dll" -Recurse | Select-Object -First 1
         if ($ansiDll) {
             Copy-Item -Path $ansiDll.FullName -Destination "$nsisPlugins\x86-ansi\nsisunz.dll" -Force
-            Write-Host "Installed ANSI nsisunz.dll from $($ansiDll.FullName) to $nsisPlugins\x86-ansi\"
-        } else {
-            Write-Warning "ANSI nsisunz.dll not found!"
+            Write-Host "Installed ANSI nsisunz.dll to x86-ansi"
         }
 
-        # Verification
-        Write-Host "Checking NSIS plugins directory:"
-        if (Test-Path "$nsisPlugins\x86-unicode\nsisunz.dll") { Write-Host "CONFIRMED: nsisunz.dll exists in x86-unicode" }
-        else { Write-Error "FAILURE: nsisunz.dll MISSING in x86-unicode" }
+        # Final Verification
+        if (Test-Path "$nsisPlugins\x86-unicode\nsisunz.dll") {
+            Write-Host "SUCCESS: nsisunz.dll is correctly installed in x86-unicode"
+        } else {
+            Write-Error "FAILURE: nsisunz.dll is still missing in x86-unicode"
+            exit 1
+        }
 
-        # Nettoyer
-        Remove-Item -Path $tempZip -Force
-        Remove-Item -Path $extractedPath -Recurse -Force
-
-        Write-Host "nsisunz plugin installation step completed."
+        # Cleanup
+        Remove-Item $tempZipU, $tempZipA -ErrorAction SilentlyContinue
+        Remove-Item $extractedPathU, $extractedPathA -Recurse -Force -ErrorAction SilentlyContinue
       shell: pwsh
 
     - name: Reload environment
