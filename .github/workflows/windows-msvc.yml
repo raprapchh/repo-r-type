@@ -103,29 +103,45 @@ jobs:
 
         # Télécharger le zip
         Invoke-WebRequest -Uri $url -OutFile $tempZip
+        if (-Not (Test-Path $tempZip)) { Write-Error "Failed to download nsisunz.zip"; exit 1 }
 
         # Extraire
-        Expand-Archive -LiteralPath $tempZip -DestinationPath $env:TEMP\Nsisunz -Force
+        $extractedPath = "$env:TEMP\Nsisunz"
+        if (Test-Path $extractedPath) { Remove-Item -Path $extractedPath -Recurse -Force }
+        Expand-Archive -LiteralPath $tempZip -DestinationPath $extractedPath -Force
+
+        # Debug: List extracted files
+        Write-Host "Extracted files in $extractedPath :"
+        Get-ChildItem -Path $extractedPath -Recurse | Select-Object FullName
 
         # Trouver et copier les DLLs
-        $extractedPath = "$env:TEMP\Nsisunz"
-        $unicodeDll = Get-ChildItem -Path $extractedPath -Filter "nsisunz.dll" -Recurse | Where-Object { $_.FullName -like "*Unicode*" } | Select-Object -First 1
-        $ansiDll = Get-ChildItem -Path $extractedPath -Filter "nsisunz.dll" -Recurse | Where-Object { $_.FullName -notlike "*Unicode*" } | Select-Object -First 1
+        $unicodeDll = Get-ChildItem -Path $extractedPath -Filter "nsisunz.dll" -Recurse | Where-Object { $_.FullName -match "Release_Unicode" -or $_.FullName -match "Unicode" } | Select-Object -First 1
+        $ansiDll = Get-ChildItem -Path $extractedPath -Filter "nsisunz.dll" -Recurse | Where-Object { $_.FullName -match "Release" -and $_.FullName -notmatch "Unicode" } | Select-Object -First 1
 
         if ($unicodeDll) {
-            Copy-Item -Path $unicodeDll.FullName -Destination "$nsisPlugins\x86-unicode\" -Force
-            Write-Host "Installed Unicode nsisunz.dll from $($unicodeDll.FullName)"
+            Copy-Item -Path $unicodeDll.FullName -Destination "$nsisPlugins\x86-unicode\nsisunz.dll" -Force
+            Write-Host "Installed Unicode nsisunz.dll from $($unicodeDll.FullName) to $nsisPlugins\x86-unicode\"
+        } else {
+            Write-Warning "Unicode nsisunz.dll not found!"
         }
+
         if ($ansiDll) {
-            Copy-Item -Path $ansiDll.FullName -Destination "$nsisPlugins\x86-ansi\" -Force
-            Write-Host "Installed ANSI nsisunz.dll from $($ansiDll.FullName)"
+            Copy-Item -Path $ansiDll.FullName -Destination "$nsisPlugins\x86-ansi\nsisunz.dll" -Force
+            Write-Host "Installed ANSI nsisunz.dll from $($ansiDll.FullName) to $nsisPlugins\x86-ansi\"
+        } else {
+            Write-Warning "ANSI nsisunz.dll not found!"
         }
+
+        # Verification
+        Write-Host "Checking NSIS plugins directory:"
+        if (Test-Path "$nsisPlugins\x86-unicode\nsisunz.dll") { Write-Host "CONFIRMED: nsisunz.dll exists in x86-unicode" }
+        else { Write-Error "FAILURE: nsisunz.dll MISSING in x86-unicode" }
 
         # Nettoyer
         Remove-Item -Path $tempZip -Force
-        Remove-Item -Path "$env:TEMP\Nsisunz" -Recurse -Force
+        Remove-Item -Path $extractedPath -Recurse -Force
 
-        Write-Host "nsisunz.dll installed successfully!"
+        Write-Host "nsisunz plugin installation step completed."
       shell: pwsh
 
     - name: Reload environment
