@@ -480,6 +480,30 @@ void GameState::render(Renderer& renderer, Client& client) {
     renderer.clear();
 
     if (renderer.get_window()) {
+        GameEngine::Registry& registry = client.get_registry();
+        std::mutex& registry_mutex = client.get_registry_mutex();
+        std::lock_guard<std::mutex> lock(registry_mutex);
+
+        // Check if there's a boss entity in the registry
+        bool boss_present = false;
+        static bool last_boss_state = false;
+        auto view = registry.view<rtype::ecs::component::Tag>();
+        for (auto entity : view) {
+            auto& tag = registry.getComponent<rtype::ecs::component::Tag>(static_cast<GameEngine::entity_t>(entity));
+            if (tag.name == "Boss_1" || tag.name == "Boss_2") {
+                boss_present = true;
+                if (!last_boss_state) {
+                    std::cout << "[GameState] Boss detected in registry: " << tag.name << std::endl;
+                }
+                break;
+            }
+        }
+        if (last_boss_state && !boss_present) {
+            std::cout << "[GameState] Boss no longer present, reverting background" << std::endl;
+        }
+        last_boss_state = boss_present;
+        renderer.set_boss_active(boss_present);
+
         renderer.draw_background();
     }
 
