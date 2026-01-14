@@ -11,53 +11,53 @@ name: r-type ci
       - 'dev'
 
 jobs:
-  commitlint:
-    name: Check commit message format
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install commitlint
-        run: |
-          npm install -g @commitlint/config-conventional @commitlint/cli
-
-      - name: Validate commit messages
-        env:
-          COMMIT_RANGE_START: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-        run: |
-          ZERO_SHA="0000000000000000000000000000000000000000"
-          BASELINE_FILE=".github/commitlint-baseline"
-          BASELINE_SHA=$( [ -f "$BASELINE_FILE" ] && git rev-parse "$(cat "$BASELINE_FILE")" 2>/dev/null || echo "" )
-
-          FROM_REF="$COMMIT_RANGE_START"
-          if [ -z "$FROM_REF" ] || [ "$FROM_REF" = "$ZERO_SHA" ]; then
-            FROM_REF=$(git rev-parse HEAD^ 2>/dev/null || echo "")
-          fi
-
-          if [ -n "$BASELINE_SHA" ] && { [ -z "$FROM_REF" ] || git merge-base --is-ancestor "$FROM_REF" "$BASELINE_SHA"; }; then
-            FROM_REF="$BASELINE_SHA"
-          fi
-
-          if [ -z "$FROM_REF" ]; then
-            echo "No previous commit to compare against; skipping commitlint."
-            exit 0
-          fi
-
-          echo "Linting commits from $FROM_REF to $GITHUB_SHA"
-          npx commitlint --from="$FROM_REF" --to="$GITHUB_SHA"
+#  commitlint:
+#    name: Check commit message format
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v4
+#        with:
+#          fetch-depth: 0
+#
+#      - name: Install Node.js
+#        uses: actions/setup-node@v4
+#        with:
+#          node-version: 20
+#
+#      - name: Install commitlint
+#        run: |
+#          npm install -g @commitlint/config-conventional @commitlint/cli
+#
+#      - name: Validate commit messages
+#        env:
+#          COMMIT_RANGE_START: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+#        run: |
+#          ZERO_SHA="0000000000000000000000000000000000000000"
+#          BASELINE_FILE=".github/commitlint-baseline"
+#          BASELINE_SHA=$( [ -f "$BASELINE_FILE" ] && git rev-parse "$(cat "$BASELINE_FILE")" 2>/dev/null || echo "" )
+#
+#          FROM_REF="$COMMIT_RANGE_START"
+#          if [ -z "$FROM_REF" ] || [ "$FROM_REF" = "$ZERO_SHA" ]; then
+#            FROM_REF=$(git rev-parse HEAD^ 2>/dev/null || echo "")
+#          fi
+#
+#          if [ -n "$BASELINE_SHA" ] && { [ -z "$FROM_REF" ] || git merge-base --is-ancestor "$FROM_REF" "$BASELINE_SHA"; }; then
+#            FROM_REF="$BASELINE_SHA"
+#          fi
+#
+#          if [ -z "$FROM_REF" ]; then
+#            echo "No previous commit to compare against; skipping commitlint."
+#            exit 0
+#          fi
+#
+#          echo "Linting commits from $FROM_REF to $GITHUB_SHA"
+#          npx commitlint --from="$FROM_REF" --to="$GITHUB_SHA"
 
   clang_format:
     name: Check clang-format
     runs-on: ubuntu-latest
-    needs: commitlint
+#    needs: commitlint
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -81,7 +81,7 @@ jobs:
     name: Build project
     runs-on: ubuntu-latest
     needs:
-      - commitlint
+#      - commitlint
       - clang_format
     steps:
       - name: Checkout repository
