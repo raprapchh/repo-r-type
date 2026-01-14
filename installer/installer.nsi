@@ -52,12 +52,12 @@ Section "Application" SEC01
         Abort
     DownloadSucceeded:
 
-        ; Try to unzip using nsisunz plugin
+        ; Try to unzip using PowerShell (more reliable than nsisunz)
         DetailPrint "Extraction des fichiers..."
-        nsisunz::UnzipToLog "$INSTDIR\\dist.zip" "$INSTDIR"
+        nsExec::ExecToLog 'powershell -NoLogo -NonInteractive -Command "Expand-Archive -LiteralPath \"$INSTDIR\dist.zip\" -DestinationPath \"$INSTDIR\" -Force"'
         Pop $0
-        StrCmp $0 "success" 0 +3
-            MessageBox MB_OK|MB_ICONEXCLAMATION "Échec de l'extraction: $0"
+        StrCmp $0 "0" +3
+            MessageBox MB_OK|MB_ICONEXCLAMATION "Échec de l'extraction ZIP (code $0)"
             Abort
 
         ; Cleanup archive
