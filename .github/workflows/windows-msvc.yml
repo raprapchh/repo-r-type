@@ -95,56 +95,19 @@ jobs:
         Write-Host "INetC.dll installed successfully!"
       shell: pwsh
   
-    - name: Install nsisunz plugin
-      run: |
-        $unicodeUrl = "https://nsis.sourceforge.io/mediawiki/images/5/5a/NSISunzU.zip"
-        $ansiUrl = "https://nsis.sourceforge.io/mediawiki/images/1/1c/Nsisunz.zip"
-        $nsisPlugins = "C:\Program Files (x86)\NSIS\Plugins"
-
-        # Install Unicode version (Highest priority for modern NSIS)
-        $tempZipU = "$env:TEMP\NsisunzU.zip"
-        Invoke-WebRequest -Uri $unicodeUrl -OutFile $tempZipU
-        $extractedPathU = "$env:TEMP\NsisunzU"
-        Expand-Archive -LiteralPath $tempZipU -DestinationPath $extractedPathU -Force
-        
-        $unicodeDll = Get-ChildItem -Path $extractedPathU -Filter "nsisunz.dll" -Recurse | Select-Object -First 1
-        if ($unicodeDll) {
-            Copy-Item -Path $unicodeDll.FullName -Destination "$nsisPlugins\x86-unicode\nsisunz.dll" -Force
-            Write-Host "Installed Unicode nsisunz.dll to x86-unicode"
-        }
-
-        # Install ANSI version (Optional but good for compatibility)
-        $tempZipA = "$env:TEMP\Nsisunz.zip"
-        Invoke-WebRequest -Uri $ansiUrl -OutFile $tempZipA
-        $extractedPathA = "$env:TEMP\Nsisunz"
-        Expand-Archive -LiteralPath $tempZipA -DestinationPath $extractedPathA -Force
-        
-        $ansiDll = Get-ChildItem -Path $extractedPathA -Filter "nsisunz.dll" -Recurse | Select-Object -First 1
-        if ($ansiDll) {
-            Copy-Item -Path $ansiDll.FullName -Destination "$nsisPlugins\x86-ansi\nsisunz.dll" -Force
-            Write-Host "Installed ANSI nsisunz.dll to x86-ansi"
-        }
-
-        # Final Verification
-        if (Test-Path "$nsisPlugins\x86-unicode\nsisunz.dll") {
-            Write-Host "SUCCESS: nsisunz.dll is correctly installed in x86-unicode"
-        } else {
-            Write-Error "FAILURE: nsisunz.dll is still missing in x86-unicode"
-            exit 1
-        }
-
-        # Cleanup
-        Remove-Item $tempZipU, $tempZipA -ErrorAction SilentlyContinue
-        Remove-Item $extractedPathU, $extractedPathA -Recurse -Force -ErrorAction SilentlyContinue
-      shell: pwsh
-
     - name: Reload environment
       run: refreshenv
       shell: pwsh
 
     - name: Build Installer (NSIS)
       run: |
-        & 'C:\Program Files (x86)\NSIS\makensis.exe' "/DVERSION=${{ github.ref_name }}" 'installer/installer.nsi'
+        $downloadUrl = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/dist.zip"
+        $nsis = 'C:\Program Files (x86)\NSIS\makensis.exe'
+        & $nsis "/DVERSION=${{ github.ref_name }}" "/DDOWNLOAD_URL=$downloadUrl" 'installer/installer.nsi'
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "NSIS failed to build the installer!"
+          exit 1
+        }
       shell: pwsh
 
     - name: Move Installer to dist

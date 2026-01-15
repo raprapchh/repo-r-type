@@ -1,5 +1,6 @@
 ; Installer for R-Type Clone
 !include "MUI2.nsh"
+!include "LogicLib.nsh"
 
 Name "R-Type Clone"
 OutFile "R-Type-Installer.exe"
@@ -39,29 +40,33 @@ Section "Application" SEC01
         ; Retry loop: up to 3 attempts with 3s delay
         StrCpy $R9 0
     DownloadRetryLoop:
-        inetc::get /caption "Téléchargement des ressources" /popup "${DOWNLOAD_URL}" "${DOWNLOAD_URL}" "$INSTDIR\\dist.zip" /end
+        inetc::get /caption "Téléchargement des ressources" /popup "Veuillez patienter..." "${DOWNLOAD_URL}" "$INSTDIR\dist.zip" /end
         Pop $0
-        StrCmp $0 "OK" DownloadSucceeded
+        ${If} $0 == "OK"
+            Goto DownloadSucceeded
+        ${EndIf}
+        
         IntOp $R9 $R9 + 1
         DetailPrint "Téléchargement échoué: $0 (tentative $R9/3)"
-        StrCmp $R9 "3" DownloadFailed
+        ${If} $R9 >= 3
+            MessageBox MB_OK|MB_ICONEXCLAMATION "Échec du téléchargement des ressources après 3 tentatives: $0"
+            Abort
+        ${EndIf}
+        
         Sleep 3000
         Goto DownloadRetryLoop
-    DownloadFailed:
-        MessageBox MB_OK|MB_ICONEXCLAMATION "Échec du téléchargement des ressources après 3 tentatives: $0"
-        Abort
+        
     DownloadSucceeded:
-
-        ; Try to unzip using PowerShell (more reliable than nsisunz)
         DetailPrint "Extraction des fichiers..."
         nsExec::ExecToLog 'powershell -NoLogo -NonInteractive -Command "Expand-Archive -LiteralPath \"$INSTDIR\dist.zip\" -DestinationPath \"$INSTDIR\" -Force"'
         Pop $0
-        StrCmp $0 "0" +3
+        ${If} $0 != 0
             MessageBox MB_OK|MB_ICONEXCLAMATION "Échec de l'extraction ZIP (code $0)"
             Abort
+        ${EndIf}
 
         ; Cleanup archive
-        Delete "$INSTDIR\\dist.zip"
+        Delete "$INSTDIR\dist.zip"
 
     WriteUninstaller "$INSTDIR\Uninstall.exe"
 
