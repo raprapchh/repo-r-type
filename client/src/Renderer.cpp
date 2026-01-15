@@ -168,6 +168,10 @@ void Renderer::remove_entity(uint32_t entity_id) {
     entities_.erase(entity_id);
 }
 
+void Renderer::clear_entities() {
+    entities_.clear();
+}
+
 void Renderer::update_animations(float delta_time) {
     for (auto& [id, entity] : entities_) {
         if (entity.type == rtype::net::EntityType::PROJECTILE) {

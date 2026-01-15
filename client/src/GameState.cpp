@@ -115,13 +115,15 @@ void GameState::on_exit(Renderer& renderer, Client& client) {
     // Reset spectator state logic
     has_chosen_spectate_ = false;
     spectator_choice_pending_ = false;
-    (void)renderer;
-    (void)client;
+
+    // Clear renderer entities to avoid leftover visuals on restart
+    renderer.clear_entities();
 
     if (client_) {
         client_->get_audio_system().stopBackgroundMusic();
     }
 
+    (void)client;
     client_ = nullptr;
 }
 
@@ -321,23 +323,14 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                 if (!multiplayer_ && renderer.is_game_over_restart_clicked(mouse_pos)) {
                     if (client_) {
                         client_->leave_room();
-                        GameEngine::Registry& registry = client_->get_registry();
-                        std::mutex& registry_mutex = client_->get_registry_mutex();
-                        std::lock_guard<std::mutex> lock(registry_mutex);
-                        registry.clear();
                     }
                     game_over_ = false;
                     all_players_dead_ = false;
                     score_saved_ = false;
-                    // Restart with same settings
                     state_manager.change_state(std::make_unique<GameState>(false, solo_difficulty_, solo_lives_));
                 } else if (renderer.is_game_over_back_to_menu_clicked(mouse_pos)) {
                     if (client_) {
                         client_->leave_room();
-                        GameEngine::Registry& registry = client_->get_registry();
-                        std::mutex& registry_mutex = client_->get_registry_mutex();
-                        std::lock_guard<std::mutex> lock(registry_mutex);
-                        registry.clear();
                     }
                     game_over_ = false;
                     all_players_dead_ = false;
