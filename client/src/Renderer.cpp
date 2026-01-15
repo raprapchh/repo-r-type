@@ -159,7 +159,8 @@ void Renderer::update_entity(const Entity& entity) {
 }
 
 void Renderer::spawn_entity(const Entity& entity) {
-    std::cout << "Spawning entity with ID: " << entity.id << ", Type: " << entity.type << std::endl;
+    std::cout << "Spawning entity with ID: " << entity.id << ", Type: " << entity.type
+              << ", SubType: " << entity.sub_type << std::endl;
     entities_[entity.id] = entity;
 }
 
@@ -556,10 +557,23 @@ void Renderer::draw_game_over(bool all_players_dead) {
     window_->setView(current_view);
 }
 void Renderer::draw_background() {
-    if (textures_.count("background")) {
+    // Choose background based on boss_active flag set by GameState
+    std::string bg_key = "background";
+
+    if (boss_active_) {
+        bg_key = "background_boss";
+        static bool logged_once = false;
+        if (!logged_once) {
+            std::cout << "[Renderer] Using boss background, texture exists: " << (textures_.count(bg_key) > 0)
+                      << std::endl;
+            logged_once = true;
+        }
+    }
+
+    if (textures_.count(bg_key)) {
         window_->setView(view_);
 
-        sf::Sprite bg_sprite(textures_["background"]);
+        sf::Sprite bg_sprite(textures_[bg_key]);
 
         float window_height = view_.getSize().y;
         float window_width = view_.getSize().x;
@@ -581,6 +595,7 @@ void Renderer::draw_background() {
         bg_sprite.setOrigin(0, texture_height);
         bg_sprite.setScale(scale, scale);
         bg_sprite.setPosition(background_x_, window_height);
+        window_->draw(bg_sprite);
 
         background_x_ -= 3.0f;
         background_x_stars_ -= 5.0f;
@@ -615,6 +630,8 @@ void Renderer::load_texture(const std::string& path, const std::string& name) {
     sf::Texture texture;
     if (texture.loadFromFile(path)) {
         textures_[name] = texture;
+        std::cout << "Texture loaded: " << name << " from " << path << " (" << texture.getSize().x << "x"
+                  << texture.getSize().y << ")" << std::endl;
     } else {
         std::cerr << "Erreur: Impossible de charger la texture " << path << std::endl;
     }
@@ -623,6 +640,7 @@ void Renderer::load_texture(const std::string& path, const std::string& name) {
 void Renderer::load_sprites() {
     load_texture("client/sprites/players_ship.png", "player_ships");
     load_texture("client/sprites/map_1.png", "background");
+    load_texture("client/sprites/map_2resize.png", "background_boss");
     load_texture("client/sprites/star_bg.png", "background_stars");
     load_texture("client/sprites/star_2_bg.png", "background_stars2");
     load_texture("client/sprites/monster_0.png", "enemy_basic");
