@@ -87,6 +87,13 @@ class Renderer {
     void set_charge_percentage(float percentage) {
         charge_percentage_ = percentage;
     }
+    void set_laser_energy(float energy) {
+        laser_energy_ = energy;
+    }
+
+    void set_boss_active(bool active) {
+        boss_active_ = active;
+    }
 
     std::unordered_map<std::string, sf::Texture>& get_textures() {
         return textures_;
@@ -131,10 +138,12 @@ class Renderer {
     mutable sf::RectangleShape back_to_menu_button_;
     mutable sf::Text back_to_menu_text_;
     float charge_percentage_ = 0.0f;
+    float laser_energy_ = 0.0f;
     sf::Sprite charge_particle_sprite_;
     int charge_particle_frame_ = 0;
     float charge_particle_timer_ = 0.0f;
     AccessibilityManager accessibility_manager_;
+    bool boss_active_ = false;
 
     bool stage_cleared_ = false;
     bool game_finished_ = false;

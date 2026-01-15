@@ -566,7 +566,6 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 std::vector<uint8_t> join_packet_data = rtype::net::ProtocolAdapter().serialize(join_packet);
                 udp_client_->send(join_packet_data);
                 pending_create_room_name_.clear();
-                // Do not early-return; also notify UI about room list
             }
             if (room_list_callback_) {
                 room_list_callback_(room_data.session_id, room_data.player_count, room_data.max_players,
@@ -743,11 +742,11 @@ void Client::request_room_list() {
 }
 
 void Client::create_room(const std::string& room_name, uint8_t max_players, rtype::config::GameMode mode,
-                         rtype::config::Difficulty difficulty, bool friendly_fire) {
+                         rtype::config::Difficulty difficulty, bool friendly_fire, uint8_t lives) {
     rtype::net::MessageSerializer serializer;
     rtype::net::CreateRoomData create_data(room_name, max_players, static_cast<uint8_t>(mode),
                                            static_cast<uint8_t>(difficulty),
-                                           friendly_fire ? static_cast<uint8_t>(1) : static_cast<uint8_t>(0));
+                                           friendly_fire ? static_cast<uint8_t>(1) : static_cast<uint8_t>(0), lives);
     rtype::net::Packet create_packet = serializer.serialize_create_room(create_data);
     std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(create_packet);
     udp_client_->send(packet_data);

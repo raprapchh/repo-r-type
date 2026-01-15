@@ -164,6 +164,13 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             registry.addComponent<rtype::ecs::component::HitBox>(entity, hitboxW, hitboxH);
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::Enemy);
+
+            // Add tags for boss detection
+            if (data.sub_type == 100) {
+                registry.addComponent<rtype::ecs::component::Tag>(entity, "Boss_1");
+            } else if (data.sub_type == 101) {
+                registry.addComponent<rtype::ecs::component::Tag>(entity, "Boss_2");
+            }
             registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, data.position_x, data.position_y,
                                                                                data.velocity_x, data.velocity_y);
         } else if (data.entity_type == rtype::net::EntityType::PROJECTILE) {
@@ -232,6 +239,12 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 }
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, width, height, 2.5f,
                                                                        2.5f, 1, 0.1f, false);
+            } else if (data.sub_type == 40) {
+                sprite_name = "laser";
+                width = 100.0f;
+                height = 20.0f;
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 0, 0, 1.0f, 1.0f, 8,
+                                                                       0.1f, true);
             } else {
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 29, 33, 3.0f, 3.0f, 4,
                                                                        0.05f, false);

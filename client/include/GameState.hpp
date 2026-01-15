@@ -1,8 +1,13 @@
 #pragma once
 
 #include "States.hpp"
+#include "utils/GameRules.hpp"
 #include <chrono>
 #include <memory>
+
+namespace rtype::ecs {
+class SpectatorSystem;
+}
 
 namespace sf {
 class Font;
@@ -12,7 +17,8 @@ namespace rtype::client {
 
 class GameState : public IState {
   public:
-    explicit GameState(bool multiplayer = true);
+    explicit GameState(bool multiplayer = true,
+                       rtype::config::Difficulty difficulty = rtype::config::Difficulty::NORMAL, uint8_t lives = 3);
     ~GameState() override = default;
 
     void handle_input(Renderer& renderer, StateManager& state_manager) override;
@@ -53,11 +59,15 @@ class GameState : public IState {
     sf::Text accessibility_cycle_text_;
 
     bool multiplayer_ = true;
+    rtype::config::Difficulty solo_difficulty_ = rtype::config::Difficulty::NORMAL;
+    uint8_t solo_lives_ = 3;
     float spawn_timer_ = 0.0f;
     float spawn_interval_ = 1.5f;
     uint32_t next_enemy_id_ = 1000;
     uint32_t next_projectile_id_ = 5000;
     bool game_start_sent_ = false;
+    float laser_energy_ = 3.0f;
+    bool is_firing_laser_ = false;
 
     // FPS Counter (Developer Console)
     std::shared_ptr<sf::Font> dev_font_;
@@ -69,6 +79,26 @@ class GameState : public IState {
     void spawn_player_projectile(GameEngine::Registry& registry, GameEngine::entity_t player_entity);
     void createFpsCounter(GameEngine::Registry& registry, float windowWidth);
     void createDevMetrics(GameEngine::Registry& registry, float windowWidth);
+
+    // Spectator mode
+    std::shared_ptr<rtype::ecs::SpectatorSystem> spectator_system_;
+
+    void setup_spectator_ui();
+
+    bool spectator_choice_pending_ = false;
+    bool has_chosen_spectate_ = false;
+
+    // UI elements for spectator choice
+    sf::Text spectator_title_text_;
+    sf::RectangleShape spectator_continue_button_;
+    sf::Text spectator_continue_text_;
+    sf::RectangleShape spectator_menu_button_;
+    sf::Text spectator_menu_text_;
+
+    // UI elements for spectator HUD
+    sf::Text spectator_mode_text_;
+    sf::RectangleShape spectator_hud_exit_button_;
+    sf::Text spectator_hud_exit_text_;
 };
 
 } // namespace rtype::client

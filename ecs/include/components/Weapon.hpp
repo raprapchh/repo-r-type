@@ -21,6 +21,9 @@ struct Weapon {
     MovementPatternType projectilePattern = MovementPatternType::None;
     float projectileAmplitude = 0.0f;
     float projectileFrequency = 0.0f;
+    float projectileWidth = 0.0f;
+    float projectileHeight = 0.0f;
+    bool ignoreScroll = false;
 };
 
 } // namespace rtype::ecs::component

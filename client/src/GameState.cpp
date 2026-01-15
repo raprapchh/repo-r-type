@@ -33,25 +33,29 @@
 #include "components/CpuStats.hpp"
 #include "systems/PingSystem.hpp"
 #include "systems/CpuMetricSystem.hpp"
+#include "components/SpectatorComponent.hpp"
+#include "systems/SpectatorSystem.hpp"
 #include <iostream>
 #include <thread>
 #include <chrono>
 
 namespace rtype::client {
 
-GameState::GameState(bool multiplayer) : multiplayer_(multiplayer) {
+GameState::GameState(bool multiplayer, rtype::config::Difficulty difficulty, uint8_t lives)
+    : multiplayer_(multiplayer), solo_difficulty_(difficulty), solo_lives_(lives) {
     setup_pause_ui();
+    setup_spectator_ui();
 }
 
 void GameState::on_enter(Renderer& renderer, Client& client) {
     (void)renderer;
     client_ = &client;
     score_saved_ = false;
-    initial_player_count_ = 0;
-    max_score_reached_ = 0;
     score_saved_ = false;
     initial_player_count_ = 0;
     max_score_reached_ = 0;
+
+    spectator_system_ = std::make_shared<rtype::ecs::SpectatorSystem>();
 
     if (multiplayer_) {
         if (!client.is_connected()) {
@@ -68,7 +72,8 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
             auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                               std::chrono::system_clock::now().time_since_epoch())
                               .count();
-            client.create_room("SOLO-" + std::to_string(now_ms));
+            client.create_room("SOLO-" + std::to_string(now_ms), 1, rtype::config::GameMode::COOP, solo_difficulty_,
+                               false, solo_lives_);
         }
         game_start_sent_ = false;
 
@@ -96,8 +101,6 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
         }
     }
 
-    std::cout << "GameState: Counted " << initial_player_count_ << " player(s) in game" << std::endl;
-
     // FPS Counter: Only spawn in Multiplayer Mode
     if (multiplayer_) {
         sf::Vector2u windowSize = renderer.get_window_size();
@@ -109,6 +112,9 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
 }
 
 void GameState::on_exit(Renderer& renderer, Client& client) {
+    // Reset spectator state logic
+    has_chosen_spectate_ = false;
+    spectator_choice_pending_ = false;
     (void)renderer;
     (void)client;
 
@@ -175,6 +181,10 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         }
                     }
                 }
+            } else if (event.key.code == sf::Keyboard::R) {
+                if (client_) {
+                    client_->send_shoot(0, 0, 4);
+                }
             } else if (event.key.code == renderer.get_key_binding(Renderer::Action::Shoot)) {
                 if (!is_charging_) {
                     is_charging_ = true;
@@ -225,9 +235,84 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                 }
             }
         } else if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-            if (is_paused_) {
+            // Handle spectator choice dialog clicks FIRST
+            if (spectator_choice_pending_) {
+                // Recalculate positions/bounds dynamically to ensure accuracy (handling window resize, etc.)
+                sf::Vector2u windowSize = renderer.get_window_size();
+                float center_x = windowSize.x / 2.0f;
+                float center_y = windowSize.y / 2.0f;
+
+                sf::FloatRect continue_bounds(center_x - 200.0f, center_y, 400.0f, 60.0f);
+                sf::FloatRect menu_bounds(center_x - 200.0f, center_y + 80.0f, 400.0f, 60.0f);
+
+                // Expand hitboxes, but be careful of overlap (20px gap vs 10px padding * 2 = touch)
+                // Using 5px vertical padding ensures 10px gap remains safe
+                float padding_h = 10.0f;
+                float padding_v = 5.0f;
+                continue_bounds.left -= padding_h;
+                continue_bounds.top -= padding_v;
+                continue_bounds.width += padding_h * 2;
+                continue_bounds.height += padding_v * 2;
+
+                menu_bounds.left -= padding_h;
+                menu_bounds.top -= padding_v;
+                menu_bounds.width += padding_h * 2;
+                menu_bounds.height += padding_v * 2;
+
+                sf::Vector2f mouse_pos = renderer.get_window()->mapPixelToCoords(
+                    sf::Vector2i(event.mouseButton.x, event.mouseButton.y), renderer.get_window()->getDefaultView());
+
+                if (continue_bounds.contains(mouse_pos)) {
+                    // Continue spectating
+                    spectator_choice_pending_ = false;
+                    has_chosen_spectate_ = true;
+                } else if (menu_bounds.contains(mouse_pos)) {
+                    // Back to menu
+
+                    if (client_) {
+                        GameEngine::Registry& registry = client_->get_registry();
+                        std::mutex& registry_mutex = client_->get_registry_mutex();
+                        std::lock_guard<std::mutex> lock(registry_mutex);
+                        registry.clear();
+                    }
+                    spectator_choice_pending_ = false;
+                    has_chosen_spectate_ = false; // Ensure explicit false
+                    game_over_ = false;
+                    all_players_dead_ = false;
+                    score_saved_ = false;
+                    state_manager.change_state(std::make_unique<MenuState>());
+                } else {
+                    // Clicked outside
+                }
+            } else if (is_paused_) {
                 sf::Vector2f mouse_pos = renderer.get_mouse_position();
                 handle_pause_button_click(mouse_pos, state_manager);
+            } else if (has_chosen_spectate_ && !game_over_) {
+                // Handle clicks on HUD Exit button in Spectator Mode
+                sf::Vector2f mouse_pos = renderer.get_window()->mapPixelToCoords(
+                    sf::Vector2i(event.mouseButton.x, event.mouseButton.y), renderer.get_window()->getDefaultView());
+
+                // Recalculate HUD button position (Moved to avoid overlap with FPS metrics)
+                sf::Vector2u window_size = renderer.get_window_size();
+                sf::FloatRect exit_bounds(window_size.x - 120.0f, 100.0f, 100.0f, 30.0f);
+
+                if (exit_bounds.contains(mouse_pos)) {
+                    if (client_) {
+                        GameEngine::Registry& registry = client_->get_registry();
+                        std::mutex& registry_mutex = client_->get_registry_mutex();
+                        std::lock_guard<std::mutex> lock(registry_mutex);
+                        registry.clear();
+                    }
+                    has_chosen_spectate_ = false;
+                    spectator_choice_pending_ = false;
+                    game_over_ = false;
+                    all_players_dead_ = false;
+                    score_saved_ = false;
+                    state_manager.change_state(std::make_unique<MenuState>());
+                } else {
+                    // Check for settings button or other UI? (Renderer doesn't expose it yet)
+                }
+
             } else if (game_over_ && all_players_dead_) {
                 sf::Vector2f mouse_pos = renderer.get_window()->mapPixelToCoords(
                     sf::Vector2i(event.mouseButton.x, event.mouseButton.y), renderer.get_window()->getDefaultView());
@@ -260,6 +345,12 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
             }
         }
     }
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::R)) {
+        is_firing_laser_ = true;
+    } else {
+        is_firing_laser_ = false;
+    }
     if (is_charging_) {
         auto now = std::chrono::steady_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - charge_start_time_).count();
@@ -280,6 +371,23 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
     }
 
     client.update(delta_time);
+
+    if (is_firing_laser_) {
+        if (laser_energy_ > 0.0f) {
+            laser_energy_ -= delta_time;
+            if (laser_energy_ < 0.0f)
+                laser_energy_ = 0.0f;
+            if (client_) {
+                client_->send_shoot(0, 0, 4);
+            }
+        }
+    } else {
+        laser_energy_ += delta_time * 0.5f; // Recharge in 2 seconds (1.0 / 0.5 = 2.0)
+        if (laser_energy_ > 1.0f)
+            laser_energy_ = 1.0f;
+    }
+    renderer.set_laser_energy(laser_energy_);
+
     renderer.update(delta_time);
 
     GameEngine::Registry& registry = client.get_registry();
@@ -326,7 +434,16 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
             }
         }
 
-        if (client.is_connected() && player_id != 0 && (!player_exists || player_dead)) {
+        // If player is dead OR entity removed in multiplayer, show choice dialog
+        // BUT if all players are dead, show standard Game Over instead
+        if (multiplayer_ && client.is_connected() && player_id != 0 && (!player_exists || player_dead) &&
+            !spectator_choice_pending_ && !has_chosen_spectate_ && !all_players_dead_) {
+            spectator_choice_pending_ = true;
+        }
+
+        if (client.is_connected() && player_id != 0 &&
+            ((!multiplayer_ && (!player_exists || player_dead)) || (multiplayer_ && all_players_dead_) ||
+             ((!player_exists || player_dead) && !spectator_choice_pending_ && !has_chosen_spectate_))) {
             if (!game_over_) {
                 game_over_ = true;
 
@@ -338,14 +455,9 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
                         player_name = "Player" + std::to_string(client.get_player_id());
                     }
 
-                    std::cout << "Saving score: " << final_score << " for player '" << player_name << "' ("
-                              << initial_player_count_ << " player(s) detected)" << std::endl;
-
                     if (initial_player_count_ <= 1) {
-                        std::cout << "-> Solo mode" << std::endl;
                         client.get_scoreboard_manager().add_solo_score(player_name, final_score);
                     } else {
-                        std::cout << "-> Multi mode" << std::endl;
                         client.get_scoreboard_manager().add_multi_score(player_name, final_score);
                     }
                 }
@@ -480,7 +592,24 @@ void GameState::render(Renderer& renderer, Client& client) {
     renderer.clear();
 
     if (renderer.get_window()) {
+        GameEngine::Registry& registry = client.get_registry();
+        std::mutex& registry_mutex = client.get_registry_mutex();
+        std::lock_guard<std::mutex> lock(registry_mutex);
+
+        // Check if there's a boss entity in the registry
+        bool boss_present = false;
+        auto view = registry.view<rtype::ecs::component::Tag>();
+        for (auto entity : view) {
+            auto& tag = registry.getComponent<rtype::ecs::component::Tag>(static_cast<GameEngine::entity_t>(entity));
+            if (tag.name == "Boss_1" || tag.name == "Boss_2") {
+                boss_present = true;
+                break;
+            }
+        }
+        renderer.set_boss_active(boss_present);
+
         renderer.draw_background();
+        renderer.get_window()->setView(renderer.get_window()->getDefaultView());
     }
 
     if (renderer.get_window()) {
@@ -530,6 +659,10 @@ void GameState::render(Renderer& renderer, Client& client) {
         rtype::ecs::CpuMetricSystem cpu_metric_system;
         cpu_metric_system.update(registry, static_cast<double>(fps_dt));
 
+        if (has_chosen_spectate_ && spectator_system_) {
+            spectator_system_->update(registry, static_cast<double>(fps_dt));
+        }
+
         // Render UI overlay (FPS counter, Ping, CPU)
         rtype::ecs::UIRenderSystem ui_render_system(renderer.get_window());
         ui_render_system.update(registry, static_cast<double>(fps_dt));
@@ -540,6 +673,76 @@ void GameState::render(Renderer& renderer, Client& client) {
 
     // Only show game over if victory screen is NOT displayed
     if (game_over_ && !renderer.is_stage_cleared()) {
+        renderer.draw_game_over(all_players_dead_);
+    }
+
+    if (is_paused_) {
+        render_pause_overlay(renderer);
+    }
+
+    // Stage cleared victory screen
+    renderer.draw_stage_cleared();
+
+    // Spectator choice dialog - shown when player becomes spectator
+    if (spectator_choice_pending_) {
+        sf::Vector2u windowSize = renderer.get_window_size();
+        float center_x = windowSize.x / 2.0f;
+        float center_y = windowSize.y / 2.0f;
+
+        // Semi-transparent background
+        sf::RectangleShape modal_bg(sf::Vector2f(static_cast<float>(windowSize.x), static_cast<float>(windowSize.y)));
+        modal_bg.setFillColor(sf::Color(0, 0, 0, 200));
+        renderer.draw_rectangle(modal_bg);
+
+        // Title
+        sf::FloatRect title_bounds = spectator_title_text_.getLocalBounds();
+        spectator_title_text_.setPosition(center_x - title_bounds.width / 2.0f, center_y - 150.0f);
+        renderer.draw_text(spectator_title_text_);
+
+        // Continue button
+        spectator_continue_button_.setPosition(center_x - 200.0f, center_y);
+
+        sf::FloatRect continue_text_bounds = spectator_continue_text_.getLocalBounds();
+        spectator_continue_text_.setPosition(
+            spectator_continue_button_.getPosition().x + (400.0f - continue_text_bounds.width) / 2.0f,
+            spectator_continue_button_.getPosition().y + (60.0f - continue_text_bounds.height) / 2.0f - 5.0f);
+
+        renderer.draw_rectangle(spectator_continue_button_);
+        renderer.draw_text(spectator_continue_text_);
+
+        // Menu button
+        spectator_menu_button_.setPosition(center_x - 200.0f, center_y + 80.0f);
+
+        sf::FloatRect menu_text_bounds = spectator_menu_text_.getLocalBounds();
+        spectator_menu_text_.setPosition(
+            spectator_menu_button_.getPosition().x + (400.0f - menu_text_bounds.width) / 2.0f,
+            spectator_menu_button_.getPosition().y + (60.0f - menu_text_bounds.height) / 2.0f - 5.0f);
+
+        renderer.draw_rectangle(spectator_menu_button_);
+        renderer.draw_text(spectator_menu_text_);
+    }
+
+    if (has_chosen_spectate_ && !game_over_) {
+        sf::Vector2u window_size = renderer.get_window_size();
+        sf::FloatRect text_bounds = spectator_mode_text_.getLocalBounds();
+        spectator_mode_text_.setPosition(window_size.x / 2.0f - text_bounds.width / 2.0f, 50.0f);
+        renderer.draw_text(spectator_mode_text_);
+
+        // Draw HUD Exit Button (Top-Right)
+        float btn_x = window_size.x - 120.0f;
+        float btn_y = 100.0f;
+        spectator_hud_exit_button_.setPosition(btn_x, btn_y);
+        renderer.draw_rectangle(spectator_hud_exit_button_);
+
+        sf::FloatRect exit_text_bounds = spectator_hud_exit_text_.getLocalBounds();
+        spectator_hud_exit_text_.setPosition(btn_x + 50.0f - exit_text_bounds.width / 2.0f,
+                                             btn_y + 15.0f - exit_text_bounds.height / 2.0f - 4.0f); // Centered
+        renderer.draw_text(spectator_hud_exit_text_);
+    }
+
+    // Only show game over if victory screen is NOT displayed AND NOT in spectator choice
+    // But IF all players are dead, force show game over
+    if (game_over_ && !renderer.is_stage_cleared() && !spectator_choice_pending_) {
         renderer.draw_game_over(all_players_dead_);
     }
 
@@ -651,6 +854,54 @@ void GameState::render_pause_overlay(Renderer& renderer) {
         renderer.draw_rectangle(settings_button_);
         renderer.draw_text(settings_button_text_);
     }
+}
+
+void GameState::setup_spectator_ui() {
+    if (!font_loaded_) {
+        return;
+    }
+
+    // Choice Dialog
+    spectator_title_text_.setFont(font_);
+    spectator_title_text_.setString("GAME OVER");
+    spectator_title_text_.setCharacterSize(60);
+    spectator_title_text_.setFillColor(sf::Color::Red);
+
+    spectator_continue_button_.setSize(sf::Vector2f(400, 60));
+    spectator_continue_button_.setFillColor(sf::Color(50, 50, 150)); // Default blue-ish
+    spectator_continue_button_.setOutlineColor(sf::Color::White);
+    spectator_continue_button_.setOutlineThickness(2);
+
+    spectator_continue_text_.setFont(font_);
+    spectator_continue_text_.setString("CONTINUE TO SPECTATE");
+    spectator_continue_text_.setCharacterSize(23);
+    spectator_continue_text_.setFillColor(sf::Color::White);
+
+    spectator_menu_button_.setSize(sf::Vector2f(400, 60));
+    spectator_menu_button_.setFillColor(sf::Color(150, 50, 50)); // Red-ish
+    spectator_menu_button_.setOutlineColor(sf::Color::White);
+    spectator_menu_button_.setOutlineThickness(2);
+
+    spectator_menu_text_.setFont(font_);
+    spectator_menu_text_.setString("BACK TO MENU");
+    spectator_menu_text_.setCharacterSize(24);
+    spectator_menu_text_.setFillColor(sf::Color::White);
+
+    // Spectator HUD
+    spectator_mode_text_.setFont(font_);
+    spectator_mode_text_.setString("SPECTATOR MODE");
+    spectator_mode_text_.setCharacterSize(40);
+    spectator_mode_text_.setFillColor(sf::Color(255, 255, 0)); // Yellow
+
+    spectator_hud_exit_button_.setSize(sf::Vector2f(100, 30));
+    spectator_hud_exit_button_.setFillColor(sf::Color(150, 50, 50, 180));
+    spectator_hud_exit_button_.setOutlineColor(sf::Color::White);
+    spectator_hud_exit_button_.setOutlineThickness(1);
+
+    spectator_hud_exit_text_.setFont(font_);
+    spectator_hud_exit_text_.setString("EXIT");
+    spectator_hud_exit_text_.setCharacterSize(15);
+    spectator_hud_exit_text_.setFillColor(sf::Color::White);
 }
 
 void GameState::spawn_enemy_solo(GameEngine::Registry& registry) {
