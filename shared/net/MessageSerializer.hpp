@@ -339,6 +339,7 @@ class MessageSerializer : public IMessageSerializer {
         serializer.write(data.game_mode);
         serializer.write(data.difficulty);
         serializer.write(data.friendly_fire);
+        serializer.write(data.lives);
         return Packet(static_cast<uint16_t>(MessageType::CreateRoom), serializer.get_data());
     }
 
@@ -352,6 +353,7 @@ class MessageSerializer : public IMessageSerializer {
         data.game_mode = deserializer.read<uint8_t>();
         data.difficulty = deserializer.read<uint8_t>();
         data.friendly_fire = deserializer.read<uint8_t>();
+        data.lives = deserializer.read<uint8_t>();
         return data;
     }
 

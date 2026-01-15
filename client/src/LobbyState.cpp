@@ -17,7 +17,7 @@ LobbyState::LobbyState()
       room_backspace_delay_(INITIAL_BACKSPACE_DELAY), is_typing_chat_(false), chat_backspace_timer_(0.0f),
       chat_backspace_delay_(INITIAL_BACKSPACE_DELAY), was_chat_backspace_pressed_(false),
       selected_game_mode_(rtype::config::GameMode::COOP), selected_difficulty_(rtype::config::Difficulty::NORMAL),
-      selected_friendly_fire_(false) {
+      selected_friendly_fire_(false), selected_lives_(3) {
     setup_ui();
 }
 
@@ -230,6 +230,21 @@ void LobbyState::setup_ui() {
     friendly_fire_text_.setString("OFF");
     friendly_fire_text_.setCharacterSize(16);
     friendly_fire_text_.setFillColor(sf::Color::White);
+
+    lives_label_.setFont(font_);
+    lives_label_.setString("LIVES:");
+    lives_label_.setCharacterSize(16);
+    lives_label_.setFillColor(sf::Color(200, 200, 200));
+
+    lives_button_.setSize(sf::Vector2f(150, 35));
+    lives_button_.setFillColor(sf::Color(100, 150, 100));
+    lives_button_.setOutlineColor(sf::Color::White);
+    lives_button_.setOutlineThickness(2);
+
+    lives_text_.setFont(font_);
+    lives_text_.setString("3");
+    lives_text_.setCharacterSize(16);
+    lives_text_.setFillColor(sf::Color::White);
 }
 
 void LobbyState::on_enter(Renderer& renderer, Client& client) {
@@ -390,7 +405,8 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                     } else if (create_room_button_.getGlobalBounds().contains(mouse_pos)) {
                         if (!current_room_name_input_.empty()) {
                             state_manager.get_client().create_room(current_room_name_input_, 4, selected_game_mode_,
-                                                                   selected_difficulty_, selected_friendly_fire_);
+                                                                   selected_difficulty_, selected_friendly_fire_,
+                                                                   selected_lives_);
                             current_mode_ = LobbyMode::IN_ROOM;
                             selected_in_room_button_ = InRoomButton::START;
                             is_typing_room_name_ = false;
@@ -421,6 +437,9 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                     } else if (friendly_fire_button_.getGlobalBounds().contains(mouse_pos)) {
                         selected_friendly_fire_ = !selected_friendly_fire_;
                         friendly_fire_text_.setString(selected_friendly_fire_ ? "ON" : "OFF");
+                    } else if (lives_button_.getGlobalBounds().contains(mouse_pos)) {
+                        selected_lives_ = (selected_lives_ >= 5) ? 2 : selected_lives_ + 1;
+                        lives_text_.setString(std::to_string(selected_lives_));
                     } else {
                         is_typing_room_name_ = false;
                         room_input_background_.setOutlineColor(sf::Color(100, 100, 100));
@@ -565,7 +584,9 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                 if (is_typing_room_name_) {
                     if (event.key.code == sf::Keyboard::Return) {
                         if (!current_room_name_input_.empty()) {
-                            state_manager.get_client().create_room(current_room_name_input_);
+                            state_manager.get_client().create_room(current_room_name_input_, 4, selected_game_mode_,
+                                                                   selected_difficulty_, selected_friendly_fire_,
+                                                                   selected_lives_);
                             current_mode_ = LobbyMode::IN_ROOM;
                         }
                         is_typing_room_name_ = false;
@@ -595,7 +616,9 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                             room_input_background_.setOutlineColor(sf::Color::Cyan);
                         } else if (selected_create_room_button_ == CreateRoomButton::CREATE) {
                             if (!current_room_name_input_.empty()) {
-                                state_manager.get_client().create_room(current_room_name_input_);
+                                state_manager.get_client().create_room(current_room_name_input_, 4, selected_game_mode_,
+                                                                       selected_difficulty_, selected_friendly_fire_,
+                                                                       selected_lives_);
                                 current_mode_ = LobbyMode::IN_ROOM;
                                 selected_in_room_button_ = InRoomButton::START;
                                 is_typing_room_name_ = false;
@@ -969,6 +992,9 @@ void LobbyState::render(Renderer& renderer, Client& /* client */) {
             renderer.draw_text(friendly_fire_label_);
             renderer.draw_rectangle(friendly_fire_button_);
             renderer.draw_text(friendly_fire_text_);
+            renderer.draw_text(lives_label_);
+            renderer.draw_rectangle(lives_button_);
+            renderer.draw_text(lives_text_);
             renderer.draw_rectangle(create_room_button_);
             renderer.draw_text(create_room_button_text_);
             renderer.draw_rectangle(back_button_);
@@ -1114,10 +1140,15 @@ void LobbyState::update_positions(const sf::Vector2u& window_size) {
                                         (150 - friendly_fire_text_.getLocalBounds().width) / 2.0f,
                                     friendly_fire_button_.getPosition().y + 10);
 
+    lives_label_.setPosition(center_x - input_width / 2, center_y + 145);
+    lives_button_.setPosition(center_x - input_width / 2 + 80, center_y + 140);
+    lives_text_.setPosition(lives_button_.getPosition().x + (150 - lives_text_.getLocalBounds().width) / 2.0f,
+                            lives_button_.getPosition().y + 10);
+
     create_room_button_.setSize(sf::Vector2f(250, 50));
-    create_room_button_.setPosition(center_x - 125, center_y + 150);
+    create_room_button_.setPosition(center_x - 125, center_y + 195);
     create_room_button_text_.setPosition(center_x - create_room_button_text_.getLocalBounds().width / 2.0f,
-                                         center_y + 165);
+                                         center_y + 210);
 
     refresh_button_.setPosition(window_size.x - 270, 80);
     refresh_button_text_.setPosition(refresh_button_.getPosition().x +

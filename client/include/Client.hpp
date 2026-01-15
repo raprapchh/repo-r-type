@@ -82,7 +82,7 @@ class Client {
     void create_room(const std::string& room_name, uint8_t max_players = 4,
                      rtype::config::GameMode mode = rtype::config::GameMode::COOP,
                      rtype::config::Difficulty difficulty = rtype::config::Difficulty::NORMAL,
-                     bool friendly_fire = false);
+                     bool friendly_fire = false, uint8_t lives = 3);
     void join_room(uint32_t session_id);
 
     uint32_t get_player_id() const;

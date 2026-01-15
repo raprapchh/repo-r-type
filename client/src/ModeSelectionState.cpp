@@ -2,6 +2,7 @@
 #include "GameState.hpp"
 #include "LobbyState.hpp"
 #include "MenuState.hpp"
+#include "SoloSettingsState.hpp"
 #include <iostream>
 #include <memory>
 
@@ -96,7 +97,7 @@ void ModeSelectionState::handle_input(Renderer& renderer, StateManager& state_ma
                 }
             } else if (event.key.code == sf::Keyboard::Enter || event.key.code == sf::Keyboard::Space) {
                 if (selected_button_ == SelectedButton::SOLO) {
-                    state_manager.change_state(std::make_unique<GameState>(false));
+                    state_manager.change_state(std::make_unique<SoloSettingsState>());
                 } else if (selected_button_ == SelectedButton::MULTIPLAYER) {
                     state_manager.change_state(std::make_unique<LobbyState>());
                 } else if (selected_button_ == SelectedButton::BACK) {
@@ -111,7 +112,7 @@ void ModeSelectionState::handle_input(Renderer& renderer, StateManager& state_ma
 
 void ModeSelectionState::handle_button_click(const sf::Vector2f& mouse_pos, StateManager& state_manager) {
     if (solo_button_.getGlobalBounds().contains(mouse_pos)) {
-        state_manager.change_state(std::make_unique<GameState>(false));
+        state_manager.change_state(std::make_unique<SoloSettingsState>());
     } else if (multiplayer_button_.getGlobalBounds().contains(mouse_pos)) {
         state_manager.change_state(std::make_unique<LobbyState>());
     } else if (back_button_.getGlobalBounds().contains(mouse_pos)) {

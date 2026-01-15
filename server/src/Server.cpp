@@ -221,7 +221,8 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
             room_name = "Room " + std::to_string(new_session_id);
 
         rtype::config::GameRules rules(static_cast<rtype::config::GameMode>(create_data.game_mode),
-                                       static_cast<rtype::config::Difficulty>(create_data.difficulty));
+                                       static_cast<rtype::config::Difficulty>(create_data.difficulty),
+                                       create_data.lives);
         if (create_data.friendly_fire != 0) {
             rules.friendly_fire_enabled = true;
         }
@@ -237,7 +238,8 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
                           protocol_adapter_->serialize(message_serializer_->serialize_room_info(room_info)));
         Logger::instance().info("Created room '" + room_name + "' with id " + std::to_string(new_session_id) +
                                 " (mode=" + std::to_string(create_data.game_mode) +
-                                ", diff=" + std::to_string(create_data.difficulty) + ")");
+                                ", diff=" + std::to_string(create_data.difficulty) +
+                                ", lives=" + std::to_string(create_data.lives) + ")");
         return;
     }
 
