@@ -472,7 +472,7 @@ void Renderer::draw_ui() {
     }
 }
 
-void Renderer::draw_game_over(bool all_players_dead) {
+void Renderer::draw_game_over(bool all_players_dead, bool is_solo) {
     sf::View current_view = window_->getView();
     window_->setView(window_->getDefaultView());
 
@@ -482,20 +482,24 @@ void Renderer::draw_game_over(bool all_players_dead) {
 
     sf::Color game_over_color = sf::Color::Red;
     sf::Color button_color = sf::Color(70, 130, 180);
+    sf::Color restart_button_color = sf::Color(50, 180, 80);
 
     ColorBlindMode mode = accessibility_manager_.get_current_mode();
     switch (mode) {
     case ColorBlindMode::Deuteranopia:
         game_over_color = sf::Color(255, 165, 0);
         button_color = sf::Color(0, 0, 255);
+        restart_button_color = sf::Color(0, 150, 255);
         break;
     case ColorBlindMode::Protanopia:
         game_over_color = sf::Color(255, 255, 0);
         button_color = sf::Color(0, 100, 255);
+        restart_button_color = sf::Color(0, 180, 255);
         break;
     case ColorBlindMode::Tritanopia:
         game_over_color = sf::Color(0, 200, 200);
         button_color = sf::Color(255, 0, 0);
+        restart_button_color = sf::Color(255, 150, 0);
         break;
     case ColorBlindMode::None:
     default:
@@ -531,6 +535,34 @@ void Renderer::draw_game_over(bool all_players_dead) {
     }
 
     if (all_players_dead) {
+        float button_spacing = is_solo ? 80.0f : 0.0f;
+
+        // Restart button (only in solo mode)
+        if (is_solo) {
+            restart_button_.setSize(sf::Vector2f(280.0f, 65.0f));
+            restart_button_.setFillColor(restart_button_color);
+            restart_button_.setOutlineThickness(2);
+            restart_button_.setOutlineColor(sf::Color::White);
+
+            sf::FloatRect restart_btn_bounds = restart_button_.getLocalBounds();
+            restart_button_.setOrigin(restart_btn_bounds.width / 2.0f, restart_btn_bounds.height / 2.0f);
+            restart_button_.setPosition(center_x, center_y + 20.0f);
+
+            restart_text_.setFont(font_);
+            restart_text_.setString("RESTART");
+            restart_text_.setCharacterSize(23);
+            restart_text_.setFillColor(sf::Color::White);
+
+            sf::FloatRect restart_text_bounds = restart_text_.getLocalBounds();
+            restart_text_.setOrigin(restart_text_bounds.left + restart_text_bounds.width / 2.0f,
+                                    restart_text_bounds.top + restart_text_bounds.height / 2.0f);
+            restart_text_.setPosition(center_x, center_y + 20.0f);
+
+            window_->draw(restart_button_);
+            window_->draw(restart_text_);
+        }
+
+        // Back to menu button
         back_to_menu_button_.setSize(sf::Vector2f(280.0f, 65.0f));
         back_to_menu_button_.setFillColor(button_color);
         back_to_menu_button_.setOutlineThickness(2);
@@ -538,7 +570,7 @@ void Renderer::draw_game_over(bool all_players_dead) {
 
         sf::FloatRect button_bounds = back_to_menu_button_.getLocalBounds();
         back_to_menu_button_.setOrigin(button_bounds.width / 2.0f, button_bounds.height / 2.0f);
-        back_to_menu_button_.setPosition(center_x, center_y + 60.0f);
+        back_to_menu_button_.setPosition(center_x, center_y + 20.0f + button_spacing);
 
         back_to_menu_text_.setFont(font_);
         back_to_menu_text_.setString("BACK TO MENU");
@@ -548,7 +580,7 @@ void Renderer::draw_game_over(bool all_players_dead) {
         sf::FloatRect text_bounds_btn = back_to_menu_text_.getLocalBounds();
         back_to_menu_text_.setOrigin(text_bounds_btn.left + text_bounds_btn.width / 2.0f,
                                      text_bounds_btn.top + text_bounds_btn.height / 2.0f);
-        back_to_menu_text_.setPosition(center_x, center_y + 60.0f);
+        back_to_menu_text_.setPosition(center_x, center_y + 20.0f + button_spacing);
 
         window_->draw(back_to_menu_button_);
         window_->draw(back_to_menu_text_);
@@ -750,6 +782,10 @@ void Renderer::handle_resize(uint32_t width, uint32_t height) {
 
 bool Renderer::is_game_over_back_to_menu_clicked(const sf::Vector2f& mouse_pos) const {
     return back_to_menu_button_.getGlobalBounds().contains(mouse_pos);
+}
+
+bool Renderer::is_game_over_restart_clicked(const sf::Vector2f& mouse_pos) const {
+    return restart_button_.getGlobalBounds().contains(mouse_pos);
 }
 
 void Renderer::show_stage_cleared(uint8_t stage_number) {
