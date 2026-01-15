@@ -5,6 +5,10 @@
 #include <chrono>
 #include <memory>
 
+namespace rtype::ecs {
+class SpectatorSystem;
+}
+
 namespace sf {
 class Font;
 }
@@ -75,6 +79,26 @@ class GameState : public IState {
     void spawn_player_projectile(GameEngine::Registry& registry, GameEngine::entity_t player_entity);
     void createFpsCounter(GameEngine::Registry& registry, float windowWidth);
     void createDevMetrics(GameEngine::Registry& registry, float windowWidth);
+
+    // Spectator mode
+    std::shared_ptr<rtype::ecs::SpectatorSystem> spectator_system_;
+
+    void setup_spectator_ui();
+
+    bool spectator_choice_pending_ = false;
+    bool has_chosen_spectate_ = false;
+
+    // UI elements for spectator choice
+    sf::Text spectator_title_text_;
+    sf::RectangleShape spectator_continue_button_;
+    sf::Text spectator_continue_text_;
+    sf::RectangleShape spectator_menu_button_;
+    sf::Text spectator_menu_text_;
+
+    // UI elements for spectator HUD
+    sf::Text spectator_mode_text_;
+    sf::RectangleShape spectator_hud_exit_button_;
+    sf::Text spectator_hud_exit_text_;
 };
 
 } // namespace rtype::client

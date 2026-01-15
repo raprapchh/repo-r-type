@@ -5,6 +5,8 @@
 #include "components/HitBox.hpp"
 #include "components/NetworkId.hpp"
 #include "components/HitFlash.hpp"
+#include "components/SpectatorComponent.hpp"
+#include "components/Controllable.hpp"
 #include "AccessibilityManager.hpp"
 #include "net/MessageData.hpp"
 #include <algorithm>
