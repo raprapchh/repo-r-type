@@ -229,7 +229,56 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                 }
             }
         } else if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-            if (is_paused_) {
+            // Handle spectator choice dialog clicks FIRST
+            if (spectator_choice_pending_) {
+                // Recalculate positions/bounds dynamically to ensure accuracy (handling window resize, etc.)
+                sf::Vector2u windowSize = renderer.get_window_size();
+                float center_x = windowSize.x / 2.0f;
+                float center_y = windowSize.y / 2.0f;
+
+                sf::FloatRect continue_bounds(center_x - 200.0f, center_y, 400.0f, 60.0f);
+                sf::FloatRect menu_bounds(center_x - 200.0f, center_y + 80.0f, 400.0f, 60.0f);
+
+                // Expand hitboxes, but be careful of overlap (20px gap vs 10px padding * 2 = touch)
+                // Using 5px vertical padding ensures 10px gap remains safe
+                float padding_h = 10.0f;
+                float padding_v = 5.0f;
+                continue_bounds.left -= padding_h;
+                continue_bounds.top -= padding_v;
+                continue_bounds.width += padding_h * 2;
+                continue_bounds.height += padding_v * 2;
+
+                menu_bounds.left -= padding_h;
+                menu_bounds.top -= padding_v;
+                menu_bounds.width += padding_h * 2;
+                menu_bounds.height += padding_v * 2;
+
+                sf::Vector2f mouse_pos = renderer.get_window()->mapPixelToCoords(
+                    sf::Vector2i(event.mouseButton.x, event.mouseButton.y), renderer.get_window()->getDefaultView());
+
+                if (continue_bounds.contains(mouse_pos)) {
+                    // Continue spectating
+                    spectator_choice_pending_ = false;
+                    has_chosen_spectate_ = true;
+                } else if (menu_bounds.contains(mouse_pos)) {
+                    // Back to menu
+
+                    if (client_) {
+                        GameEngine::Registry& registry = client_->get_registry();
+                        std::mutex& registry_mutex = client_->get_registry_mutex();
+                        std::lock_guard<std::mutex> lock(registry_mutex);
+                        registry.clear();
+                    }
+                    spectator_choice_pending_ = false;
+                    has_chosen_spectate_ = false; // Ensure explicit false
+                    game_over_ = false;
+                    all_players_dead_ = false;
+                    score_saved_ = false;
+                    state_manager.change_state(std::make_unique<MenuState>());
+                } else {
+                    // Clicked outside
+                }
+            } else if (is_paused_) {
                 sf::Vector2f mouse_pos = renderer.get_mouse_position();
                 handle_pause_button_click(mouse_pos, state_manager);
             } else if (game_over_ && all_players_dead_) {
