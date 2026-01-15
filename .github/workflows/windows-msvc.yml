@@ -163,12 +163,24 @@ jobs:
         else { Write-Host 'bin/windows not found' }
       shell: pwsh
 
+    - name: Prepare release files
+      run: |
+        if (-Not (Test-Path './R-Type-Installer.exe')) {
+          if (Test-Path './dist/R-Type-Installer.exe') {
+            Copy-Item './dist/R-Type-Installer.exe' './R-Type-Installer.exe' -Force
+          } else {
+            Write-Error "R-Type-Installer.exe not found!"
+            exit 1
+          }
+        }
+      shell: pwsh
+
     - name: Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1
       with:
         files: |
           dist.zip
-          dist/R-Type-Installer.exe
+          R-Type-Installer.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
