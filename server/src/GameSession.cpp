@@ -761,7 +761,7 @@ GameEngine::entity_t GameSession::create_player_entity(uint32_t player_id, const
     weapon.projectileSpeed = 1500.0f;
     registry_.addComponent<rtype::ecs::component::Health>(entity, 100, 100);
     registry_.addComponent<rtype::ecs::component::Score>(entity, 0);
-    registry_.addComponent<rtype::ecs::component::Lives>(entity, 3);
+    registry_.addComponent<rtype::ecs::component::Lives>(entity, game_rules_.initial_lives);
     registry_.addComponent<rtype::ecs::component::Tag>(entity, "Player");
     registry_.addComponent<rtype::ecs::component::NetworkId>(entity, player_id);
     registry_.addComponent<rtype::ecs::component::Collidable>(entity, rtype::ecs::component::CollisionLayer::Player);

@@ -139,6 +139,7 @@ class LobbyState : public IState {
     rtype::config::GameMode selected_game_mode_;
     rtype::config::Difficulty selected_difficulty_;
     bool selected_friendly_fire_;
+    uint8_t selected_lives_;
     sf::Text game_mode_label_;
     sf::Text game_mode_text_;
     sf::RectangleShape game_mode_button_;
@@ -148,6 +149,9 @@ class LobbyState : public IState {
     sf::Text friendly_fire_label_;
     sf::Text friendly_fire_text_;
     sf::RectangleShape friendly_fire_button_;
+    sf::Text lives_label_;
+    sf::Text lives_text_;
+    sf::RectangleShape lives_button_;
 };
 
 } // namespace rtype::client
