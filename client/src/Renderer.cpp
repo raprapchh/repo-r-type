@@ -172,6 +172,15 @@ void Renderer::clear_entities() {
     entities_.clear();
 }
 
+void Renderer::reset_game_state() {
+    entities_.clear();
+    boss_active_ = false;
+    stage_cleared_ = false;
+    game_finished_ = false;
+    stage_cleared_timer_ = 0.0f;
+    game_state_ = rtype::net::GameStateData();
+}
+
 void Renderer::update_animations(float delta_time) {
     for (auto& [id, entity] : entities_) {
         if (entity.type == rtype::net::EntityType::PROJECTILE) {

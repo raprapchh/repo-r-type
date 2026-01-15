@@ -42,6 +42,7 @@ class Renderer {
     void update_entity(const Entity& entity);
     void remove_entity(uint32_t entity_id);
     void clear_entities();
+    void reset_game_state();
     void update_game_state(const rtype::net::GameStateData& state);
     void spawn_entity(const Entity& entity);
     void update_animations(float delta_time);

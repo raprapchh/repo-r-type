@@ -116,8 +116,8 @@ void GameState::on_exit(Renderer& renderer, Client& client) {
     has_chosen_spectate_ = false;
     spectator_choice_pending_ = false;
 
-    // Clear renderer entities to avoid leftover visuals on restart
-    renderer.clear_entities();
+    // Reset renderer state to avoid leftover visuals on restart
+    renderer.reset_game_state();
 
     if (client_) {
         client_->get_audio_system().stopBackgroundMusic();
