@@ -112,11 +112,19 @@ jobs:
 
     - name: Move Installer to dist
       run: |
-        if (Test-Path 'R-Type-Installer.exe') {
+        $installer = 'R-Type-Installer.exe'
+        if (-Not (Test-Path $installer)) {
+          if (Test-Path "installer\$installer") {
+            $installer = "installer\$installer"
+          }
+        }
+
+        if (Test-Path $installer) {
           if (-Not (Test-Path 'dist')) { New-Item -ItemType Directory -Path 'dist' | Out-Null }
-          Move-Item 'R-Type-Installer.exe' -Destination 'dist'
+          Move-Item $installer -Destination 'dist'
+          Write-Host "Moved $installer to dist"
         } else {
-          Write-Host 'R-Type-Installer.exe not found; skipping move.'
+          Write-Host 'R-Type-Installer.exe not found in root or installer/ directory.'
         }
       shell: pwsh
 
@@ -165,14 +173,18 @@ jobs:
 
     - name: Prepare release files
       run: |
-        if (-Not (Test-Path './R-Type-Installer.exe')) {
-          if (Test-Path './dist/R-Type-Installer.exe') {
-            Copy-Item './dist/R-Type-Installer.exe' './R-Type-Installer.exe' -Force
+        $installer = 'R-Type-Installer.exe'
+        if (-Not (Test-Path $installer)) {
+          if (Test-Path "dist/$installer") {
+            Copy-Item "dist/$installer" $installer -Force
+          } elseif (Test-Path "installer/$installer") {
+            Copy-Item "installer/$installer" $installer -Force
           } else {
-            Write-Error "R-Type-Installer.exe not found!"
+            Write-Error "R-Type-Installer.exe not found in root, dist/, or installer/!"
             exit 1
           }
         }
+        Write-Host "Ready to release: $installer"
       shell: pwsh
 
     - name: Release
