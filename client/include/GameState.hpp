@@ -82,6 +82,23 @@ class GameState : public IState {
 
     // Spectator mode
     std::shared_ptr<rtype::ecs::SpectatorSystem> spectator_system_;
+
+    void setup_spectator_ui();
+
+    bool spectator_choice_pending_ = false;
+    bool has_chosen_spectate_ = false;
+
+    // UI elements for spectator choice
+    sf::Text spectator_title_text_;
+    sf::RectangleShape spectator_continue_button_;
+    sf::Text spectator_continue_text_;
+    sf::RectangleShape spectator_menu_button_;
+    sf::Text spectator_menu_text_;
+
+    // UI elements for spectator HUD
+    sf::Text spectator_mode_text_;
+    sf::RectangleShape spectator_hud_exit_button_;
+    sf::Text spectator_hud_exit_text_;
 };
 
 } // namespace rtype::client

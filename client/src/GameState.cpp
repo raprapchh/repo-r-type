@@ -33,6 +33,8 @@
 #include "components/CpuStats.hpp"
 #include "systems/PingSystem.hpp"
 #include "systems/CpuMetricSystem.hpp"
+// #include "components/SpectatorComponent.hpp"
+// #include "systems/SpectatorSystem.hpp"
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -42,17 +44,18 @@ namespace rtype::client {
 GameState::GameState(bool multiplayer, rtype::config::Difficulty difficulty, uint8_t lives)
     : multiplayer_(multiplayer), solo_difficulty_(difficulty), solo_lives_(lives) {
     setup_pause_ui();
+    setup_spectator_ui();
 }
 
 void GameState::on_enter(Renderer& renderer, Client& client) {
     (void)renderer;
     client_ = &client;
     score_saved_ = false;
-    initial_player_count_ = 0;
-    max_score_reached_ = 0;
     score_saved_ = false;
     initial_player_count_ = 0;
     max_score_reached_ = 0;
+
+    // spectator_system_ = std::make_shared<rtype::ecs::SpectatorSystem>();
 
     if (multiplayer_) {
         if (!client.is_connected()) {
@@ -97,8 +100,6 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
             initial_player_count_++;
         }
     }
-
-    std::cout << "GameState: Counted " << initial_player_count_ << " player(s) in game" << std::endl;
 
     // FPS Counter: Only spawn in Multiplayer Mode
     if (multiplayer_) {
@@ -433,7 +434,16 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
             }
         }
 
-        if (client.is_connected() && player_id != 0 && (!player_exists || player_dead)) {
+        // If player is dead OR entity removed in multiplayer, show choice dialog
+        // BUT if all players are dead, show standard Game Over instead
+        if (multiplayer_ && client.is_connected() && player_id != 0 && (!player_exists || player_dead) &&
+            !spectator_choice_pending_ && !has_chosen_spectate_ && !all_players_dead_) {
+            spectator_choice_pending_ = true;
+        }
+
+        if (client.is_connected() && player_id != 0 &&
+            ((!multiplayer_ && (!player_exists || player_dead)) || (multiplayer_ && all_players_dead_) ||
+             ((!player_exists || player_dead) && !spectator_choice_pending_ && !has_chosen_spectate_))) {
             if (!game_over_) {
                 game_over_ = true;
 
@@ -445,14 +455,9 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
                         player_name = "Player" + std::to_string(client.get_player_id());
                     }
 
-                    std::cout << "Saving score: " << final_score << " for player '" << player_name << "' ("
-                              << initial_player_count_ << " player(s) detected)" << std::endl;
-
                     if (initial_player_count_ <= 1) {
-                        std::cout << "-> Solo mode" << std::endl;
                         client.get_scoreboard_manager().add_solo_score(player_name, final_score);
                     } else {
-                        std::cout << "-> Multi mode" << std::endl;
                         client.get_scoreboard_manager().add_multi_score(player_name, final_score);
                     }
                 }
@@ -593,27 +598,17 @@ void GameState::render(Renderer& renderer, Client& client) {
 
         // Check if there's a boss entity in the registry
         bool boss_present = false;
-        static bool last_boss_state = false;
         auto view = registry.view<rtype::ecs::component::Tag>();
         for (auto entity : view) {
             auto& tag = registry.getComponent<rtype::ecs::component::Tag>(static_cast<GameEngine::entity_t>(entity));
             if (tag.name == "Boss_1" || tag.name == "Boss_2") {
                 boss_present = true;
-                if (!last_boss_state) {
-                    std::cout << "[GameState] Boss detected in registry: " << tag.name << std::endl;
-                }
                 break;
             }
         }
-        if (last_boss_state && !boss_present) {
-            std::cout << "[GameState] Boss no longer present, reverting background" << std::endl;
-        }
-        last_boss_state = boss_present;
         renderer.set_boss_active(boss_present);
 
         renderer.draw_background();
-        // IMPORTANT: Reset view to default (screen coordinates) for UI elements!
-        // Otherwise UI draws in world coordinates (affected by camera/scrolling) causing click mismatch
         renderer.get_window()->setView(renderer.get_window()->getDefaultView());
     }
 
@@ -663,6 +658,10 @@ void GameState::render(Renderer& renderer, Client& client) {
 
         rtype::ecs::CpuMetricSystem cpu_metric_system;
         cpu_metric_system.update(registry, static_cast<double>(fps_dt));
+
+        if (has_chosen_spectate_ && spectator_system_) {
+            // spectator_system_->update(registry, static_cast<double>(fps_dt));
+        }
 
         // Render UI overlay (FPS counter, Ping, CPU)
         rtype::ecs::UIRenderSystem ui_render_system(renderer.get_window());
@@ -855,6 +854,54 @@ void GameState::render_pause_overlay(Renderer& renderer) {
         renderer.draw_rectangle(settings_button_);
         renderer.draw_text(settings_button_text_);
     }
+}
+
+void GameState::setup_spectator_ui() {
+    if (!font_loaded_) {
+        return;
+    }
+
+    // Choice Dialog
+    spectator_title_text_.setFont(font_);
+    spectator_title_text_.setString("GAME OVER");
+    spectator_title_text_.setCharacterSize(60);
+    spectator_title_text_.setFillColor(sf::Color::Red);
+
+    spectator_continue_button_.setSize(sf::Vector2f(400, 60));
+    spectator_continue_button_.setFillColor(sf::Color(50, 50, 150)); // Default blue-ish
+    spectator_continue_button_.setOutlineColor(sf::Color::White);
+    spectator_continue_button_.setOutlineThickness(2);
+
+    spectator_continue_text_.setFont(font_);
+    spectator_continue_text_.setString("CONTINUE TO SPECTATE");
+    spectator_continue_text_.setCharacterSize(23);
+    spectator_continue_text_.setFillColor(sf::Color::White);
+
+    spectator_menu_button_.setSize(sf::Vector2f(400, 60));
+    spectator_menu_button_.setFillColor(sf::Color(150, 50, 50)); // Red-ish
+    spectator_menu_button_.setOutlineColor(sf::Color::White);
+    spectator_menu_button_.setOutlineThickness(2);
+
+    spectator_menu_text_.setFont(font_);
+    spectator_menu_text_.setString("BACK TO MENU");
+    spectator_menu_text_.setCharacterSize(24);
+    spectator_menu_text_.setFillColor(sf::Color::White);
+
+    // Spectator HUD
+    spectator_mode_text_.setFont(font_);
+    spectator_mode_text_.setString("SPECTATOR MODE");
+    spectator_mode_text_.setCharacterSize(40);
+    spectator_mode_text_.setFillColor(sf::Color(255, 255, 0)); // Yellow
+
+    spectator_hud_exit_button_.setSize(sf::Vector2f(100, 30));
+    spectator_hud_exit_button_.setFillColor(sf::Color(150, 50, 50, 180));
+    spectator_hud_exit_button_.setOutlineColor(sf::Color::White);
+    spectator_hud_exit_button_.setOutlineThickness(1);
+
+    spectator_hud_exit_text_.setFont(font_);
+    spectator_hud_exit_text_.setString("EXIT");
+    spectator_hud_exit_text_.setCharacterSize(15);
+    spectator_hud_exit_text_.setFillColor(sf::Color::White);
 }
 
 void GameState::spawn_enemy_solo(GameEngine::Registry& registry) {
