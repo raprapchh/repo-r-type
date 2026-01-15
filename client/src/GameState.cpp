@@ -281,6 +281,32 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
             } else if (is_paused_) {
                 sf::Vector2f mouse_pos = renderer.get_mouse_position();
                 handle_pause_button_click(mouse_pos, state_manager);
+            } else if (has_chosen_spectate_ && !game_over_) {
+                // Handle clicks on HUD Exit button in Spectator Mode
+                sf::Vector2f mouse_pos = renderer.get_window()->mapPixelToCoords(
+                    sf::Vector2i(event.mouseButton.x, event.mouseButton.y), renderer.get_window()->getDefaultView());
+
+                // Recalculate HUD button position (Moved to avoid overlap with FPS metrics)
+                sf::Vector2u window_size = renderer.get_window_size();
+                sf::FloatRect exit_bounds(window_size.x - 120.0f, 100.0f, 100.0f, 30.0f);
+
+                if (exit_bounds.contains(mouse_pos)) {
+                    if (client_) {
+                        GameEngine::Registry& registry = client_->get_registry();
+                        std::mutex& registry_mutex = client_->get_registry_mutex();
+                        std::lock_guard<std::mutex> lock(registry_mutex);
+                        registry.clear();
+                    }
+                    has_chosen_spectate_ = false;
+                    spectator_choice_pending_ = false;
+                    game_over_ = false;
+                    all_players_dead_ = false;
+                    score_saved_ = false;
+                    state_manager.change_state(std::make_unique<MenuState>());
+                } else {
+                    // Check for settings button or other UI? (Renderer doesn't expose it yet)
+                }
+
             } else if (game_over_ && all_players_dead_) {
                 sf::Vector2f mouse_pos = renderer.get_window()->mapPixelToCoords(
                     sf::Vector2i(event.mouseButton.x, event.mouseButton.y), renderer.get_window()->getDefaultView());
@@ -619,6 +645,76 @@ void GameState::render(Renderer& renderer, Client& client) {
 
     // Only show game over if victory screen is NOT displayed
     if (game_over_ && !renderer.is_stage_cleared()) {
+        renderer.draw_game_over(all_players_dead_);
+    }
+
+    if (is_paused_) {
+        render_pause_overlay(renderer);
+    }
+
+    // Stage cleared victory screen
+    renderer.draw_stage_cleared();
+
+    // Spectator choice dialog - shown when player becomes spectator
+    if (spectator_choice_pending_) {
+        sf::Vector2u windowSize = renderer.get_window_size();
+        float center_x = windowSize.x / 2.0f;
+        float center_y = windowSize.y / 2.0f;
+
+        // Semi-transparent background
+        sf::RectangleShape modal_bg(sf::Vector2f(static_cast<float>(windowSize.x), static_cast<float>(windowSize.y)));
+        modal_bg.setFillColor(sf::Color(0, 0, 0, 200));
+        renderer.draw_rectangle(modal_bg);
+
+        // Title
+        sf::FloatRect title_bounds = spectator_title_text_.getLocalBounds();
+        spectator_title_text_.setPosition(center_x - title_bounds.width / 2.0f, center_y - 150.0f);
+        renderer.draw_text(spectator_title_text_);
+
+        // Continue button
+        spectator_continue_button_.setPosition(center_x - 200.0f, center_y);
+
+        sf::FloatRect continue_text_bounds = spectator_continue_text_.getLocalBounds();
+        spectator_continue_text_.setPosition(
+            spectator_continue_button_.getPosition().x + (400.0f - continue_text_bounds.width) / 2.0f,
+            spectator_continue_button_.getPosition().y + (60.0f - continue_text_bounds.height) / 2.0f - 5.0f);
+
+        renderer.draw_rectangle(spectator_continue_button_);
+        renderer.draw_text(spectator_continue_text_);
+
+        // Menu button
+        spectator_menu_button_.setPosition(center_x - 200.0f, center_y + 80.0f);
+
+        sf::FloatRect menu_text_bounds = spectator_menu_text_.getLocalBounds();
+        spectator_menu_text_.setPosition(
+            spectator_menu_button_.getPosition().x + (400.0f - menu_text_bounds.width) / 2.0f,
+            spectator_menu_button_.getPosition().y + (60.0f - menu_text_bounds.height) / 2.0f - 5.0f);
+
+        renderer.draw_rectangle(spectator_menu_button_);
+        renderer.draw_text(spectator_menu_text_);
+    }
+
+    if (has_chosen_spectate_ && !game_over_) {
+        sf::Vector2u window_size = renderer.get_window_size();
+        sf::FloatRect text_bounds = spectator_mode_text_.getLocalBounds();
+        spectator_mode_text_.setPosition(window_size.x / 2.0f - text_bounds.width / 2.0f, 50.0f);
+        renderer.draw_text(spectator_mode_text_);
+
+        // Draw HUD Exit Button (Top-Right)
+        float btn_x = window_size.x - 120.0f;
+        float btn_y = 100.0f;
+        spectator_hud_exit_button_.setPosition(btn_x, btn_y);
+        renderer.draw_rectangle(spectator_hud_exit_button_);
+
+        sf::FloatRect exit_text_bounds = spectator_hud_exit_text_.getLocalBounds();
+        spectator_hud_exit_text_.setPosition(btn_x + 50.0f - exit_text_bounds.width / 2.0f,
+                                             btn_y + 15.0f - exit_text_bounds.height / 2.0f - 4.0f); // Centered
+        renderer.draw_text(spectator_hud_exit_text_);
+    }
+
+    // Only show game over if victory screen is NOT displayed AND NOT in spectator choice
+    // But IF all players are dead, force show game over
+    if (game_over_ && !renderer.is_stage_cleared() && !spectator_choice_pending_) {
         renderer.draw_game_over(all_players_dead_);
     }
 
