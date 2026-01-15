@@ -557,6 +557,9 @@ void GameState::render(Renderer& renderer, Client& client) {
 
     if (renderer.get_window()) {
         renderer.draw_background();
+        // IMPORTANT: Reset view to default (screen coordinates) for UI elements!
+        // Otherwise UI draws in world coordinates (affected by camera/scrolling) causing click mismatch
+        renderer.get_window()->setView(renderer.get_window()->getDefaultView());
     }
 
     if (renderer.get_window()) {
