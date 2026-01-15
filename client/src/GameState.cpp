@@ -33,8 +33,8 @@
 #include "components/CpuStats.hpp"
 #include "systems/PingSystem.hpp"
 #include "systems/CpuMetricSystem.hpp"
-// #include "components/SpectatorComponent.hpp"
-// #include "systems/SpectatorSystem.hpp"
+#include "components/SpectatorComponent.hpp"
+#include "systems/SpectatorSystem.hpp"
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -55,7 +55,7 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
     initial_player_count_ = 0;
     max_score_reached_ = 0;
 
-    // spectator_system_ = std::make_shared<rtype::ecs::SpectatorSystem>();
+    spectator_system_ = std::make_shared<rtype::ecs::SpectatorSystem>();
 
     if (multiplayer_) {
         if (!client.is_connected()) {
@@ -660,7 +660,7 @@ void GameState::render(Renderer& renderer, Client& client) {
         cpu_metric_system.update(registry, static_cast<double>(fps_dt));
 
         if (has_chosen_spectate_ && spectator_system_) {
-            // spectator_system_->update(registry, static_cast<double>(fps_dt));
+            spectator_system_->update(registry, static_cast<double>(fps_dt));
         }
 
         // Render UI overlay (FPS counter, Ping, CPU)
