@@ -109,6 +109,9 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
 }
 
 void GameState::on_exit(Renderer& renderer, Client& client) {
+    // Reset spectator state logic
+    has_chosen_spectate_ = false;
+    spectator_choice_pending_ = false;
     (void)renderer;
     (void)client;
 

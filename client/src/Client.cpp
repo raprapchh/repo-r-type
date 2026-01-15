@@ -566,7 +566,6 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 std::vector<uint8_t> join_packet_data = rtype::net::ProtocolAdapter().serialize(join_packet);
                 udp_client_->send(join_packet_data);
                 pending_create_room_name_.clear();
-                // Do not early-return; also notify UI about room list
             }
             if (room_list_callback_) {
                 room_list_callback_(room_data.session_id, room_data.player_count, room_data.max_players,
