@@ -322,7 +322,7 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                 // Check restart button first (only in solo mode)
                 if (!multiplayer_ && renderer.is_game_over_restart_clicked(mouse_pos)) {
                     if (client_) {
-                        client_->leave_room();
+                        client_->restart_session();
                     }
                     game_over_ = false;
                     all_players_dead_ = false;
