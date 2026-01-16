@@ -22,6 +22,7 @@ class NetworkSystem {
     void update(GameEngine::Registry& registry, std::mutex& registry_mutex);
     void push_packet(const rtype::net::Packet& packet);
     void set_player_id(uint32_t player_id);
+    void clear_packet_queue();
 
   private:
     void handle_spawn(GameEngine::Registry& registry, const rtype::net::Packet& packet);
