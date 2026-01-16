@@ -354,7 +354,7 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
         }
     }
 
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::R)) {
+    if (renderer.get_window() && renderer.get_window()->hasFocus() && sf::Keyboard::isKeyPressed(sf::Keyboard::R)) {
         is_firing_laser_ = true;
     } else {
         is_firing_laser_ = false;
