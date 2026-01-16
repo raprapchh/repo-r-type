@@ -115,13 +115,15 @@ void GameState::on_exit(Renderer& renderer, Client& client) {
     // Reset spectator state logic
     has_chosen_spectate_ = false;
     spectator_choice_pending_ = false;
-    (void)renderer;
-    (void)client;
+
+    // Reset renderer state to avoid leftover visuals on restart
+    renderer.reset_game_state();
 
     if (client_) {
         client_->get_audio_system().stopBackgroundMusic();
     }
 
+    (void)client;
     client_ = nullptr;
 }
 
@@ -317,12 +319,18 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                 sf::Vector2f mouse_pos = renderer.get_window()->mapPixelToCoords(
                     sf::Vector2i(event.mouseButton.x, event.mouseButton.y), renderer.get_window()->getDefaultView());
 
-                if (renderer.is_game_over_back_to_menu_clicked(mouse_pos)) {
+                // Check restart button first (only in solo mode)
+                if (!multiplayer_ && renderer.is_game_over_restart_clicked(mouse_pos)) {
                     if (client_) {
-                        GameEngine::Registry& registry = client_->get_registry();
-                        std::mutex& registry_mutex = client_->get_registry_mutex();
-                        std::lock_guard<std::mutex> lock(registry_mutex);
-                        registry.clear();
+                        client_->restart_session();
+                    }
+                    game_over_ = false;
+                    all_players_dead_ = false;
+                    score_saved_ = false;
+                    state_manager.change_state(std::make_unique<GameState>(false, solo_difficulty_, solo_lives_));
+                } else if (renderer.is_game_over_back_to_menu_clicked(mouse_pos)) {
+                    if (client_) {
+                        client_->leave_room();
                     }
                     game_over_ = false;
                     all_players_dead_ = false;
@@ -673,7 +681,7 @@ void GameState::render(Renderer& renderer, Client& client) {
 
     // Only show game over if victory screen is NOT displayed
     if (game_over_ && !renderer.is_stage_cleared()) {
-        renderer.draw_game_over(all_players_dead_);
+        renderer.draw_game_over(all_players_dead_, !multiplayer_);
     }
 
     if (is_paused_) {
@@ -743,7 +751,7 @@ void GameState::render(Renderer& renderer, Client& client) {
     // Only show game over if victory screen is NOT displayed AND NOT in spectator choice
     // But IF all players are dead, force show game over
     if (game_over_ && !renderer.is_stage_cleared() && !spectator_choice_pending_) {
-        renderer.draw_game_over(all_players_dead_);
+        renderer.draw_game_over(all_players_dead_, !multiplayer_);
     }
 
     if (is_paused_) {

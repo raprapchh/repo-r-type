@@ -31,6 +31,12 @@ void NetworkSystem::set_player_id(uint32_t player_id) {
     player_id_ = player_id;
 }
 
+void NetworkSystem::clear_packet_queue() {
+    std::lock_guard<std::mutex> lock(packet_queue_mutex_);
+    std::queue<rtype::net::Packet> empty;
+    std::swap(packet_queue_, empty);
+}
+
 void NetworkSystem::update(GameEngine::Registry& registry, std::mutex& registry_mutex) {
     std::queue<rtype::net::Packet> packets_to_process;
 
