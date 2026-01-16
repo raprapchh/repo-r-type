@@ -32,6 +32,25 @@ RequestExecutionLevel admin
 Section "Application" SEC01
     SetOutPath "$INSTDIR"
 
+        ; --- VC++ Redistributable Check ---
+        DetailPrint "Vérification de Visual C++ Redistributable 2015-2022..."
+        ReadRegDWORD $0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" "Installed"
+        ${If} $0 != 1
+            DetailPrint "Visual C++ Redistributable non trouvé. Téléchargement..."
+            inetc::get /caption "Téléchargement de VC++ Redist" /popup "Veuillez patienter..." "https://aka.ms/vs/17/release/vc_redist.x64.exe" "$TEMP\vc_redist.x64.exe" /end
+            Pop $0
+            ${If} $0 == "OK"
+                DetailPrint "Installation de VC++ Redist..."
+                ExecWait '"$TEMP\vc_redist.x64.exe" /quiet /norestart' $0
+                DetailPrint "Installation terminée (code $0)"
+                Delete "$TEMP\vc_redist.x64.exe"
+            ${Else}
+                DetailPrint "Échec du téléchargement de VC++ Redist: $0. L'application pourrait ne pas fonctionner."
+            ${EndIf}
+        ${Else}
+            DetailPrint "Visual C++ Redistributable est déjà installé."
+        ${EndIf}
+
         ; Web installer: download release archive and extract
         CreateDirectory "$INSTDIR"
 
@@ -84,15 +103,10 @@ Section "Raccourcis" SEC02
 SectionEnd
 
 Section "Uninstall"
-    Delete "$INSTDIR\r-type_client.exe"
-    Delete "$INSTDIR\r-type_server.exe"
-    Delete "$INSTDIR\Uninstall.exe"
+    ; Remove all files in the installation directory (including DLLs and assets)
+    RMDir /r "$INSTDIR"
 
-    RMDir /r "$INSTDIR\client"
-    RMDir /r "$INSTDIR\server"
-    RMDir /r "$INSTDIR\config"
-    RMDir "$INSTDIR"
-
+    ; Remove shortcuts
     Delete "$SMPROGRAMS\R-Type Clone\R-Type Client.lnk"
     Delete "$SMPROGRAMS\R-Type Clone\R-Type Server.lnk"
     Delete "$SMPROGRAMS\R-Type Clone\Uninstall.lnk"
