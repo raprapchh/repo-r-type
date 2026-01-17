@@ -7,9 +7,14 @@ UdpClient::UdpClient(asio::io_context& io_context, const std::string& host, uint
     : io_context_(io_context), running_(false) {
     try {
         socket_ = std::make_unique<asio::ip::udp::socket>(io_context_);
+        socket_->open(asio::ip::udp::v4());
+        
+        // Bind to an ephemeral port to avoid WSAEINVAL on Windows when calling async_receive_from before any send_to
+        socket_->bind(asio::ip::udp::endpoint(asio::ip::udp::v4(), 0));
+
         asio::ip::udp::resolver resolver(io_context_);
         server_endpoint_ = *resolver.resolve(asio::ip::udp::v4(), host, std::to_string(port)).begin();
-        socket_->open(asio::ip::udp::v4());
+        
         recv_buffer_.resize(1024);
     } catch (const std::exception& e) {
         std::cerr << "UdpClient initialization error: " << e.what() << std::endl;
@@ -26,7 +31,7 @@ void UdpClient::start_receive() {
         return;
     }
     running_ = true;
-    socket_->async_receive_from(asio::buffer(recv_buffer_), server_endpoint_,
+    socket_->async_receive_from(asio::buffer(recv_buffer_), sender_endpoint_,
                                 [this](const asio::error_code& error, std::size_t bytes_transferred) {
                                     handle_receive(error, bytes_transferred);
                                 });
