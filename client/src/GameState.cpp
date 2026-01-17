@@ -618,22 +618,24 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
                 }
                 shoot_requested_ = false;
             }
+        }
 
-            // Send ping if requested by PingSystem
-            if (multiplayer_ && client.is_connected()) {
-                auto ping_view = registry.view<rtype::ecs::component::PingStats>();
-                for (auto entity : ping_view) {
-                    auto& stats = registry.getComponent<rtype::ecs::component::PingStats>(entity);
-                    if (stats.pingRequested) {
-                        auto now = std::chrono::steady_clock::now();
-                        uint64_t timestamp =
-                            std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
-                        client.send_ping(timestamp);
-                        stats.pingRequested = false;
-                    }
+        // Send ping if requested by PingSystem (always, regardless of focus or game state)
+        if (multiplayer_ && client.is_connected()) {
+            auto ping_view = registry.view<rtype::ecs::component::PingStats>();
+            for (auto entity : ping_view) {
+                auto& stats = registry.getComponent<rtype::ecs::component::PingStats>(entity);
+                if (stats.pingRequested) {
+                    auto now = std::chrono::steady_clock::now();
+                    uint64_t timestamp =
+                        std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
+                    client.send_ping(timestamp);
+                    stats.pingRequested = false;
                 }
             }
-        } else {
+        }
+
+        if (!window_has_focus || game_over_) {
             auto controllable_view =
                 registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
             for (auto entity : controllable_view) {

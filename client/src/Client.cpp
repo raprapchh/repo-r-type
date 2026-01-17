@@ -564,14 +564,14 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             if (rtt_ms < 0)
                 rtt_ms = 0.0f;
 
-            // Update PingStats component (non-blocking)
-            if (registry_mutex_.try_lock()) {
+            // Update PingStats component
+            {
+                std::lock_guard<std::mutex> lock(registry_mutex_);
                 auto view = registry_.view<rtype::ecs::component::PingStats>();
                 for (auto entity : view) {
                     auto& stats = registry_.getComponent<rtype::ecs::component::PingStats>(entity);
                     stats.lastPingMs = rtt_ms;
                 }
-                registry_mutex_.unlock();
             }
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing Pong packet: " << e.what() << std::endl;
