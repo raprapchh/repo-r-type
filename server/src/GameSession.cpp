@@ -304,6 +304,9 @@ void GameSession::handle_packet(const std::string& client_ip, uint16_t client_po
     case rtype::net::MessageType::ChatMessage:
         handle_chat_message(client_ip, client_port, packet);
         break;
+    case rtype::net::MessageType::RestartVote:
+        handle_restart_vote(client_ip, client_port, packet);
+        break;
     default:
         break;
     }
@@ -350,33 +353,47 @@ void GameSession::game_loop() {
             if (game_started_ && !game_over_.load()) {
                 bool all_players_dead = true;
                 bool has_players = false;
+                int connected_count = 0;
+                int dead_count = 0;
                 {
                     std::lock_guard<std::mutex> clients_lock(clients_mutex_);
                     std::lock_guard<std::mutex> registry_lock(registry_mutex_);
                     for (const auto& [key, client] : clients_) {
                         if (client.is_connected) {
                             has_players = true;
+                            connected_count++;
                             if (registry_.isValid(client.entity_id)) {
                                 if (registry_.hasComponent<rtype::ecs::component::Lives>(client.entity_id)) {
                                     auto& lives =
                                         registry_.getComponent<rtype::ecs::component::Lives>(client.entity_id);
                                     if (lives.remaining > 0) {
                                         all_players_dead = false;
-                                        break;
+                                    } else {
+                                        dead_count++;
                                     }
                                 } else {
+                                    // No Lives component but entity is valid - player is alive
                                     all_players_dead = false;
-                                    break;
                                 }
+                            } else {
+                                // Entity not valid = player dead
+                                dead_count++;
                             }
                         }
                     }
                 }
 
-                if (has_players && all_players_dead) {
-                    game_over_ = true;
+                if (has_players && all_players_dead && !game_over_.load()) {
                     Logger::instance().info("Session " + std::to_string(session_id_) +
-                                            " Game Over - all players dead. Cleaning up.");
+                                            " detected all players dead: connected=" + std::to_string(connected_count) +
+                                            " dead=" + std::to_string(dead_count));
+                    game_over_ = true;
+                    restart_vote_active_ = true;
+                    restart_vote_start_time_ = std::chrono::steady_clock::now();
+                    restart_votes_play_.clear();
+                    restart_votes_quit_.clear();
+                    Logger::instance().info("Session " + std::to_string(session_id_) +
+                                            " Game Over - all players dead. Starting restart vote.");
 
                     std::vector<GameEngine::entity_t> entities_to_destroy;
 
@@ -417,6 +434,10 @@ void GameSession::game_loop() {
                 if (!game_over_.load()) {
                     std::lock_guard<std::mutex> registry_lock(registry_mutex_);
                     system_manager_.update(registry_, dt);
+                }
+
+                if (restart_vote_active_) {
+                    update_restart_vote_countdown();
                 }
             }
 
@@ -865,6 +886,209 @@ void GameSession::handle_chat_message(const std::string& client_ip, uint16_t cli
         Logger::instance().error("Session " + std::to_string(session_id_) +
                                  " error handling chat message: " + std::string(e.what()));
     }
+}
+
+void GameSession::handle_restart_vote(const std::string& client_ip, uint16_t client_port,
+                                      const rtype::net::Packet& packet) {
+    if (!restart_vote_active_) {
+        return;
+    }
+
+    try {
+        auto vote_data = message_serializer_.deserialize_restart_vote(packet);
+        std::string client_key = client_ip + ":" + std::to_string(client_port);
+
+        uint32_t player_id = 0;
+        {
+            std::lock_guard<std::mutex> lock(clients_mutex_);
+            auto it = clients_.find(client_key);
+            if (it == clients_.end() || !it->second.is_connected) {
+                return;
+            }
+            player_id = it->second.player_id;
+        }
+
+        restart_votes_play_.erase(player_id);
+        restart_votes_quit_.erase(player_id);
+
+        if (vote_data.vote == 1) {
+            restart_votes_play_.insert(player_id);
+            Logger::instance().info("Session " + std::to_string(session_id_) + " player " + std::to_string(player_id) +
+                                    " voted to play again");
+        } else {
+            restart_votes_quit_.insert(player_id);
+            Logger::instance().info("Session " + std::to_string(session_id_) + " player " + std::to_string(player_id) +
+                                    " voted to quit");
+        }
+
+        broadcast_restart_vote_status();
+
+        size_t total_players = 0;
+        {
+            std::lock_guard<std::mutex> lock(clients_mutex_);
+            for (const auto& [key, c] : clients_) {
+                if (c.is_connected) {
+                    total_players++;
+                }
+            }
+        }
+
+        if (restart_votes_play_.size() == total_players && total_players > 0) {
+            Logger::instance().info("Session " + std::to_string(session_id_) +
+                                    " all players voted to play again - restarting");
+            reset_game_for_restart();
+        } else if (restart_votes_quit_.size() == total_players && total_players > 0) {
+            Logger::instance().info("Session " + std::to_string(session_id_) +
+                                    " all players voted to quit - ending session");
+            restart_vote_active_ = false;
+        }
+    } catch (const std::exception& e) {
+        Logger::instance().error("Session " + std::to_string(session_id_) +
+                                 " error handling restart vote: " + std::string(e.what()));
+    }
+}
+
+void GameSession::broadcast_restart_vote_status() {
+    size_t total_players = 0;
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        for (const auto& [key, c] : clients_) {
+            if (c.is_connected) {
+                total_players++;
+            }
+        }
+    }
+
+    auto elapsed = std::chrono::steady_clock::now() - restart_vote_start_time_;
+    int seconds_elapsed = static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(elapsed).count());
+    int countdown = RESTART_VOTE_COUNTDOWN_SECONDS - seconds_elapsed;
+    if (countdown < 0)
+        countdown = 0;
+
+    rtype::net::RestartVoteStatusData status_data(
+        static_cast<uint8_t>(restart_votes_play_.size()), static_cast<uint8_t>(restart_votes_quit_.size()),
+        static_cast<uint8_t>(total_players), static_cast<uint8_t>(countdown), 0);
+
+    auto serialized = protocol_adapter_.serialize(message_serializer_.serialize_restart_vote_status(status_data));
+    broadcast_to_all_clients(serialized);
+}
+
+void GameSession::update_restart_vote_countdown() {
+    auto elapsed = std::chrono::steady_clock::now() - restart_vote_start_time_;
+    int seconds_elapsed = static_cast<int>(std::chrono::duration_cast<std::chrono::seconds>(elapsed).count());
+
+    if (seconds_elapsed >= RESTART_VOTE_COUNTDOWN_SECONDS) {
+        size_t total_players = 0;
+        {
+            std::lock_guard<std::mutex> lock(clients_mutex_);
+            for (const auto& [key, c] : clients_) {
+                if (c.is_connected) {
+                    total_players++;
+                }
+            }
+        }
+
+        if (restart_votes_play_.size() >= 2 || restart_votes_play_.size() == total_players) {
+            Logger::instance().info("Session " + std::to_string(session_id_) +
+                                    " countdown ended with enough votes to restart");
+            reset_game_for_restart();
+        } else {
+            Logger::instance().info("Session " + std::to_string(session_id_) +
+                                    " countdown ended without enough votes - staying on game over");
+            restart_vote_active_ = false;
+
+            rtype::net::RestartVoteStatusData status_data(static_cast<uint8_t>(restart_votes_play_.size()),
+                                                          static_cast<uint8_t>(restart_votes_quit_.size()),
+                                                          static_cast<uint8_t>(total_players), 0, 0);
+            auto serialized =
+                protocol_adapter_.serialize(message_serializer_.serialize_restart_vote_status(status_data));
+            broadcast_to_all_clients(serialized);
+        }
+    } else {
+        static int last_broadcast_second = -1;
+        if (seconds_elapsed != last_broadcast_second) {
+            last_broadcast_second = seconds_elapsed;
+            broadcast_restart_vote_status();
+        }
+    }
+}
+
+void GameSession::reset_game_for_restart() {
+    Logger::instance().info("Session " + std::to_string(session_id_) + " resetting game for restart");
+
+    size_t total_players = 0;
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        for (const auto& [key, c] : clients_) {
+            if (c.is_connected) {
+                total_players++;
+            }
+        }
+    }
+
+    rtype::net::RestartVoteStatusData status_data(static_cast<uint8_t>(restart_votes_play_.size()),
+                                                  static_cast<uint8_t>(restart_votes_quit_.size()),
+                                                  static_cast<uint8_t>(total_players), 0, 1);
+    auto serialized = protocol_adapter_.serialize(message_serializer_.serialize_restart_vote_status(status_data));
+    broadcast_to_all_clients(serialized);
+
+    {
+        std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+
+        std::vector<GameEngine::entity_t> entities_to_destroy;
+        auto network_view = registry_.view<rtype::ecs::component::NetworkId>();
+        for (auto entity : network_view) {
+            bool should_destroy = true;
+
+            if (registry_.hasComponent<rtype::ecs::component::MapBounds>(static_cast<size_t>(entity))) {
+                should_destroy = false;
+            }
+            if (registry_.hasComponent<rtype::ecs::component::EnemySpawner>(static_cast<size_t>(entity))) {
+                should_destroy = false;
+            }
+            if (registry_.hasComponent<rtype::ecs::component::GameRulesComponent>(static_cast<size_t>(entity))) {
+                should_destroy = false;
+            }
+
+            if (should_destroy) {
+                entities_to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
+            }
+        }
+
+        for (auto entity : entities_to_destroy) {
+            registry_.destroyEntity(entity);
+        }
+
+        auto spawnerView = registry_.view<rtype::ecs::component::EnemySpawner>();
+        for (auto entity : spawnerView) {
+            auto& spawner = registry_.getComponent<rtype::ecs::component::EnemySpawner>(entity);
+            spawner.timeSinceLastSpawn = 0.0f;
+            spawner.bossWarningActive = false;
+            spawner.bossWarningTimer = 0.0f;
+            spawner.currentWave = 0;
+            spawner.currentLevel = 0;
+            spawner.currentEnemyIndex = 0;
+            spawner.waveTimer = 0.0f;
+        }
+    }
+
+    {
+        std::lock_guard<std::mutex> clients_lock(clients_mutex_);
+        std::lock_guard<std::mutex> registry_lock(registry_mutex_);
+        for (auto& [key, client] : clients_) {
+            if (client.is_connected) {
+                client.entity_id = create_player_entity(client.player_id, client.player_name);
+            }
+        }
+    }
+
+    restart_vote_active_ = false;
+    restart_votes_play_.clear();
+    restart_votes_quit_.clear();
+    game_over_ = false;
+    game_started_ = true;
+
+    Logger::instance().info("Session " + std::to_string(session_id_) + " game restarted successfully");
 }
 
 } // namespace rtype::server
