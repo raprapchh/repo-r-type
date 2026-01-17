@@ -638,6 +638,15 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
         }
         break;
     }
+    case rtype::net::MessageType::RestartVoteStatus: {
+        try {
+            auto status_data = serializer.deserialize_restart_vote_status(packet);
+            renderer_.update_restart_vote_status(status_data);
+        } catch (const std::exception& e) {
+            std::cerr << "Error deserializing RestartVoteStatus packet: " << e.what() << std::endl;
+        }
+        break;
+    }
     default:
         std::cerr << "Warning: Unknown message type received: " << static_cast<int>(packet.header.message_type)
                   << std::endl;
@@ -704,6 +713,16 @@ void Client::send_ping(uint64_t timestamp) {
     rtype::net::PingPongData ping_data(timestamp);
     rtype::net::Packet ping_packet = serializer.serialize_ping(ping_data);
     std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(ping_packet);
+    udp_client_->send(packet_data);
+}
+
+void Client::send_restart_vote(bool play_again) {
+    if (!connected_.load())
+        return;
+    rtype::net::MessageSerializer serializer;
+    rtype::net::RestartVoteData vote_data(player_id_, play_again ? 1 : 0);
+    rtype::net::Packet vote_packet = serializer.serialize_restart_vote(vote_data);
+    std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(vote_packet);
     udp_client_->send(packet_data);
 }
 

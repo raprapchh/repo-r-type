@@ -68,12 +68,16 @@ class GameSession {
     void handle_game_start(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
     void handle_map_resize(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
     void handle_chat_message(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
+    void handle_restart_vote(const std::string& client_ip, uint16_t client_port, const rtype::net::Packet& packet);
 
     void broadcast_message(const std::vector<uint8_t>& data, const std::string& exclude_ip = "",
                            uint16_t exclude_port = 0);
     void broadcast_to_all_clients(const std::vector<uint8_t>& data);
     void broadcast_entity_destroy(uint32_t entity_id, uint8_t reason);
     void broadcast_projectile_spawns();
+    void broadcast_restart_vote_status();
+    void update_restart_vote_countdown();
+    void reset_game_for_restart();
 
     void check_client_timeouts();
     void disconnect_client(const std::string& client_key, const ClientInfo& client);
@@ -111,6 +115,14 @@ class GameSession {
     std::chrono::steady_clock::time_point empty_since_;
 
     rtype::config::GameRules game_rules_;
+
+    // Restart vote system
+    std::unordered_set<uint32_t> restart_votes_play_;
+    std::unordered_set<uint32_t> restart_votes_quit_;
+    bool restart_vote_active_ = false;
+    std::chrono::steady_clock::time_point restart_vote_start_time_;
+    int last_broadcast_countdown_second_ = -1;
+    static constexpr int RESTART_VOTE_COUNTDOWN_SECONDS = 15;
 
     static constexpr double TARGET_TICK_RATE = 60.0;
     static constexpr std::chrono::duration<double> TICK_DURATION =
