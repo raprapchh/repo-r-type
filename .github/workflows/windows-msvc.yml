@@ -53,24 +53,19 @@ jobs:
         }
 
         # --- FORCE OPENAL SOFT 64-BIT AUTOMATION ---
-        # 1. Look for soft_oal.dll in build (vcpkg or built) and rename it
-        Get-ChildItem -Path "build" -Filter "soft_oal.dll" -Recurse | ForEach-Object {
-            Copy-Item -Path $_.FullName -Destination "dist/OpenAL32.dll" -Force
-        }
+        # 1. Remove any existing OpenAL DLLs to avoid 32/64 bit confusion
+        Remove-Item -Path "dist/OpenAL32.dll", "dist/soft_oal.dll" -Force -ErrorAction SilentlyContinue
 
-        # 2. If OpenAL32.dll is still missing, download the official 64-bit binary to be 100% sure
-        if (-Not (Test-Path "dist/OpenAL32.dll")) {
-            Write-Host "OpenAL32.dll not found in build, downloading official OpenAL Soft 64-bit..."
-            $oalVersion = "1.23.1"
-            $oalUrl = "https://github.com/kcat/openal-soft/releases/download/$oalVersion/openal-soft-$oalVersion-bin.zip"
-            Invoke-WebRequest -Uri $oalUrl -OutFile "openal.zip"
-            Expand-Archive -Path "openal.zip" -DestinationPath "openal_temp" -Force
-            Copy-Item -Path "openal_temp/openal-soft-$oalVersion-bin/bin/Win64/soft_oal.dll" -Destination "dist/OpenAL32.dll" -Force
-            Remove-Item -Path "openal.zip", "openal_temp" -Recurse -Force
-        }
+        # 2. Download the official 64-bit binary to be 100% sure we have Win64 version
+        Write-Host "Downloading official OpenAL Soft 64-bit..."
+        $oalVersion = "1.23.1"
+        $oalUrl = "https://github.com/kcat/openal-soft/releases/download/$oalVersion/openal-soft-$oalVersion-bin.zip"
+        Invoke-WebRequest -Uri $oalUrl -OutFile "openal.zip"
+        Expand-Archive -Path "openal.zip" -DestinationPath "openal_temp" -Force
+        Copy-Item -Path "openal_temp/openal-soft-$oalVersion-bin/bin/Win64/soft_oal.dll" -Destination "dist/OpenAL32.dll" -Force
+        Remove-Item -Path "openal.zip", "openal_temp" -Recurse -Force
         
-        Write-Host "Checking OpenAL32.dll presence in dist:"
-        Test-Path "dist/OpenAL32.dll"
+        Write-Host "OpenAL32.dll (64-bit) forced in dist."
         # -------------------------------------------
 
         mkdir dist/client

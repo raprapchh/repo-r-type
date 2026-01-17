@@ -62,7 +62,8 @@ Section "Application" SEC01
     DetailPrint "Téléchargement des fichiers depuis: ${DOWNLOAD_URL}"
     StrCpy $R9 0
 DownloadRetryLoop:
-    inetc::get /caption "Téléchargement des ressources" /popup "Veuillez patienter..." "${DOWNLOAD_URL}" "$INSTDIR\dist.zip" /end
+    ; Download to TEMP folder first to avoid "file open error" in Program Files
+    inetc::get /caption "Téléchargement des ressources" /popup "Veuillez patienter..." "${DOWNLOAD_URL}" "$TEMP\dist.zip" /end
     Pop $0
     ${If} $0 == "OK"
         Goto DownloadSucceeded
@@ -80,14 +81,14 @@ DownloadRetryLoop:
 
 DownloadSucceeded:
     DetailPrint "Extraction des fichiers..."
-    nsExec::ExecToLog 'powershell -NoLogo -NonInteractive -Command "Expand-Archive -LiteralPath \"$INSTDIR\dist.zip\" -DestinationPath \"$INSTDIR\" -Force"'
+    nsExec::ExecToLog 'powershell -NoLogo -NonInteractive -Command "Expand-Archive -LiteralPath \"$TEMP\dist.zip\" -DestinationPath \"$INSTDIR\" -Force"'
     Pop $0
     ${If} $0 != 0
         MessageBox MB_OK|MB_ICONEXCLAMATION "Échec de l'extraction ZIP (code $0)"
         Abort
     ${EndIf}
 
-    Delete "$INSTDIR\dist.zip"
+    Delete "$TEMP\dist.zip"
 
     WriteUninstaller "$INSTDIR\Uninstall.exe"
 
