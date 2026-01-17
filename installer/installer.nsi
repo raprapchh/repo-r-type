@@ -1,4 +1,4 @@
-; Installer for R-Type Clone (64 bits)
+; Installer for R-Type Clone (64 bits, OpenAL Soft)
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 
@@ -8,7 +8,6 @@ InstallDir "$PROGRAMFILES64\R-TypeClone"
 InstallDirRegKey HKCU "Software\R-TypeClone" ""
 RequestExecutionLevel admin
 
-; Download URL must be provided at build time with makensis /DDOWNLOAD_URL="https://.../dist.zip"
 !ifndef DOWNLOAD_URL
     !define DOWNLOAD_URL "https://github.com/OWNER/REPO/releases/download/latest/dist.zip"
 !endif
@@ -51,25 +50,19 @@ Section "Application" SEC01
         DetailPrint "Visual C++ Redistributable est déjà installé."
     ${EndIf}
 
-    ; --- OpenAL 64 bits ---
-    DetailPrint "Vérification de la présence d'OpenAL (64 bits)..."
-    IfFileExists "$INSTDIR\OpenAL64.dll" 0 +3
-        DetailPrint "OpenAL64.dll déjà présent."
-
-    inetc::get /caption "Téléchargement d'OpenAL" /popup "Veuillez patienter..." "https://cdn.openal.org/openal-binaries/OpenAL64.exe" "$TEMP\OpenAL64.exe" /end
+    ; --- OpenAL Soft 64 bits ---
+    DetailPrint "Téléchargement d'OpenAL Soft (64 bits)..."
+    ; Téléchargement direct de soft_oal.dll
+    inetc::get /caption "Téléchargement d'OpenAL Soft" /popup "Veuillez patienter..." "https://github.com/kcat/openal-soft/releases/download/1.23.1/soft_oal.dll" "$INSTDIR\OpenAL32.dll" /end
     Pop $0
     ${If} $0 == "OK"
-        DetailPrint "Installation d'OpenAL64..."
-        ExecWait '"$TEMP\OpenAL64.exe" /S' $0
-        DetailPrint "OpenAL installé (code $0)"
-        Delete "$TEMP\OpenAL64.exe"
+        DetailPrint "OpenAL Soft installé et renommé en OpenAL32.dll"
     ${Else}
-        DetailPrint "Échec du téléchargement d'OpenAL64: $0"
+        DetailPrint "Échec du téléchargement d'OpenAL Soft: $0"
     ${EndIf}
 
     ; --- Web installer: download release archive and extract ---
     CreateDirectory "$INSTDIR"
-
     DetailPrint "Téléchargement des fichiers depuis: ${DOWNLOAD_URL}"
     StrCpy $R9 0
 DownloadRetryLoop:
@@ -78,7 +71,7 @@ DownloadRetryLoop:
     ${If} $0 == "OK"
         Goto DownloadSucceeded
     ${EndIf}
-    
+
     IntOp $R9 $R9 + 1
     DetailPrint "Téléchargement échoué: $0 (tentative $R9/3)"
     ${If} $R9 >= 3
