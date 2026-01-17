@@ -7,9 +7,11 @@ UdpClient::UdpClient(asio::io_context& io_context, const std::string& host, uint
     : io_context_(io_context), running_(false) {
     try {
         socket_ = std::make_unique<asio::ip::udp::socket>(io_context_);
+
         asio::ip::udp::resolver resolver(io_context_);
         server_endpoint_ = *resolver.resolve(asio::ip::udp::v4(), host, std::to_string(port)).begin();
         socket_->open(asio::ip::udp::v4());
+
         recv_buffer_.resize(1024);
     } catch (const std::exception& e) {
         std::cerr << "UdpClient initialization error: " << e.what() << std::endl;

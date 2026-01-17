@@ -57,6 +57,8 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
     initial_player_count_ = 0;
     max_score_reached_ = 0;
 
+    renderer.reset_game_state();
+
     spectator_system_ = std::make_shared<rtype::ecs::SpectatorSystem>();
 
     if (multiplayer_) {
@@ -938,7 +940,7 @@ void GameState::setup_spectator_ui() {
     spectator_title_text_.setFillColor(sf::Color::Red);
 
     spectator_continue_button_.setSize(sf::Vector2f(400, 60));
-    spectator_continue_button_.setFillColor(sf::Color(50, 50, 150)); // Default blue-ish
+    spectator_continue_button_.setFillColor(sf::Color(70, 130, 180)); // Same blue as Play Again button
     spectator_continue_button_.setOutlineColor(sf::Color::White);
     spectator_continue_button_.setOutlineThickness(2);
 

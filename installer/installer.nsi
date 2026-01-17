@@ -1,13 +1,16 @@
-; Installer for R-Type Clone
+; Installer for R-Type Clone (64 bits)
 !include "MUI2.nsh"
+!include "LogicLib.nsh"
 
 Name "R-Type Clone"
 OutFile "R-Type-Installer.exe"
-InstallDir "$PROGRAMFILES\R-TypeClone"
+InstallDir "$PROGRAMFILES64\R-TypeClone"
 InstallDirRegKey HKCU "Software\R-TypeClone" ""
 RequestExecutionLevel admin
 
-; Download URL must be provided at build time with makensis /DDOWNLOAD_URL="https://.../dist.zip"
+; Force 64-bit installation
+!include "x64.nsh"
+
 !ifndef DOWNLOAD_URL
     !define DOWNLOAD_URL "https://github.com/OWNER/REPO/releases/download/latest/dist.zip"
 !endif
@@ -29,39 +32,66 @@ RequestExecutionLevel admin
 !insertmacro MUI_LANGUAGE "French"
 
 Section "Application" SEC01
+    ${If} ${RunningX64}
+        setRegView 64
+    ${EndIf}
+
     SetOutPath "$INSTDIR"
 
-        ; Web installer: download release archive and extract
-        CreateDirectory "$INSTDIR"
-
-        ; Download dist.zip from the release URL into the installation folder
-        DetailPrint "Téléchargement des fichiers depuis: ${DOWNLOAD_URL}"
-        ; Retry loop: up to 3 attempts with 3s delay
-        StrCpy $R9 0
-    DownloadRetryLoop:
-        inetc::get /caption "Téléchargement des ressources" /popup "${DOWNLOAD_URL}" "${DOWNLOAD_URL}" "$INSTDIR\\dist.zip" /end
+    ; --- VC++ Redistributable Check (64 bits) ---
+    DetailPrint "Vérification de Visual C++ Redistributable 2015-2022 (64 bits)..."
+    ReadRegDWORD $0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" "Installed"
+    ${If} $0 != 1
+        DetailPrint "Visual C++ Redistributable non trouvé. Téléchargement..."
+        inetc::get /caption "Téléchargement de VC++ Redist" /popup "Veuillez patienter..." "https://aka.ms/vs/17/release/vc_redist.x64.exe" "$TEMP\vc_redist.x64.exe" /end
         Pop $0
-        StrCmp $0 "OK" DownloadSucceeded
-        IntOp $R9 $R9 + 1
-        DetailPrint "Téléchargement échoué: $0 (tentative $R9/3)"
-        StrCmp $R9 "3" DownloadFailed
-        Sleep 3000
-        Goto DownloadRetryLoop
-    DownloadFailed:
+        ${If} $0 == "OK"
+            DetailPrint "Installation de VC++ Redist..."
+            ExecWait '"$TEMP\vc_redist.x64.exe" /quiet /norestart' $0
+            DetailPrint "Installation terminée (code $0)"
+            Delete "$TEMP\vc_redist.x64.exe"
+        ${Else}
+            DetailPrint "Échec du téléchargement de VC++ Redist: $0. L'application pourrait ne pas fonctionner."
+        ${EndIf}
+    ${Else}
+        DetailPrint "Visual C++ Redistributable est déjà installé."
+    ${EndIf}
+
+    ; --- Web installer: download release archive and extract ---
+    CreateDirectory "$INSTDIR"
+    DetailPrint "Téléchargement des fichiers depuis: ${DOWNLOAD_URL}"
+    StrCpy $R9 0
+DownloadRetryLoop:
+    ; Download to TEMP folder first to avoid "file open error" in Program Files
+    inetc::get /caption "Téléchargement des ressources" /popup "Veuillez patienter..." "${DOWNLOAD_URL}" "$TEMP\dist.zip" /end
+    Pop $0
+    ${If} $0 == "OK"
+        Goto DownloadSucceeded
+    ${EndIf}
+
+    IntOp $R9 $R9 + 1
+    DetailPrint "Téléchargement échoué: $0 (tentative $R9/3)"
+    ${If} $R9 >= 3
         MessageBox MB_OK|MB_ICONEXCLAMATION "Échec du téléchargement des ressources après 3 tentatives: $0"
         Abort
-    DownloadSucceeded:
+    ${EndIf}
+    
+    Sleep 3000
+    Goto DownloadRetryLoop
 
-        ; Try to unzip using nsisunz plugin
-        DetailPrint "Extraction des fichiers..."
-        nsisunz::UnzipToLog "$INSTDIR\\dist.zip" "$INSTDIR"
-        Pop $0
-        StrCmp $0 "success" 0 +3
-            MessageBox MB_OK|MB_ICONEXCLAMATION "Échec de l'extraction: $0"
-            Abort
+DownloadSucceeded:
+    DetailPrint "Extraction des fichiers..."
+    nsExec::ExecToLog 'powershell -NoLogo -NonInteractive -Command "Expand-Archive -LiteralPath \"$TEMP\dist.zip\" -DestinationPath \"$INSTDIR\" -Force"'
+    Pop $0
+    ${If} $0 != 0
+        MessageBox MB_OK|MB_ICONEXCLAMATION "Échec de l'extraction ZIP (code $0)"
+        Abort
+    ${EndIf}
 
-        ; Cleanup archive
-        Delete "$INSTDIR\\dist.zip"
+    Delete "$TEMP\dist.zip"
+
+    CopyFiles "$INSTDIR\scripts\setup_rtype_network.ps1" "$INSTDIR\setup_rtype_network.ps1"
+    nsExec::ExecToLog 'powershell -NoLogo -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\setup_rtype_network.ps1"'
 
     WriteUninstaller "$INSTDIR\Uninstall.exe"
 
@@ -69,6 +99,7 @@ Section "Application" SEC01
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\R-TypeClone" "DisplayName" "R-Type Clone"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\R-TypeClone" "UninstallString" "$INSTDIR\Uninstall.exe"
 SectionEnd
+
 
 Section "Raccourcis" SEC02
     CreateDirectory "$SMPROGRAMS\R-Type Clone"
@@ -79,14 +110,11 @@ Section "Raccourcis" SEC02
 SectionEnd
 
 Section "Uninstall"
-    Delete "$INSTDIR\r-type_client.exe"
-    Delete "$INSTDIR\r-type_server.exe"
-    Delete "$INSTDIR\Uninstall.exe"
+    ${If} ${RunningX64}
+        setRegView 64
+    ${EndIf}
 
-    RMDir /r "$INSTDIR\client"
-    RMDir /r "$INSTDIR\server"
-    RMDir /r "$INSTDIR\config"
-    RMDir "$INSTDIR"
+    RMDir /r "$INSTDIR"
 
     Delete "$SMPROGRAMS\R-Type Clone\R-Type Client.lnk"
     Delete "$SMPROGRAMS\R-Type Clone\R-Type Server.lnk"
@@ -97,6 +125,15 @@ Section "Uninstall"
     DeleteRegKey HKCU "Software\R-TypeClone"
     DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\R-TypeClone"
 SectionEnd
+
+Function .onInit
+    ${If} ${RunningX64}
+        setRegView 64
+    ${Else}
+        MessageBox MB_OK "Cette application nécessite un système Windows 64 bits."
+        Abort
+    ${EndIf}
+FunctionEnd
 
 Function .onInstSuccess
     MessageBox MB_OK "Installation de R-Type Clone terminée avec succès !"

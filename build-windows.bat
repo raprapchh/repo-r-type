@@ -26,5 +26,18 @@ xcopy /E /I /Y client\sprites bin\windows\client\sprites
 xcopy /E /I /Y server\assets bin\windows\server\assets
 xcopy /E /I /Y config bin\windows\config
 
-echo Build complete. Binaries are in bin/windows/
+:: Copy DLLs from vcpkg
+echo Copying dependencies DLLs...
+if exist build\vcpkg_installed\x64-windows\bin (
+    copy /Y build\vcpkg_installed\x64-windows\bin\*.dll bin\windows\
+)
+
+:: Handle OpenAL specifically (rename soft_oal.dll to OpenAL32.dll if needed)
+if exist bin\windows\soft_oal.dll (
+    if not exist bin\windows\OpenAL32.dll (
+        ren bin\windows\soft_oal.dll OpenAL32.dll
+    )
+)
+
+echo Build complete. Binaries and dependencies are in bin/windows/
 pause
