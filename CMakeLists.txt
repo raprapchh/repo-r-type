@@ -52,6 +52,7 @@ find_package(asio CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 find_package(fmt CONFIG REQUIRED)
+find_package(OpenAL CONFIG REQUIRED)
 
 # ─────────────────────────────
 # SFML 2.6.2 (via FetchContent - self-contained)
@@ -92,6 +93,7 @@ target_link_libraries(rtype_ecs PUBLIC
     sfml-window
     sfml-system
     sfml-audio
+    OpenAL::OpenAL
     nlohmann_json::nlohmann_json
     fmt::fmt
 )
@@ -121,6 +123,7 @@ target_link_libraries(r-type_client PRIVATE
     sfml-window
     sfml-system
     sfml-audio
+    OpenAL::OpenAL
     fmt::fmt
 )
 
@@ -140,6 +143,7 @@ target_link_libraries(r-type_server PRIVATE
     rtype_shared
     asio::asio
     Threads::Threads
+    OpenAL::OpenAL
     fmt::fmt
 )
 
@@ -158,6 +162,7 @@ target_link_libraries(doodle_jump PRIVATE
     rtype_ecs
     rtype_shared
     sfml-graphics sfml-window sfml-system sfml-audio
+    OpenAL::OpenAL
 )
 
 if(UNIX)
