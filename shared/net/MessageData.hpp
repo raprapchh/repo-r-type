@@ -304,4 +304,30 @@ struct LobbyUpdateData {
     }
 };
 
+struct RestartVoteData {
+    uint32_t player_id;
+    uint8_t vote; // 0 = quit/menu, 1 = play again
+
+    RestartVoteData() : player_id(0), vote(0) {
+    }
+    RestartVoteData(uint32_t id, uint8_t v) : player_id(id), vote(v) {
+    }
+};
+
+struct RestartVoteStatusData {
+    uint8_t votes_play_again;  // Number of players who voted to play again
+    uint8_t votes_quit;        // Number of players who voted to quit
+    uint8_t total_players;     // Total players in session
+    uint8_t countdown_seconds; // Remaining seconds in countdown (255 = not started)
+    uint8_t restart_triggered; // 1 if restart is happening, 0 otherwise
+
+    RestartVoteStatusData()
+        : votes_play_again(0), votes_quit(0), total_players(0), countdown_seconds(255), restart_triggered(0) {
+    }
+    RestartVoteStatusData(uint8_t play, uint8_t quit, uint8_t total, uint8_t countdown, uint8_t triggered)
+        : votes_play_again(play), votes_quit(quit), total_players(total), countdown_seconds(countdown),
+          restart_triggered(triggered) {
+    }
+};
+
 } // namespace rtype::net
