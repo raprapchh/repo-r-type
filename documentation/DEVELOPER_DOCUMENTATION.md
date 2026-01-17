@@ -2,7 +2,7 @@
 
 Complete documentation to understand, develop, and contribute to the R-Type project.
 
-**Version:** 1.1 | **Last Updated:** January 2026
+**Version:** 2.0 | **Last Updated:** January 2026
 
 ---
 
@@ -16,7 +16,8 @@ Complete documentation to understand, develop, and contribute to the R-Type proj
 6. [Rendering Systems](#6-rendering-systems)
 7. [Development Guide](#7-development-guide)
 8. [Testing & Quality](#8-testing--quality)
-9. [Contributing](#9-contributing)
+9. [CI/CD Pipeline](#9-cicd-pipeline)
+10. [Contributing](#10-contributing)
 
 ---
 
@@ -26,10 +27,12 @@ Complete documentation to understand, develop, and contribute to the R-Type proj
 
 R-Type is a recreation of the classic arcade game developed as part of the **Advanced C++ Knowledge (B-CPP-500)** module at Epitech. The project features:
 
-- **ECS Architecture** Custom implementation for high performance
-- **Networked Multiplayer** via UDP with authoritative server model
-- **SFML Rendering** for graphics and audio
-- **C++20** leveraging modern language features
+- **ECS Architecture** — Custom implementation for high performance
+- **Networked Multiplayer** — UDP with authoritative server model
+- **Spectator Mode** — Watch games without spawning a ship
+- **Developer Console** — Real-time FPS, Ping, and CPU metrics (F3)
+- **SFML Rendering** — Graphics and audio
+- **C++20** — Modern language features
 
 ### Prerequisites
 
@@ -42,7 +45,6 @@ R-Type is a recreation of the classic arcade game developed as part of the **Adv
 **Dependencies** (automatically managed by vcpkg):
 
 - SFML 2.5+ (graphics, audio)
-
 - ASIO (asynchronous networking)
 - Catch2 (unit testing)
 
@@ -68,18 +70,20 @@ cd G-CPP-500-PAR-5-2-rtype-3
 
 ```bash
 # Terminal 1: Start the server
-./r-type_server 4242
+./bin/linux/r-type_server 4242
 
 # Terminal 2: Start the client
-./r-type_client 127.0.0.1 4242
+./bin/linux/r-type_client 127.0.0.1 4242
 ```
 
 ### Controls
 
-| Action   | Keys          | Description        |
-| -------- | ------------- | ------------------ |
-| Movement | WASD / Arrows | Move the spaceship |
-| Shoot    | Space         | Fire a projectile  |
+| Action           | Keys              | Description                      |
+| ---------------- | ----------------- | -------------------------------- |
+| Movement         | WASD / Arrows     | Move the spaceship               |
+| Shoot            | Space             | Fire a projectile                |
+| Dev Console      | F3                | Toggle FPS/Ping/CPU display      |
+| Spectator Camera | Left/Right Arrows | Switch camera target (spectator) |
 
 ---
 
@@ -129,8 +133,8 @@ r-type/
 ├── ecs/                 # ECS library
 │   ├── include/
 │   │   ├── Registry.hpp         # Entity manager
-│   │   ├── components/          # 20 components (Position, Velocity, Health...)
-│   │   └── systems/             # 12 systems (Movement, Collision, Weapon...)
+│   │   ├── components/          # All components (Position, Velocity, SpectatorComponent...)
+│   │   └── systems/             # All systems (Movement, Collision, DevToolsSystem...)
 │   └── src/            # Implementations
 │
 ├── shared/              # Common client/server code
@@ -140,7 +144,7 @@ r-type/
 │
 ├── tests/               # Unit tests (Catch2)
 ├── documentation/       # Documentation (you are here!)
-└── external/            # Third-party libraries (ASIO)
+└── installer/           # Windows NSIS installer scripts
 ```
 
 ### Game Loops
@@ -189,61 +193,68 @@ auto &pos = registry.get_component<Position>(entity);
 registry.kill_entity(entity);
 ```
 
-### Main Components (20 total)
+### Main Components
 
 #### Transform & Physics
 
-- **Position** (`x, y`) - 2D position of the entity
-- **Velocity** (`vx, vy`) - Movement vector in pixels/second
-- **HitBox** (`width, height`) - AABB collision box
-- **CollisionLayer** (`layer`) - Collision filter (Player, Enemy, Projectile...)
+- **Position** (`x, y`) — 2D position of the entity
+- **Velocity** (`vx, vy`) — Movement vector in pixels/second
+- **HitBox** (`width, height`) — AABB collision box
+- **CollisionLayer** (`layer`) — Collision filter (Player, Enemy, Projectile...)
 
 #### Combat & Gameplay
 
-- **Health** (`hp, max_hp`) - Health points
-- **Weapon** (`fireRate, damage, projectileSpeed...`) - Weapon properties
-- **Projectile** (`damage, owner_id, lifetime`) - Projectile data
-- **Score** (`points`) - Player score
-- **Lives** (`count`) - Remaining lives
-- **InvincibilityTimer** (`remaining_time`) - Temporary invincibility
+- **Health** (`hp, max_hp`) — Health points
+- **Weapon** (`fireRate, damage, projectileSpeed...`) — Weapon properties
+- **Projectile** (`damage, owner_id, lifetime`) — Projectile data
+- **Score** (`points`) — Player score
+- **Lives** (`count`) — Remaining lives
+- **InvincibilityTimer** (`remaining_time`) — Temporary invincibility
 
 #### Rendering & Visual
 
-- **Drawable** (`texture_name, rect, frames...`) - Sprite and animation
-- **Explosion** (`timer, radius`) - Explosion effect
+- **Drawable** (`texture_name, rect, frames...`) — Sprite and animation
+- **Explosion** (`timer, radius`) — Explosion effect
 
 #### Networking
 
-- **NetworkId** (`network_id`) - Network identifier of the entity
-- **NetworkInterpolation** (`last_x, target_x, alpha...`) - Network interpolation
+- **NetworkId** (`network_id`) — Network identifier of the entity
+- **NetworkInterpolation** (`last_x, target_x, alpha...`) — Network interpolation
+- **PingStats** (`lastPingMs, timer, pingRequested`) — Latency measurement
+
+#### Spectator Mode
+
+- **SpectatorComponent** (`targetEntityId, switchTimer`) — Marks entity as spectator, tracks camera target
 
 #### Utilities
 
-- **Tag** (`tag`) - String classification (e.g., "Player", "Boss")
-- **Controllable** - Marker for controllable entities
-- **MapBounds** (`min_x, max_x, min_y, max_y`) - Movement boundaries
-- **EnemySpawner** (`spawnInterval, timeSinceLastSpawn`) - Enemy spawner
-- **Sound** (`sound_name, playing`) - Sound trigger
+- **Tag** (`tag`) — String classification (e.g., "Player", "Boss")
+- **Controllable** — Marker for controllable entities
+- **MapBounds** (`min_x, max_x, min_y, max_y`) — Movement boundaries
+- **EnemySpawner** (`spawnInterval, timeSinceLastSpawn`) — Enemy spawner
+- **Sound** (`sound_name, playing`) — Sound trigger
 
-### Main Systems (12 total)
+### Main Systems
 
 #### Server (Authoritative Logic)
 
-1. **MovementSystem** - Updates Position based on Velocity
-2. **CollisionSystem** - AABB detection with layer filtering
-3. **WeaponSystem** - Manages cooldowns and spawns projectiles
-4. **ProjectileSystem** - Updates projectile lifetime
-5. **SpawnSystem** - Generates enemy waves
-6. **MobSystem** - Enemy artificial intelligence
-7. **BoundarySystem** - Enforces map boundaries
-8. **LivesSystem** - Manages lives and respawning
-9. **ScoreSystem** - Calculates and updates score
+1. **MovementSystem** — Updates Position based on Velocity
+2. **CollisionSystem** — AABB detection with layer filtering
+3. **WeaponSystem** — Manages cooldowns and spawns projectiles
+4. **ProjectileSystem** — Updates projectile lifetime
+5. **SpawnSystem** — Generates enemy waves
+6. **MobSystem** — Enemy artificial intelligence
+7. **BoundarySystem** — Enforces map boundaries
+8. **LivesSystem** — Manages lives and respawning
+9. **ScoreSystem** — Calculates and updates score
 
 #### Client (Display)
 
-10. **RenderSystem** - SFML sprite rendering
-11. **AudioSystem** - Sound effect playback
-12. **InputSystem** - Keyboard/mouse capture
+10. **RenderSystem** — SFML sprite rendering
+11. **AudioSystem** — Sound effect playback
+12. **InputSystem** — Keyboard/mouse capture
+13. **SpectatorSystem** — Camera follow logic for spectators
+14. **DevToolsSystem** — F3 toggle for metrics overlay (FPS, Ping, CPU Frame Time)
 
 ### System Execution Order
 
@@ -268,22 +279,11 @@ InputSystem          // 1. Capture inputs
 AudioSystem          // 2. Process audio events
 NetworkSystem        // 3. Process received packets
 MovementSystem       // 4. Apply velocity/interpolation
-TextureAnimationSystem // 5. Update sprite frames
-RenderSystem         // 6. Render entities to window
-UIRenderSystem       // 7. Render UI overlays (Score, FPS, Ping)
-```
-
-### Example: Creating a Player Entity
-
-```cpp
-auto player = registry.spawn_entity();
-registry.add_component<Position>(player, Position{100.0f, 540.0f});
-registry.add_component<Velocity>(player, Velocity{0.0f, 0.0f});
-registry.add_component<Health>(player, Health{100, 100});
-registry.add_component<HitBox>(player, HitBox{32.0f, 32.0f});
-registry.add_component<Controllable>(player);
-registry.add_component<Score>(player, Score{0});
-registry.add_component<Lives>(player, Lives{3});
+SpectatorSystem      // 5. Camera follow logic (spectator mode)
+TextureAnimationSystem // 6. Update sprite frames
+RenderSystem         // 7. Render entities to window
+DevToolsSystem       // 8. Toggle F3 overlay
+UIRenderSystem       // 9. Render UI overlays (Score, FPS, Ping)
 ```
 
 ---
@@ -311,30 +311,48 @@ registry.add_component<Lives>(player, Lives{3});
 └────────────────────────────┘
 ```
 
-### Message Types (20 OpCodes)
+### Message Types
 
-| OpCode | Name          | Direction     | Frequency | Description                |
-| ------ | ------------- | ------------- | --------- | -------------------------- |
-| 1      | PlayerJoin    | ⇄             | Once      | Connection/ID assignment   |
-| 2      | PlayerMove    | Client→Server | 60 Hz     | Position/velocity          |
-| 3      | PlayerShoot   | Client→Server | On action | Weapon fire                |
-| 4      | PlayerLeave   | ⇄             | Once      | Disconnection              |
-| 5      | EntitySpawn   | Server→Client | On event  | Entity creation            |
-| 6      | EntityMove    | Server→Client | 20 Hz     | Entity update              |
-| 7      | EntityDestroy | Server→Client | On event  | Entity destruction         |
-| 8      | GameStart     | Server→Client | Once      | Game start                 |
-| 9      | GameState     | Server→Client | 20 Hz     | Full synchronization       |
-| 10     | Ping          | ⇄             | 1 Hz      | Latency measurement        |
-| 11     | Pong          | ⇄             | 1 Hz      | Latency response           |
-| 12     | MapResize     | Client→Server | On resize | Viewport resize            |
-| 13     | PlayerName    | Client→Server | Once      | Player name update         |
-| 14     | ChatMessage   | ⇄             | On action | Lobby chat message         |
-| 15     | StageCleared  | Server→Client | On event  | Stage victory notification |
-| 16     | ListRooms     | Client→Server | On action | Request room list          |
-| 17     | RoomInfo      | Server→Client | On event  | Room status update         |
-| 18     | CreateRoom    | Client→Server | On action | Create new lobby           |
-| 19     | JoinRoom      | Client→Server | On action | Join specific lobby        |
-| 20     | LobbyUpdate   | Server→Client | On event  | Lobby player count update  |
+| OpCode | Name          | Direction     | Frequency | Description                                       |
+| ------ | ------------- | ------------- | --------- | ------------------------------------------------- |
+| 1      | PlayerJoin    | ⇄             | Once      | Connection with **ClientMode** (PLAYER/SPECTATOR) |
+| 2      | PlayerMove    | Client→Server | 60 Hz     | Position/velocity                                 |
+| 3      | PlayerShoot   | Client→Server | On action | Weapon fire                                       |
+| 4      | PlayerLeave   | ⇄             | Once      | Disconnection                                     |
+| 5      | EntitySpawn   | Server→Client | On event  | Entity creation                                   |
+| 6      | EntityMove    | Server→Client | 20 Hz     | Entity update                                     |
+| 7      | EntityDestroy | Server→Client | On event  | Entity destruction                                |
+| 8      | GameStart     | Server→Client | Once      | Game start                                        |
+| 9      | GameState     | Server→Client | 20 Hz     | Full synchronization                              |
+| 10     | **Ping**      | Client→Server | 1 Hz      | **Latency measurement request**                   |
+| 11     | **Pong**      | Server→Client | 1 Hz      | **Latency measurement response**                  |
+| 12     | MapResize     | Client→Server | On resize | Viewport resize                                   |
+| 13     | PlayerName    | Client→Server | Once      | Player name update                                |
+| 14     | ChatMessage   | ⇄             | On action | Lobby chat message                                |
+| 15     | StageCleared  | Server→Client | On event  | Stage victory notification                        |
+| 16     | ListRooms     | Client→Server | On action | Request room list                                 |
+| 17     | RoomInfo      | Server→Client | On event  | Room status update                                |
+| 18     | CreateRoom    | Client→Server | On action | Create new lobby                                  |
+| 19     | JoinRoom      | Client→Server | On action | Join specific lobby                               |
+| 20     | LobbyUpdate   | Server→Client | On event  | Lobby player count update                         |
+
+### Handshake Protocol
+
+Upon connection, clients send a `PlayerJoin` packet containing a **ClientMode**:
+
+- **PLAYER** — Standard gameplay, ship spawns
+- **SPECTATOR** — Observer mode, no ship, invisible, no collision
+
+The server allocates resources accordingly and does not spawn an entity for spectators.
+
+### Ping/Pong Protocol
+
+The `PingStats` component tracks latency:
+
+1. Client sends `Ping` packet every ~1 second
+2. Server immediately responds with `Pong`
+3. Client calculates Round-Trip Time (RTT)
+4. `lastPingMs` is updated and displayed via `DevToolsSystem`
 
 ### Network Strategies
 
@@ -349,12 +367,6 @@ registry.add_component<Lives>(player, Lives{3});
 - Smooths movements between updates (20 Hz → 60 FPS)
 - Uses `NetworkInterpolation` component
 - Interpolates from `last_position` to `target_position`
-
-**State Synchronization:**
-
-- Server sends full state every 50ms (20 Hz)
-- Self-correcting (lost packets compensated by next one)
-- No delta compression (simplicity > optimization)
 
 ### Security
 
@@ -379,10 +391,19 @@ void Renderer::render(Registry &registry) {
     renderEntities(registry);     // 2. Entities (Position + Drawable)
     renderUI(registry);           // 3. UI (score, lives)
     renderEffects(registry);      // 4. Effects (explosions)
+    renderDevTools(registry);     // 5. Dev Tools overlay (if F3 active)
 
     window.display();
 }
 ```
+
+### DevToolsSystem
+
+Toggled via **F3**, displays real-time metrics:
+
+- **FPS**: Frames per second
+- **Ping**: Network latency in milliseconds (from `PingStats`)
+- **CPU Frame Time**: Duration of the engine loop in ms
 
 ### Animation System
 
@@ -392,16 +413,6 @@ Animated sprites use the `Drawable` component:
 - `current_frame`: Current frame index
 - `frame_time`: Duration per frame (e.g., 0.1s = 10 FPS)
 - A system updates `current_frame` based on elapsed time
-
-### Texture Management
-
-**Texture cache** to avoid reloading:
-
-```cpp
-std::unordered_map<std::string, sf::Texture> m_textureCache;
-```
-
-Textures are loaded once, reused for all sprites.
 
 ---
 
@@ -434,50 +445,26 @@ Textures are loaded once, reused for all sprites.
 find . -name "*.cpp" -o -name "*.hpp" | xargs clang-format -i
 ```
 
-### Commit Messages
+### Clean Include Strategy
 
-**Conventional Commits** format:
+> **IMPORTANT:** We use CMake `target_include_directories` for clean includes.
+> **No relative backtracking** (e.g., `../../`) is allowed.
 
-```
-<type>(<scope>): <subject>
+**Correct:**
 
-<body>
-
-<footer>
-```
-
-**Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
-
-**Examples:**
-
-```
-feat(ecs): add Explosion component for death animations
-fix(network): resolve player ID desync in multiplayer
-docs(api): update ECS system documentation
+```cpp
+#include "components/Position.hpp"
+#include "systems/MovementSystem.hpp"
+#include "interfaces/ecs/ISystem.hpp"
 ```
 
-### Git Workflow
+**Incorrect:**
 
-```bash
-# Create a feature branch from dev
-git checkout dev
-git pull origin dev
-git checkout -b feature/new-feature
-
-# Make commits
-git add .
-git commit -m "feat(ecs): add new enemy type"
-
-# Push and create PR to dev
-git push origin feature/new-feature
+```cpp
+#include "../../ecs/include/components/Position.hpp"  // ❌ NO
 ```
 
-**Branches:**
-
-- `main`: Stable production
-- `dev`: Feature integration
-- `feature/<name>`: Feature development
-- `fix/<name>`: Bug fixes
+This is enforced via CMake configuration, ensuring all include paths are clean and maintainable.
 
 ### Adding a New Component
 
@@ -509,7 +496,7 @@ registry.add_component<MyComponent>(entity, MyComponent{1.5f, 0});
 
 ```cpp
 #pragma once
-#include "../../shared/interfaces/ecs/ISystem.hpp"
+#include "interfaces/ecs/ISystem.hpp"
 
 namespace rtype::ecs {
 
@@ -534,34 +521,6 @@ void MySystem::update(GameEngine::Registry &registry, double dt) {
         // System logic
     }
 }
-```
-
-3. Add to server/client:
-
-```cpp
-MySystem m_mySystem;
-
-void update() {
-    m_mySystem.update(m_registry, m_deltaTime);
-}
-```
-
-### Debugging
-
-**Server:**
-
-```bash
-gdb ./r-type_server
-(gdb) run 4242
-(gdb) break Server::update
-```
-
-**Client:**
-
-```bash
-gdb ./r-type_client
-(gdb) run 127.0.0.1 4242
-(gdb) break Renderer::render
 ```
 
 **Network (Wireshark):**
@@ -611,18 +570,40 @@ TEST_CASE("MovementSystem updates position", "[MovementSystem]") {
 }
 ```
 
-### CI/CD
+---
 
-**GitHub Actions** (`.github/workflows/ci.yml`):
+## 9. CI/CD Pipeline
 
-1. Commit message validation
-2. Code formatting check (clang-format)
-3. Project compilation
-4. Test execution
+### GitHub Actions
+
+The project uses **GitHub Actions** for automated builds on every push and pull request.
+
+#### Linux Build (`.github/workflows/ci.yml`)
+
+1. **Commit Lint** — Validates conventional commit messages
+2. **Clang-Format** — Checks code formatting
+3. **Build** — Compiles project on Ubuntu with vcpkg
+
+#### Windows Build (`.github/workflows/windows-msvc.yml`)
+
+1. **Build** — Compiles on Windows with MSVC
+2. **Artifact Upload** — Packages binaries and assets
+3. **Release** — Auto-creates GitHub Release on tag push (`v*`)
+
+### Build Badges
+
+```markdown
+![Linux Build](https://github.com/EpitechPGE3-2025/G-CPP-500-PAR-5-2-rtype-3/actions/workflows/ci.yml/badge.svg)
+![Windows Build](https://github.com/EpitechPGE3-2025/G-CPP-500-PAR-5-2-rtype-3/actions/workflows/windows-msvc.yml/badge.svg)
+```
+
+### Windows Installer (NSIS)
+
+An NSIS installer script is available in `installer/`. The CI pipeline can generate a Windows `.exe` installer with all required DLLs and assets bundled.
 
 ---
 
-## 9. Contributing
+## 10. Contributing
 
 ### Pull Request Checklist
 
@@ -635,6 +616,7 @@ Before submitting a PR:
 - [ ] No conflicts with target branch
 - [ ] Tests added for new features
 - [ ] Documentation updated if needed
+- [ ] **CI passes on both Windows and Linux**
 
 ### Code Review
 
@@ -672,20 +654,15 @@ Before submitting a PR:
 
 ### Internal Documentation
 
-- [Detailed Network Protocol](./RTYPE_BINARY_PROTOCOL.md) - Complete protocol specification
-- [Contribution Guide](./how_to_contribute.md) - How to contribute to the project
+- [Detailed Network Protocol](./RTYPE_BINARY_PROTOCOL.md) — Complete protocol specification
+- [Contribution Guide](./how_to_contribute.md) — How to contribute to the project
+- [User Guide](./USER_GUIDE.md) — Player guide for installation and gameplay
 
 ### External Resources
 
-- [SFML Tutorials](https://www.sfml-dev.org/tutorials/) - SFML tutorials
-- [ASIO Documentation](https://think-async.com/Asio/) - ASIO documentation
-- [Game Networking](https://gafferongames.com/) - Game networking best practices
-
-### Support
-
-- **GitHub Issues:** Report bugs or request features
-- **Documentation:** Check the `/documentation` folder
-- **Code Comments:** Most complex logic has inline comments
+- [SFML Tutorials](https://www.sfml-dev.org/tutorials/) — SFML tutorials
+- [ASIO Documentation](https://think-async.com/Asio/) — ASIO documentation
+- [Game Networking](https://gafferongames.com/) — Game networking best practices
 
 ---
 
