@@ -535,7 +535,7 @@ void Renderer::draw_game_over(bool all_players_dead, bool is_solo) {
     }
 
     if (all_players_dead) {
-        if (restart_vote_active_) {
+        if (restart_vote_active_ && !is_solo) {
             window_->setView(current_view);
             return;
         }
