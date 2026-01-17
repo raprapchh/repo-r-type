@@ -63,6 +63,12 @@ class IMessageSerializer {
 
     virtual Packet serialize_lobby_update(const LobbyUpdateData& data) = 0;
     virtual LobbyUpdateData deserialize_lobby_update(const Packet& packet) = 0;
+
+    virtual Packet serialize_restart_vote(const RestartVoteData& data) = 0;
+    virtual RestartVoteData deserialize_restart_vote(const Packet& packet) = 0;
+
+    virtual Packet serialize_restart_vote_status(const RestartVoteStatusData& data) = 0;
+    virtual RestartVoteStatusData deserialize_restart_vote_status(const Packet& packet) = 0;
 };
 
 } // namespace rtype::net

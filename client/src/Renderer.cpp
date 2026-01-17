@@ -168,19 +168,6 @@ void Renderer::remove_entity(uint32_t entity_id) {
     entities_.erase(entity_id);
 }
 
-void Renderer::clear_entities() {
-    entities_.clear();
-}
-
-void Renderer::reset_game_state() {
-    entities_.clear();
-    boss_active_ = false;
-    stage_cleared_ = false;
-    game_finished_ = false;
-    stage_cleared_timer_ = 0.0f;
-    game_state_ = rtype::net::GameStateData();
-}
-
 void Renderer::update_animations(float delta_time) {
     for (auto& [id, entity] : entities_) {
         if (entity.type == rtype::net::EntityType::PROJECTILE) {
@@ -548,6 +535,11 @@ void Renderer::draw_game_over(bool all_players_dead, bool is_solo) {
     }
 
     if (all_players_dead) {
+        if (restart_vote_active_) {
+            window_->setView(current_view);
+            return;
+        }
+
         float button_spacing = is_solo ? 80.0f : 0.0f;
 
         // Restart button (only in solo mode)
@@ -910,6 +902,92 @@ bool Renderer::is_victory_back_to_menu_clicked(const sf::Vector2f& mouse_pos) co
     if (!game_finished_)
         return false;
     return back_to_menu_button_.getGlobalBounds().contains(mouse_pos);
+}
+
+void Renderer::draw_restart_vote_ui() {
+    if (!restart_vote_active_)
+        return;
+
+    float center_x = rtype::constants::SCREEN_WIDTH / 2.0f;
+    float center_y = rtype::constants::SCREEN_HEIGHT / 2.0f;
+
+    sf::Color button_color = sf::Color(70, 130, 180);
+
+    play_again_button_.setSize(sf::Vector2f(280.0f, 65.0f));
+    play_again_button_.setFillColor(button_color);
+    play_again_button_.setOutlineThickness(2);
+    play_again_button_.setOutlineColor(sf::Color::White);
+    sf::FloatRect play_btn_bounds = play_again_button_.getLocalBounds();
+    play_again_button_.setOrigin(play_btn_bounds.width / 2.0f, play_btn_bounds.height / 2.0f);
+    play_again_button_.setPosition(center_x, center_y + 80.0f);
+
+    play_again_text_.setFont(font_);
+    play_again_text_.setString("PLAY AGAIN");
+    play_again_text_.setCharacterSize(23);
+    play_again_text_.setFillColor(sf::Color::White);
+    sf::FloatRect play_text_bounds = play_again_text_.getLocalBounds();
+    play_again_text_.setOrigin(play_text_bounds.left + play_text_bounds.width / 2.0f,
+                               play_text_bounds.top + play_text_bounds.height / 2.0f);
+    play_again_text_.setPosition(center_x, center_y + 80.0f);
+
+    back_to_menu_button_.setSize(sf::Vector2f(280.0f, 65.0f));
+    back_to_menu_button_.setFillColor(sf::Color(130, 70, 70));
+    back_to_menu_button_.setOutlineThickness(2);
+    back_to_menu_button_.setOutlineColor(sf::Color::White);
+    sf::FloatRect menu_btn_bounds = back_to_menu_button_.getLocalBounds();
+    back_to_menu_button_.setOrigin(menu_btn_bounds.width / 2.0f, menu_btn_bounds.height / 2.0f);
+    back_to_menu_button_.setPosition(center_x, center_y + 160.0f);
+
+    back_to_menu_text_.setFont(font_);
+    back_to_menu_text_.setString("BACK TO MENU");
+    back_to_menu_text_.setCharacterSize(23);
+    back_to_menu_text_.setFillColor(sf::Color::White);
+    sf::FloatRect menu_text_bounds = back_to_menu_text_.getLocalBounds();
+    back_to_menu_text_.setOrigin(menu_text_bounds.left + menu_text_bounds.width / 2.0f,
+                                 menu_text_bounds.top + menu_text_bounds.height / 2.0f);
+    back_to_menu_text_.setPosition(center_x, center_y + 160.0f);
+
+    std::string status_str = std::to_string(restart_vote_status_.votes_play_again) + "/" +
+                             std::to_string(restart_vote_status_.total_players) + " READY";
+    vote_status_text_.setFont(font_);
+    vote_status_text_.setString(status_str);
+    vote_status_text_.setCharacterSize(28);
+    vote_status_text_.setFillColor(sf::Color::Yellow);
+    sf::FloatRect status_bounds = vote_status_text_.getLocalBounds();
+    vote_status_text_.setOrigin(status_bounds.left + status_bounds.width / 2.0f,
+                                status_bounds.top + status_bounds.height / 2.0f);
+    vote_status_text_.setPosition(center_x, center_y);
+
+    window_->draw(play_again_button_);
+    window_->draw(play_again_text_);
+    window_->draw(back_to_menu_button_);
+    window_->draw(back_to_menu_text_);
+    window_->draw(vote_status_text_);
+}
+
+void Renderer::update_restart_vote_status(const rtype::net::RestartVoteStatusData& status) {
+    restart_vote_status_ = status;
+    restart_vote_active_ = (status.countdown_seconds > 0 && status.countdown_seconds < 255) ||
+                           (status.restart_triggered == 0 && status.total_players > 0);
+}
+
+bool Renderer::is_play_again_clicked(const sf::Vector2f& mouse_pos) const {
+    return play_again_button_.getGlobalBounds().contains(mouse_pos);
+}
+
+void Renderer::clear_entities() {
+    entities_.clear();
+}
+
+void Renderer::reset_game_state() {
+    entities_.clear();
+    boss_active_ = false;
+    stage_cleared_ = false;
+    game_finished_ = false;
+    stage_cleared_timer_ = 0.0f;
+    restart_vote_active_ = false;
+    restart_vote_status_ = rtype::net::RestartVoteStatusData();
+    game_state_ = rtype::net::GameStateData();
 }
 
 } // namespace rtype::client
