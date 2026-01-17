@@ -89,6 +89,16 @@ int main() {
         textures["projectile"] = projectile_texture;
     }
 
+    sf::Texture hole_texture;
+    if (!hole_texture.loadFromFile("platformer/assets/hole@2x.png") &&
+        !hole_texture.loadFromFile("assets/hole@2x.png") &&
+        !hole_texture.loadFromFile("../platformer/assets/hole@2x.png") &&
+        !hole_texture.loadFromFile("../assets/hole@2x.png")) {
+        std::cerr << "Failed to load hole texture!" << std::endl;
+    } else {
+        textures["hole"] = hole_texture;
+    }
+
     auto renderer_impl = std::make_shared<rtype::rendering::SFMLRenderer>(window, textures);
     auto render_system = std::make_shared<rtype::ecs::RenderSystem>(renderer_impl, nullptr);
 
@@ -143,6 +153,19 @@ int main() {
         registry.addComponent<rtype::ecs::component::Collidable>(wall, rtype::ecs::component::CollisionLayer::Obstacle);
         registry.addComponent<rtype::ecs::component::Drawable>(
             wall, "green_platform", 0, 0, static_cast<int>(config.width), static_cast<int>(config.height));
+    }
+
+    std::vector<PlatformConfig> hole_layout = {
+        {350.0f, 300.0f, 60.0f, 60.0f},
+        {100.0f, -600.0f, 60.0f, 60.0f},
+    };
+
+    for (const auto& config : hole_layout) {
+        auto hole = registry.createEntity();
+        registry.addComponent<rtype::ecs::component::Position>(hole, config.x, config.y);
+        registry.addComponent<rtype::ecs::component::HitBox>(hole, config.width, config.height);
+        registry.addComponent<rtype::ecs::component::Drawable>(hole, "hole", 0, 0, 0, 0);
+        registry.addComponent<rtype::ecs::component::Tag>(hole, "Hole");
     }
 
     sf::Font font;
@@ -252,12 +275,9 @@ int main() {
                 moving_horizontal = true;
             }
 
-            // Handle Up sprite
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
                 registry.getComponent<rtype::ecs::component::Drawable>(player).texture_name = "player_up";
             } else if (!moving_horizontal) {
-                // Revert to facing if not actively moving left/right and not holding up
-                // (Though if moving left/right, the above blocks handle the sprite)
                 registry.getComponent<rtype::ecs::component::Drawable>(player).texture_name = last_horizontal_facing;
             }
 
@@ -317,6 +337,26 @@ int main() {
                 pos.x = -hitbox.width;
             } else if (pos.x < -hitbox.width) {
                 pos.x = 800;
+            }
+
+            auto hole_view =
+                registry
+                    .view<rtype::ecs::component::Tag, rtype::ecs::component::Position, rtype::ecs::component::HitBox>();
+            for (auto hole_entity : hole_view) {
+                auto& tag = registry.getComponent<rtype::ecs::component::Tag>(hole_entity);
+                if (tag.name == "Hole") {
+                    auto& holePos = registry.getComponent<rtype::ecs::component::Position>(hole_entity);
+                    auto& holeHitbox = registry.getComponent<rtype::ecs::component::HitBox>(hole_entity);
+
+                    float shrinkX = 60.0f;
+                    float shrinkY = 60.0f;
+
+                    if (pos.x < holePos.x + holeHitbox.width - shrinkX && pos.x + hitbox.width > holePos.x + shrinkX &&
+                        pos.y < holePos.y + holeHitbox.height - shrinkY &&
+                        pos.y + hitbox.height > holePos.y + shrinkY) {
+                        game_over = true;
+                    }
+                }
             }
 
             if (pos.y < view.getCenter().y) {
