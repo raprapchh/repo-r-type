@@ -150,6 +150,14 @@ class Renderer {
     uint8_t cleared_stage_number_ = 1;
     float stage_cleared_timer_ = 0.0f;
 
+    // Restart vote UI elements
+    mutable sf::RectangleShape play_again_button_;
+    mutable sf::Text play_again_text_;
+    mutable sf::Text vote_status_text_;
+    mutable sf::Text countdown_text_;
+    rtype::net::RestartVoteStatusData restart_vote_status_;
+    bool restart_vote_active_ = false;
+
   public:
     void draw_charge_effect(const sf::Vector2f& position, float delta_time);
     void show_stage_cleared(uint8_t stage_number);
@@ -161,6 +169,19 @@ class Renderer {
         return game_finished_;
     }
     bool is_victory_back_to_menu_clicked(const sf::Vector2f& mouse_pos) const;
+
+    // Restart vote methods
+    void draw_restart_vote_ui();
+    void update_restart_vote_status(const rtype::net::RestartVoteStatusData& status);
+    bool is_play_again_clicked(const sf::Vector2f& mouse_pos) const;
+    bool is_restart_vote_active() const {
+        return restart_vote_active_;
+    }
+    bool is_restart_triggered() const {
+        return restart_vote_status_.restart_triggered == 1;
+    }
+    void clear_entities();
+    void reset_game_state();
 };
 
 } // namespace rtype::client
