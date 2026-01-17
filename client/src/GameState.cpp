@@ -566,6 +566,8 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
                 all_players_dead_ = false;
                 score_saved_ = false;
                 max_score_reached_ = 0;
+                has_chosen_spectate_ = false;
+                spectator_choice_pending_ = false;
             }
             return;
         }
