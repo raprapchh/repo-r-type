@@ -30,6 +30,7 @@ class Client {
 
     void connect();
     void disconnect();
+    void reconnect();
     void run();
     void update(double dt);
 
@@ -67,6 +68,7 @@ class Client {
     void send_player_name_update(const std::string& name);
     void send_chat_message(const std::string& message);
     void leave_room();
+    void restart_session();
     void set_offline_ids(uint32_t session_id, uint32_t player_id) {
         session_id_ = session_id;
         player_id_ = player_id;

@@ -390,6 +390,7 @@ void GameSession::game_loop() {
                     game_over_ = true;
                     restart_vote_active_ = true;
                     restart_vote_start_time_ = std::chrono::steady_clock::now();
+                    last_broadcast_countdown_second_ = -1;
                     restart_votes_play_.clear();
                     restart_votes_quit_.clear();
                     Logger::instance().info("Session " + std::to_string(session_id_) +
@@ -1005,9 +1006,9 @@ void GameSession::update_restart_vote_countdown() {
             broadcast_to_all_clients(serialized);
         }
     } else {
-        static int last_broadcast_second = -1;
-        if (seconds_elapsed != last_broadcast_second) {
-            last_broadcast_second = seconds_elapsed;
+        int countdown = RESTART_VOTE_COUNTDOWN_SECONDS - seconds_elapsed;
+        if (countdown != last_broadcast_countdown_second_) {
+            last_broadcast_countdown_second_ = countdown;
             broadcast_restart_vote_status();
         }
     }

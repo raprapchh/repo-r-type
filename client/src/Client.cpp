@@ -115,6 +115,43 @@ void Client::run() {
     }
 }
 
+void Client::reconnect() {
+    // Stop existing connections
+    if (io_context_) {
+        io_context_->stop();
+    }
+
+    if (network_thread_ && network_thread_->joinable()) {
+        network_thread_->join();
+    }
+
+    if (udp_client_) {
+        udp_client_->stop();
+    }
+
+    // Clear all state
+    connected_ = false;
+    session_id_ = 0;
+    player_id_ = 0;
+    network_system_.set_player_id(0);
+    network_system_.clear_packet_queue();
+
+    {
+        std::lock_guard<std::mutex> lock(registry_mutex_);
+        registry_.clear();
+    }
+
+    // Recreate io_context and UDP client
+    io_context_ = std::make_unique<asio::io_context>();
+    udp_client_ = std::make_unique<UdpClient>(*io_context_, host_, port_);
+    udp_client_->set_message_handler(
+        [this](const asio::error_code& error, std::size_t bytes_transferred, const std::vector<uint8_t>& data) {
+            handle_udp_receive(error, bytes_transferred, data);
+        });
+
+    std::cout << "Client reconnected - ready for new session" << std::endl;
+}
+
 void Client::handle_udp_receive(const asio::error_code& error, std::size_t bytes_transferred,
                                 const std::vector<uint8_t>& data) {
     (void)bytes_transferred;
@@ -820,6 +857,25 @@ void Client::leave_room() {
     }
 
     std::cout << "Left current room" << std::endl;
+}
+
+void Client::restart_session() {
+    // Send PlayerLeave to properly close the current session on server
+    if (connected_.load()) {
+        rtype::net::MessageSerializer serializer;
+        rtype::net::PlayerLeaveData leave_data(player_id_);
+        rtype::net::Packet leave_packet = serializer.serialize_player_leave(leave_data);
+        std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(leave_packet);
+        udp_client_->send(packet_data);
+    }
+
+    // Wait for server to process the leave
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // Full reconnect - recreate socket to clear all buffers
+    reconnect();
+
+    std::cout << "Session reset for restart" << std::endl;
 }
 
 void Client::send_heartbeat() {

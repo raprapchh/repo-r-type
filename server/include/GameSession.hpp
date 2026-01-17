@@ -121,6 +121,7 @@ class GameSession {
     std::unordered_set<uint32_t> restart_votes_quit_;
     bool restart_vote_active_ = false;
     std::chrono::steady_clock::time_point restart_vote_start_time_;
+    int last_broadcast_countdown_second_ = -1;
     static constexpr int RESTART_VOTE_COUNTDOWN_SECONDS = 15;
 
     static constexpr double TARGET_TICK_RATE = 60.0;
