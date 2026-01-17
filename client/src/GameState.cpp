@@ -31,8 +31,10 @@
 #include "components/FpsCounter.hpp"
 #include "components/PingStats.hpp"
 #include "components/CpuStats.hpp"
+#include "components/LagometerComponent.hpp"
 #include "systems/PingSystem.hpp"
 #include "systems/CpuMetricSystem.hpp"
+#include "systems/LagometerSystem.hpp"
 #include "components/SpectatorComponent.hpp"
 #include "systems/SpectatorSystem.hpp"
 #include <iostream>
@@ -106,6 +108,7 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
         sf::Vector2u windowSize = renderer.get_window_size();
         createFpsCounter(registry, static_cast<float>(windowSize.x));
         createDevMetrics(registry, static_cast<float>(windowSize.x));
+        createLagometer(registry, static_cast<float>(windowSize.x));
     }
 
     client.get_audio_system().startBackgroundMusic();
@@ -234,6 +237,19 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                     rtype::ecs::DevToolsSystem dev_tools_system;
                     dev_tools_system.setTogglePressed(true);
                     dev_tools_system.update(registry, 0.0);
+                }
+            } else if (event.key.code == sf::Keyboard::L) {
+                if (multiplayer_ && client_) {
+                    GameEngine::Registry& registry = client_->get_registry();
+                    std::mutex& registry_mutex = client_->get_registry_mutex();
+                    std::lock_guard<std::mutex> lock(registry_mutex);
+
+                    auto view = registry.view<rtype::ecs::component::LagometerComponent>();
+                    for (auto entity : view) {
+                        auto& lagometer = registry.getComponent<rtype::ecs::component::LagometerComponent>(
+                            static_cast<GameEngine::entity_t>(entity));
+                        lagometer.visible = !lagometer.visible;
+                    }
                 }
             }
         } else if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
@@ -631,6 +647,11 @@ void GameState::render(Renderer& renderer, Client& client) {
         rtype::ecs::RenderSystem render_system(sfml_renderer, &renderer.get_accessibility_manager());
         render_system.update(registry, 0.016f);
 
+        if (multiplayer_) {
+            rtype::ecs::LagometerSystem lagometer_system;
+            lagometer_system.update(registry, 0.016, *renderer.get_window());
+        }
+
         if (is_charging_) {
             auto view = registry.view<rtype::ecs::component::NetworkId, rtype::ecs::component::Position>();
             for (auto entity : view) {
@@ -1014,6 +1035,18 @@ void GameState::createDevMetrics(GameEngine::Registry& registry, float windowWid
     registry.addComponent<rtype::ecs::component::CpuStats>(cpu_entity);
     registry.addComponent<rtype::ecs::component::TextDrawable>(cpu_entity, dev_font_, "CPU: -- ms", 20,
                                                                sf::Color::Green);
+}
+
+void GameState::createLagometer(GameEngine::Registry& registry, float windowWidth) {
+    (void)windowWidth;
+    lagometer_entity_ = registry.createEntity();
+
+    float x = 20.0f;
+    float y = 600.0f;
+
+    registry.addComponent<rtype::ecs::component::Position>(lagometer_entity_, x, y);
+    registry.addComponent<rtype::ecs::component::UITag>(lagometer_entity_);
+    registry.addComponent<rtype::ecs::component::LagometerComponent>(lagometer_entity_);
 }
 
 } // namespace rtype::client
