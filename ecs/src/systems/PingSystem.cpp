@@ -1,7 +1,7 @@
-#include "../../include/systems/PingSystem.hpp"
-#include "../../include/components/PingStats.hpp"
-#include "../../../ecs/include/components/TextDrawable.hpp"
-#include "../../../ecs/include/components/UITag.hpp"
+#include "systems/PingSystem.hpp"
+#include "components/PingStats.hpp"
+#include "components/TextDrawable.hpp"
+#include "components/UITag.hpp"
 #include <iomanip>
 #include <sstream>
 #include <chrono>

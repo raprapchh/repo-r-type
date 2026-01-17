@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../../../shared/interfaces/ecs/ISystem.hpp"
+#include "interfaces/ecs/ISystem.hpp"
 #include "../Registry.hpp"
-#include "../../../shared/utils/LevelDefs.hpp"
+#include "utils/LevelDefs.hpp"
 #include <vector>
 
 namespace rtype::ecs {

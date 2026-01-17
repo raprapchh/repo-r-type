@@ -1,4 +1,4 @@
-#include "../include/Registry.hpp"
+#include "Registry.hpp"
 
 namespace GameEngine {
 

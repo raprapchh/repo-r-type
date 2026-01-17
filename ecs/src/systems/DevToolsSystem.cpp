@@ -1,6 +1,6 @@
-#include "../../include/systems/DevToolsSystem.hpp"
-#include "../../include/components/TextDrawable.hpp"
-#include "../../include/components/UITag.hpp"
+#include "systems/DevToolsSystem.hpp"
+#include "components/TextDrawable.hpp"
+#include "components/UITag.hpp"
 
 namespace rtype::ecs {
 

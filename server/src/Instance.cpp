@@ -1,5 +1,5 @@
-#include "../../server/include/Instance.hpp"
-#include "../../shared/utils/Logger.hpp"
+#include "Instance.hpp"
+#include "utils/Logger.hpp"
 
 namespace rtype::server {
 

@@ -9,16 +9,16 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include "../shared/net/Protocol.hpp"
-#include "../shared/interfaces/network/IProtocolAdapter.hpp"
-#include "../shared/interfaces/network/IMessageSerializer.hpp"
+#include "net/Protocol.hpp"
+#include "interfaces/network/IProtocolAdapter.hpp"
+#include "interfaces/network/IMessageSerializer.hpp"
 #include "NetworkSystem.hpp"
 #include "UdpClient.hpp"
 #include "Renderer.hpp"
 #include "ScoreboardManager.hpp"
-#include "../../ecs/include/systems/AudioSystem.hpp"
-#include "../../ecs/include/SystemManager.hpp"
-#include "../../shared/utils/GameRules.hpp"
+#include "systems/AudioSystem.hpp"
+#include "SystemManager.hpp"
+#include "utils/GameRules.hpp"
 
 namespace rtype::client {
 
@@ -30,6 +30,7 @@ class Client {
 
     void connect();
     void disconnect();
+    void reconnect();
     void run();
     void update(double dt);
 
@@ -66,6 +67,7 @@ class Client {
     void send_player_name_update(const std::string& name);
     void send_chat_message(const std::string& message);
     void leave_room();
+    void restart_session();
     void set_offline_ids(uint32_t session_id, uint32_t player_id) {
         session_id_ = session_id;
         player_id_ = player_id;
@@ -82,7 +84,7 @@ class Client {
     void create_room(const std::string& room_name, uint8_t max_players = 4,
                      rtype::config::GameMode mode = rtype::config::GameMode::COOP,
                      rtype::config::Difficulty difficulty = rtype::config::Difficulty::NORMAL,
-                     bool friendly_fire = false);
+                     bool friendly_fire = false, uint8_t lives = 3);
     void join_room(uint32_t session_id);
 
     uint32_t get_player_id() const;

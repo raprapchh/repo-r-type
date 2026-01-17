@@ -2,10 +2,10 @@
 
 #include "UdpServer.hpp"
 #include "GameSession.hpp"
-#include "../../shared/interfaces/network/IProtocolAdapter.hpp"
-#include "../../shared/interfaces/network/IMessageSerializer.hpp"
-#include "../../shared/net/Packet.hpp"
-#include "../../shared/utils/GameRules.hpp"
+#include "interfaces/network/IProtocolAdapter.hpp"
+#include "interfaces/network/IMessageSerializer.hpp"
+#include "net/Packet.hpp"
+#include "utils/GameRules.hpp"
 #include <atomic>
 #include <map>
 #include <memory>

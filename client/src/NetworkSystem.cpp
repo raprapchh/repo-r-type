@@ -1,19 +1,19 @@
-#include "../include/NetworkSystem.hpp"
-#include "../../ecs/include/components/TextureAnimation.hpp"
-#include "../../shared/net/MessageData.hpp"
-#include "../../ecs/include/components/HitBox.hpp"
-#include "../../ecs/include/components/CollisionLayer.hpp"
-#include "../../shared/GameConstants.hpp"
+#include "NetworkSystem.hpp"
+#include "components/TextureAnimation.hpp"
+#include "net/MessageData.hpp"
+#include "components/HitBox.hpp"
+#include "components/CollisionLayer.hpp"
+#include "GameConstants.hpp"
 #include <SFML/Graphics.hpp>
-#include "../../ecs/include/components/Health.hpp"
-#include "../../ecs/include/components/Projectile.hpp"
-#include "../../ecs/include/components/Explosion.hpp"
-#include "../../ecs/include/components/Weapon.hpp"
-#include "../../ecs/include/components/Tag.hpp"
-#include "../../ecs/include/components/NetworkInterpolation.hpp"
-#include "../../ecs/include/components/AudioEvent.hpp"
-#include "../../ecs/include/components/HitFlash.hpp"
-#include "../../ecs/include/components/PingStats.hpp"
+#include "components/Health.hpp"
+#include "components/Projectile.hpp"
+#include "components/Explosion.hpp"
+#include "components/Weapon.hpp"
+#include "components/Tag.hpp"
+#include "components/NetworkInterpolation.hpp"
+#include "components/AudioEvent.hpp"
+#include "components/HitFlash.hpp"
+#include "components/PingStats.hpp"
 #include <chrono>
 #include <iostream>
 
@@ -29,6 +29,12 @@ void NetworkSystem::push_packet(const rtype::net::Packet& packet) {
 
 void NetworkSystem::set_player_id(uint32_t player_id) {
     player_id_ = player_id;
+}
+
+void NetworkSystem::clear_packet_queue() {
+    std::lock_guard<std::mutex> lock(packet_queue_mutex_);
+    std::queue<rtype::net::Packet> empty;
+    std::swap(packet_queue_, empty);
 }
 
 void NetworkSystem::update(GameEngine::Registry& registry, std::mutex& registry_mutex) {
@@ -164,6 +170,13 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
             registry.addComponent<rtype::ecs::component::HitBox>(entity, hitboxW, hitboxH);
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::Enemy);
+
+            // Add tags for boss detection
+            if (data.sub_type == 100) {
+                registry.addComponent<rtype::ecs::component::Tag>(entity, "Boss_1");
+            } else if (data.sub_type == 101) {
+                registry.addComponent<rtype::ecs::component::Tag>(entity, "Boss_2");
+            }
             registry.addComponent<rtype::ecs::component::NetworkInterpolation>(entity, data.position_x, data.position_y,
                                                                                data.velocity_x, data.velocity_y);
         } else if (data.entity_type == rtype::net::EntityType::PROJECTILE) {
@@ -232,6 +245,12 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
                 }
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, width, height, 2.5f,
                                                                        2.5f, 1, 0.1f, false);
+            } else if (data.sub_type == 40) {
+                sprite_name = "laser";
+                width = 100.0f;
+                height = 20.0f;
+                registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 0, 0, 1.0f, 1.0f, 8,
+                                                                       0.1f, true);
             } else {
                 registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, 0, 0, 29, 33, 3.0f, 3.0f, 4,
                                                                        0.05f, false);
@@ -241,29 +260,40 @@ void NetworkSystem::handle_spawn(GameEngine::Registry& registry, const rtype::ne
 
         } else if (data.entity_type == rtype::net::EntityType::OBSTACLE) {
             std::string sprite_name = "obstacle_1";
-            if (data.sub_type == 1) {
-                sprite_name = "floor_obstacle";
-            }
-            registry.addComponent<rtype::ecs::component::Drawable>(
-                entity, sprite_name, static_cast<uint32_t>(0), static_cast<uint32_t>(0),
-                rtype::constants::OBSTACLE_SCALE, rtype::constants::OBSTACLE_SCALE);
+            float scale_x = rtype::constants::OBSTACLE_SCALE;
+            float scale_y = rtype::constants::OBSTACLE_SCALE;
             float obs_w = rtype::constants::OBSTACLE_WIDTH;
             float obs_h = rtype::constants::OBSTACLE_HEIGHT;
+            std::string tag_name = "Obstacle";
+
             if (data.sub_type == 1) {
+                sprite_name = "floor_obstacle";
                 obs_w = rtype::constants::FLOOR_OBSTACLE_WIDTH;
                 obs_h = rtype::constants::FLOOR_OBSTACLE_HEIGHT;
+                tag_name = "Obstacle_Floor";
+            } else if (data.sub_type == 2) {
+                sprite_name = "reverse_floor_obstacle";
+                obs_w = rtype::constants::FLOOR_OBSTACLE_WIDTH;
+                obs_h = rtype::constants::FLOOR_OBSTACLE_HEIGHT;
+                scale_x = rtype::constants::OBSTACLE_SCALE;
+                scale_y = rtype::constants::OBSTACLE_SCALE;
+                tag_name = "Obstacle_Train_3";
+            } else if (data.sub_type == 3) {
+                sprite_name = "reverse_obstacle1";
+                obs_w = rtype::constants::OBSTACLE_WIDTH;
+                obs_h = rtype::constants::OBSTACLE_HEIGHT;
+                scale_x = rtype::constants::OBSTACLE_SCALE;
+                scale_y = rtype::constants::OBSTACLE_SCALE;
+                tag_name = "Obstacle_Train_4";
             }
 
-            registry.addComponent<rtype::ecs::component::HitBox>(entity, obs_w * rtype::constants::OBSTACLE_SCALE,
-                                                                 obs_h * rtype::constants::OBSTACLE_SCALE);
+            registry.addComponent<rtype::ecs::component::Drawable>(entity, sprite_name, static_cast<uint32_t>(0),
+                                                                   static_cast<uint32_t>(0), scale_x, scale_y);
+
+            registry.addComponent<rtype::ecs::component::HitBox>(entity, obs_w * scale_x, obs_h * scale_y);
             registry.addComponent<rtype::ecs::component::Collidable>(entity,
                                                                      rtype::ecs::component::CollisionLayer::Obstacle);
-
-            if (data.sub_type == 1) {
-                registry.addComponent<rtype::ecs::component::Tag>(entity, "Obstacle_Floor");
-            } else {
-                registry.addComponent<rtype::ecs::component::Tag>(entity, "Obstacle");
-            }
+            registry.addComponent<rtype::ecs::component::Tag>(entity, tag_name);
         } else if (data.entity_type == rtype::net::EntityType::POWERUP) {
             std::string sprite_name = "force_pod";
             std::string tag_name = (data.sub_type == 1) ? "ForcePodItem" : "ForcePod";

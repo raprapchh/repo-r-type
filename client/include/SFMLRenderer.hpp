@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../shared/interfaces/rendering/IRenderer.hpp"
+#include "interfaces/rendering/IRenderer.hpp"
 #include <SFML/Graphics.hpp>
 #include <memory>
 #include <unordered_map>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../shared/interfaces/rendering/IRenderer.hpp"
+#include "IRenderer.hpp"
 
 namespace rtype::rendering {
 

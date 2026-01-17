@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../../shared/utils/GameRules.hpp"
+#include "utils/GameRules.hpp"
 
 namespace rtype::ecs::component {
 

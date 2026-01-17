@@ -2,7 +2,7 @@
 
 Complete documentation to understand, develop, and contribute to the R-Type project.
 
-**Version:** 1.0 | **Last Updated:** December 2025
+**Version:** 1.1 | **Last Updated:** January 2026
 
 ---
 
@@ -26,22 +26,23 @@ Complete documentation to understand, develop, and contribute to the R-Type proj
 
 R-Type is a recreation of the classic arcade game developed as part of the **Advanced C++ Knowledge (B-CPP-500)** module at Epitech. The project features:
 
-- **ECS Architecture** based on EnTT for high performance
+- **ECS Architecture** Custom implementation for high performance
 - **Networked Multiplayer** via UDP with authoritative server model
 - **SFML Rendering** for graphics and audio
 - **C++20** leveraging modern language features
 
 ### Prerequisites
 
-| Tool | Minimum Version | Purpose |
-|------|----------------|---------|
-| C++ Compiler | C++20 | g++ 10+, clang 12+, MSVC 19.28+ |
-| CMake | 3.20+ | Build system |
-| Git | 2.0+ | Version control |
+| Tool         | Minimum Version | Purpose                         |
+| ------------ | --------------- | ------------------------------- |
+| C++ Compiler | C++20           | g++ 10+, clang 12+, MSVC 19.28+ |
+| CMake        | 3.20+           | Build system                    |
+| Git          | 2.0+            | Version control                 |
 
 **Dependencies** (automatically managed by vcpkg):
+
 - SFML 2.5+ (graphics, audio)
-- EnTT (Entity Component System)
+
 - ASIO (asynchronous networking)
 - Catch2 (unit testing)
 
@@ -75,10 +76,10 @@ cd G-CPP-500-PAR-5-2-rtype-3
 
 ### Controls
 
-| Action | Keys | Description |
-|--------|------|-------------|
+| Action   | Keys          | Description        |
+| -------- | ------------- | ------------------ |
 | Movement | WASD / Arrows | Move the spaceship |
-| Shoot | Space | Fire a projectile |
+| Shoot    | Space         | Fire a projectile  |
 
 ---
 
@@ -97,12 +98,14 @@ cd G-CPP-500-PAR-5-2-rtype-3
 ```
 
 **Server** (Authoritative):
+
 - Executes all game logic (collisions, spawning, scoring)
 - Validates client inputs
 - Broadcasts game state to all clients (20 Hz)
 - Manages connections/disconnections
 
 **Client** (Display):
+
 - Captures player inputs
 - Applies local prediction (responsiveness)
 - Interpolates entity positions (smoothness)
@@ -125,7 +128,7 @@ r-type/
 │
 ├── ecs/                 # ECS library
 │   ├── include/
-│   │   ├── Registry.hpp         # Entity manager (EnTT wrapper)
+│   │   ├── Registry.hpp         # Entity manager
 │   │   ├── components/          # 20 components (Position, Velocity, Health...)
 │   │   └── systems/             # 12 systems (Movement, Collision, Weapon...)
 │   └── src/            # Implementations
@@ -137,18 +140,20 @@ r-type/
 │
 ├── tests/               # Unit tests (Catch2)
 ├── documentation/       # Documentation (you are here!)
-└── external/            # Third-party libraries (EnTT, ASIO)
+└── external/            # Third-party libraries (ASIO)
 ```
 
 ### Game Loops
 
 **Server (60 Hz):**
+
 1. Receive client inputs
 2. Update game logic (ECS systems)
 3. Broadcast game state (20 Hz)
 4. Sleep 16.67ms (maintain 60 FPS)
 
 **Client (60 FPS):**
+
 1. Handle user inputs
 2. Send movements to server
 3. Receive server state
@@ -187,12 +192,14 @@ registry.kill_entity(entity);
 ### Main Components (20 total)
 
 #### Transform & Physics
+
 - **Position** (`x, y`) - 2D position of the entity
 - **Velocity** (`vx, vy`) - Movement vector in pixels/second
 - **HitBox** (`width, height`) - AABB collision box
 - **CollisionLayer** (`layer`) - Collision filter (Player, Enemy, Projectile...)
 
 #### Combat & Gameplay
+
 - **Health** (`hp, max_hp`) - Health points
 - **Weapon** (`fireRate, damage, projectileSpeed...`) - Weapon properties
 - **Projectile** (`damage, owner_id, lifetime`) - Projectile data
@@ -201,14 +208,17 @@ registry.kill_entity(entity);
 - **InvincibilityTimer** (`remaining_time`) - Temporary invincibility
 
 #### Rendering & Visual
+
 - **Drawable** (`texture_name, rect, frames...`) - Sprite and animation
 - **Explosion** (`timer, radius`) - Explosion effect
 
 #### Networking
+
 - **NetworkId** (`network_id`) - Network identifier of the entity
 - **NetworkInterpolation** (`last_x, target_x, alpha...`) - Network interpolation
 
 #### Utilities
+
 - **Tag** (`tag`) - String classification (e.g., "Player", "Boss")
 - **Controllable** - Marker for controllable entities
 - **MapBounds** (`min_x, max_x, min_y, max_y`) - Movement boundaries
@@ -218,6 +228,7 @@ registry.kill_entity(entity);
 ### Main Systems (12 total)
 
 #### Server (Authoritative Logic)
+
 1. **MovementSystem** - Updates Position based on Velocity
 2. **CollisionSystem** - AABB detection with layer filtering
 3. **WeaponSystem** - Manages cooldowns and spawns projectiles
@@ -229,6 +240,7 @@ registry.kill_entity(entity);
 9. **ScoreSystem** - Calculates and updates score
 
 #### Client (Display)
+
 10. **RenderSystem** - SFML sprite rendering
 11. **AudioSystem** - Sound effect playback
 12. **InputSystem** - Keyboard/mouse capture
@@ -238,16 +250,27 @@ registry.kill_entity(entity);
 Order is critical as some systems depend on others:
 
 ```cpp
-// Server
-MovementSystem       // 1. Update positions
-CollisionSystem      // 2. Detect collisions (after movement)
-WeaponSystem         // 3. Create projectiles
-ProjectileSystem     // 4. Manage projectiles
-SpawnSystem          // 5. Generate enemies
-MobSystem            // 6. Enemy AI
-BoundarySystem       // 7. Apply boundaries
-LivesSystem          // 8. Manage lives
-ScoreSystem          // 9. Calculate score
+// Server (GameSession::game_loop)
+SpawnSystem          // 1. Generate enemies (if spawner active)
+MovementSystem       // 2. Update positions (velocity -> position)
+MobSystem            // 3. Enemy AI (pattern movement)
+BoundarySystem       // 4. Force containment in map bounds
+CollisionSystem      // 5. Detect collisions (Player vs Enemy, Projectile vs Ent)
+LivesSystem          // 6. Manage lives/death logic
+ForcePodSystem       // 7. Manage Force Pod mechanics
+WeaponSystem         // 8. Handle weapon charging/firing
+ProjectileSystem     // 9. Update projectile lifetimes
+ScoreSystem          // 10. Update/Broadcast score
+SpawnEffectSystem    // 11. Manage spawn visuals
+
+// Client (Update Loop)
+InputSystem          // 1. Capture inputs
+AudioSystem          // 2. Process audio events
+NetworkSystem        // 3. Process received packets
+MovementSystem       // 4. Apply velocity/interpolation
+TextureAnimationSystem // 5. Update sprite frames
+RenderSystem         // 6. Render entities to window
+UIRenderSystem       // 7. Render UI overlays (Score, FPS, Ping)
 ```
 
 ### Example: Creating a Player Entity
@@ -270,6 +293,7 @@ registry.add_component<Lives>(player, Lives{3});
 ### Binary UDP Protocol
 
 **Why UDP?**
+
 - Minimal latency (no retransmission)
 - Acceptable for real-time games (packet loss OK)
 - Frequent synchronization compensates for losses
@@ -287,36 +311,47 @@ registry.add_component<Lives>(player, Lives{3});
 └────────────────────────────┘
 ```
 
-### Message Types (12 OpCodes)
+### Message Types (20 OpCodes)
 
-| OpCode | Name | Direction | Frequency | Description |
-|--------|------|-----------|-----------|-------------|
-| 1 | PlayerJoin | ⇄ | Once | Connection/ID assignment |
-| 2 | PlayerMove | Client→Server | 60 Hz | Position/velocity |
-| 3 | PlayerShoot | Client→Server | On action | Weapon fire |
-| 4 | PlayerLeave | ⇄ | Once | Disconnection |
-| 5 | EntitySpawn | Server→Client | On event | Entity creation |
-| 6 | EntityMove | Server→Client | 20 Hz | Entity update |
-| 7 | EntityDestroy | Server→Client | On event | Entity destruction |
-| 8 | GameStart | Server→Client | Once | Game start |
-| 9 | GameState | Server→Client | 20 Hz | Full synchronization |
-| 10 | Ping | ⇄ | 1 Hz | Latency measurement |
-| 11 | Pong | ⇄ | 1 Hz | Latency response |
-| 12 | MapResize | Client→Server | On resize | Viewport resize |
+| OpCode | Name          | Direction     | Frequency | Description                |
+| ------ | ------------- | ------------- | --------- | -------------------------- |
+| 1      | PlayerJoin    | ⇄             | Once      | Connection/ID assignment   |
+| 2      | PlayerMove    | Client→Server | 60 Hz     | Position/velocity          |
+| 3      | PlayerShoot   | Client→Server | On action | Weapon fire                |
+| 4      | PlayerLeave   | ⇄             | Once      | Disconnection              |
+| 5      | EntitySpawn   | Server→Client | On event  | Entity creation            |
+| 6      | EntityMove    | Server→Client | 20 Hz     | Entity update              |
+| 7      | EntityDestroy | Server→Client | On event  | Entity destruction         |
+| 8      | GameStart     | Server→Client | Once      | Game start                 |
+| 9      | GameState     | Server→Client | 20 Hz     | Full synchronization       |
+| 10     | Ping          | ⇄             | 1 Hz      | Latency measurement        |
+| 11     | Pong          | ⇄             | 1 Hz      | Latency response           |
+| 12     | MapResize     | Client→Server | On resize | Viewport resize            |
+| 13     | PlayerName    | Client→Server | Once      | Player name update         |
+| 14     | ChatMessage   | ⇄             | On action | Lobby chat message         |
+| 15     | StageCleared  | Server→Client | On event  | Stage victory notification |
+| 16     | ListRooms     | Client→Server | On action | Request room list          |
+| 17     | RoomInfo      | Server→Client | On event  | Room status update         |
+| 18     | CreateRoom    | Client→Server | On action | Create new lobby           |
+| 19     | JoinRoom      | Client→Server | On action | Join specific lobby        |
+| 20     | LobbyUpdate   | Server→Client | On event  | Lobby player count update  |
 
 ### Network Strategies
 
 **Client-Side Prediction:**
+
 - Apply input locally immediately
 - Reduces perceived latency
 - Server sends authoritative position that overrides prediction
 
 **Network Interpolation:**
+
 - Smooths movements between updates (20 Hz → 60 FPS)
 - Uses `NetworkInterpolation` component
 - Interpolates from `last_position` to `target_position`
 
 **State Synchronization:**
+
 - Server sends full state every 50ms (20 Hz)
 - Self-correcting (lost packets compensated by next one)
 - No delta compression (simplicity > optimization)
@@ -324,6 +359,7 @@ registry.add_component<Lives>(player, Lives{3});
 ### Security
 
 **Server Validation:**
+
 - Never trust client inputs
 - Validate positions (maximum possible distance)
 - Check actions (weapon cooldown, resources)
@@ -351,6 +387,7 @@ void Renderer::render(Registry &registry) {
 ### Animation System
 
 Animated sprites use the `Drawable` component:
+
 - `frames`: List of texture rectangles
 - `current_frame`: Current frame index
 - `frame_time`: Duration per frame (e.g., 0.1s = 10 FPS)
@@ -359,6 +396,7 @@ Animated sprites use the `Drawable` component:
 ### Texture Management
 
 **Texture cache** to avoid reloading:
+
 ```cpp
 std::unordered_map<std::string, sf::Texture> m_textureCache;
 ```
@@ -372,6 +410,7 @@ Textures are loaded once, reused for all sprites.
 ### Environment Setup
 
 **Recommended IDEs:**
+
 - **VSCode** + C/C++ extensions, CMake Tools
 - **CLion** (built-in CMake support)
 - **Vim/Neovim** + coc-clangd
@@ -381,6 +420,7 @@ Textures are loaded once, reused for all sprites.
 **Standard:** Strict C++20
 
 **Naming conventions:**
+
 - Classes/Structs: `PascalCase`
 - Functions: `camelCase`
 - Variables: `snake_case`
@@ -409,6 +449,7 @@ find . -name "*.cpp" -o -name "*.hpp" | xargs clang-format -i
 **Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
 **Examples:**
+
 ```
 feat(ecs): add Explosion component for death animations
 fix(network): resolve player ID desync in multiplayer
@@ -432,6 +473,7 @@ git push origin feature/new-feature
 ```
 
 **Branches:**
+
 - `main`: Stable production
 - `dev`: Feature integration
 - `feature/<name>`: Feature development
@@ -440,6 +482,7 @@ git push origin feature/new-feature
 ### Adding a New Component
 
 1. Create `ecs/include/components/MyComponent.hpp`:
+
 ```cpp
 #pragma once
 
@@ -454,6 +497,7 @@ struct MyComponent {
 ```
 
 2. Use in code:
+
 ```cpp
 #include "components/MyComponent.hpp"
 registry.add_component<MyComponent>(entity, MyComponent{1.5f, 0});
@@ -462,6 +506,7 @@ registry.add_component<MyComponent>(entity, MyComponent{1.5f, 0});
 ### Adding a New System
 
 1. Create `ecs/include/systems/MySystem.hpp`:
+
 ```cpp
 #pragma once
 #include "../../shared/interfaces/ecs/ISystem.hpp"
@@ -477,6 +522,7 @@ public:
 ```
 
 2. Implement in `ecs/src/systems/MySystem.cpp`:
+
 ```cpp
 #include "systems/MySystem.hpp"
 #include "components/MyComponent.hpp"
@@ -491,6 +537,7 @@ void MySystem::update(GameEngine::Registry &registry, double dt) {
 ```
 
 3. Add to server/client:
+
 ```cpp
 MySystem m_mySystem;
 
@@ -502,6 +549,7 @@ void update() {
 ### Debugging
 
 **Server:**
+
 ```bash
 gdb ./r-type_server
 (gdb) run 4242
@@ -509,6 +557,7 @@ gdb ./r-type_server
 ```
 
 **Client:**
+
 ```bash
 gdb ./r-type_client
 (gdb) run 127.0.0.1 4242
@@ -516,6 +565,7 @@ gdb ./r-type_client
 ```
 
 **Network (Wireshark):**
+
 ```
 udp.port == 4242
 ```
@@ -564,6 +614,7 @@ TEST_CASE("MovementSystem updates position", "[MovementSystem]") {
 ### CI/CD
 
 **GitHub Actions** (`.github/workflows/ci.yml`):
+
 1. Commit message validation
 2. Code formatting check (clang-format)
 3. Project compilation
@@ -588,6 +639,7 @@ Before submitting a PR:
 ### Code Review
 
 **Reviewers check:**
+
 - Logic correctness
 - Performance implications
 - Security considerations
@@ -597,16 +649,19 @@ Before submitting a PR:
 ### Best Practices
 
 **ECS:**
+
 - Small, focused components
 - Stateless systems
 - Use views for efficient iteration
 
 **Network:**
+
 - Always validate client inputs
 - Minimize packet size
 - Reduce frequency of non-critical messages
 
 **Performance:**
+
 - Avoid allocations in game loop
 - Use smart pointers (unique_ptr, shared_ptr)
 - Batch entity destructions
@@ -616,11 +671,12 @@ Before submitting a PR:
 ## Additional Resources
 
 ### Internal Documentation
+
 - [Detailed Network Protocol](./RTYPE_BINARY_PROTOCOL.md) - Complete protocol specification
 - [Contribution Guide](./how_to_contribute.md) - How to contribute to the project
 
 ### External Resources
-- [EnTT Documentation](https://github.com/skypjack/entt) - ECS library documentation
+
 - [SFML Tutorials](https://www.sfml-dev.org/tutorials/) - SFML tutorials
 - [ASIO Documentation](https://think-async.com/Asio/) - ASIO documentation
 - [Game Networking](https://gafferongames.com/) - Game networking best practices

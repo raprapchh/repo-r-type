@@ -38,9 +38,9 @@ class ProtocolAdapter : public IProtocolAdapter {
 
         uint16_t expected_size = sizeof(PacketHeader) + header.payload_size;
 
-        if (data.size() != expected_size) {
-            std::cerr << "Invalid packet size: " << data.size() << " expected " << expected_size << " for type "
-                      << header.message_type << std::endl;
+        if (data.size() < expected_size) {
+            std::cerr << "Invalid packet size: " << data.size() << " expected at least " << expected_size
+                      << " for type " << header.message_type << std::endl;
             return false;
         }
 

@@ -1,11 +1,14 @@
-#include "../../include/systems/LivesSystem.hpp"
-#include "../../include/components/Health.hpp"
-#include "../../include/components/Lives.hpp"
-#include "../../include/components/Position.hpp"
-#include "../../include/components/Velocity.hpp"
-#include "../../include/components/CollisionLayer.hpp"
-#include "../../include/components/InvincibilityTimer.hpp"
-#include "../../shared/utils/Logger.hpp"
+#include "systems/LivesSystem.hpp"
+#include "components/Health.hpp"
+#include "components/Lives.hpp"
+#include "components/Position.hpp"
+#include "components/Velocity.hpp"
+#include "components/CollisionLayer.hpp"
+#include "components/InvincibilityTimer.hpp"
+#include "components/SpectatorComponent.hpp"
+#include "components/Controllable.hpp"
+#include "components/GameModeComponent.hpp"
+#include "utils/Logger.hpp"
 #include <vector>
 
 namespace rtype::ecs {
@@ -49,8 +52,37 @@ void LivesSystem::update(GameEngine::Registry& registry, double dt) {
                 Logger::instance().info("Player respawned at (" + std::to_string(position.x) + ", " +
                                         std::to_string(position.y) + ")");
             } else {
+                // Player is dead (lives <= 0)
                 Logger::instance().info("Game Over for player " + std::to_string(static_cast<std::size_t>(entity)));
-                to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
+
+                // Check if this is multiplayer mode
+                bool is_multiplayer = false;
+                auto mode_view = registry.view<component::GameModeComponent>();
+                for (auto mode_entity : mode_view) {
+                    auto& mode =
+                        registry.getComponent<component::GameModeComponent>(static_cast<std::size_t>(mode_entity));
+                    is_multiplayer = mode.is_multiplayer;
+                    break;
+                }
+
+                // Check if this is the local player
+                bool is_local_player = false;
+                if (registry.hasComponent<component::Controllable>(static_cast<std::size_t>(entity))) {
+                    auto& ctrl = registry.getComponent<component::Controllable>(static_cast<std::size_t>(entity));
+                    is_local_player = ctrl.is_local_player;
+                }
+
+                // In multiplayer: local player becomes spectator
+                // In solo or for remote players: destroy entity
+                if (is_multiplayer && is_local_player) {
+                    Logger::instance().info("Local player entering spectator mode");
+                    if (!registry.hasComponent<component::SpectatorComponent>(static_cast<std::size_t>(entity))) {
+                        registry.addComponent<component::SpectatorComponent>(static_cast<std::size_t>(entity),
+                                                                             component::SpectatorComponent{0});
+                    }
+                } else {
+                    to_destroy.push_back(static_cast<GameEngine::entity_t>(entity));
+                }
             }
         }
     }

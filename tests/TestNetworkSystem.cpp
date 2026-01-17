@@ -4,7 +4,7 @@
 #include "components/Position.hpp"
 #include "components/NetworkId.hpp"
 #include "components/CollisionLayer.hpp"
-#include "../../shared/net/MessageSerializer.hpp"
+#include "net/MessageSerializer.hpp"
 #include <mutex>
 
 TEST_CASE("NetworkSystem handles Spawn, Move, and Destroy packets", "[NetworkSystem]") {

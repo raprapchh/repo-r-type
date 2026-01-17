@@ -1,22 +1,22 @@
 #include "Client.hpp"
-#include "../shared/net/ProtocolAdapter.hpp"
-#include "../shared/net/MessageSerializer.hpp"
-#include "../../shared/GameConstants.hpp"
-#include "../../ecs/include/components/NetworkId.hpp"
-#include "../../ecs/include/components/Position.hpp"
-#include "../../ecs/include/components/Velocity.hpp"
-#include "../../ecs/include/components/Drawable.hpp"
-#include "../../ecs/include/components/Controllable.hpp"
-#include "../../ecs/include/components/HitBox.hpp"
-#include "../../ecs/include/components/CollisionLayer.hpp"
-#include "../../ecs/include/components/Lives.hpp"
-#include "../../ecs/include/components/Health.hpp"
-#include "../../ecs/include/components/Score.hpp"
-#include "../../ecs/include/components/Tag.hpp"
-#include "../../ecs/include/components/NetworkInterpolation.hpp"
-#include "../../ecs/include/components/PingStats.hpp"
-#include "../../ecs/include/systems/MovementSystem.hpp"
-#include "../../ecs/include/systems/TextureAnimationSystem.hpp"
+#include "net/ProtocolAdapter.hpp"
+#include "net/MessageSerializer.hpp"
+#include "GameConstants.hpp"
+#include "components/NetworkId.hpp"
+#include "components/Position.hpp"
+#include "components/Velocity.hpp"
+#include "components/Drawable.hpp"
+#include "components/Controllable.hpp"
+#include "components/HitBox.hpp"
+#include "components/CollisionLayer.hpp"
+#include "components/Lives.hpp"
+#include "components/Health.hpp"
+#include "components/Score.hpp"
+#include "components/Tag.hpp"
+#include "components/NetworkInterpolation.hpp"
+#include "components/PingStats.hpp"
+#include "systems/MovementSystem.hpp"
+#include "systems/TextureAnimationSystem.hpp"
 #include <iostream>
 #include <chrono>
 #include <algorithm>
@@ -113,6 +113,43 @@ void Client::run() {
     if (!network_thread_ || !network_thread_->joinable()) {
         network_thread_ = std::make_unique<std::thread>([this]() { io_context_->run(); });
     }
+}
+
+void Client::reconnect() {
+    // Stop existing connections
+    if (io_context_) {
+        io_context_->stop();
+    }
+
+    if (network_thread_ && network_thread_->joinable()) {
+        network_thread_->join();
+    }
+
+    if (udp_client_) {
+        udp_client_->stop();
+    }
+
+    // Clear all state
+    connected_ = false;
+    session_id_ = 0;
+    player_id_ = 0;
+    network_system_.set_player_id(0);
+    network_system_.clear_packet_queue();
+
+    {
+        std::lock_guard<std::mutex> lock(registry_mutex_);
+        registry_.clear();
+    }
+
+    // Recreate io_context and UDP client
+    io_context_ = std::make_unique<asio::io_context>();
+    udp_client_ = std::make_unique<UdpClient>(*io_context_, host_, port_);
+    udp_client_->set_message_handler(
+        [this](const asio::error_code& error, std::size_t bytes_transferred, const std::vector<uint8_t>& data) {
+            handle_udp_receive(error, bytes_transferred, data);
+        });
+
+    std::cout << "Client reconnected - ready for new session" << std::endl;
 }
 
 void Client::handle_udp_receive(const asio::error_code& error, std::size_t bytes_transferred,
@@ -566,7 +603,6 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
                 std::vector<uint8_t> join_packet_data = rtype::net::ProtocolAdapter().serialize(join_packet);
                 udp_client_->send(join_packet_data);
                 pending_create_room_name_.clear();
-                // Do not early-return; also notify UI about room list
             }
             if (room_list_callback_) {
                 room_list_callback_(room_data.session_id, room_data.player_count, room_data.max_players,
@@ -743,11 +779,11 @@ void Client::request_room_list() {
 }
 
 void Client::create_room(const std::string& room_name, uint8_t max_players, rtype::config::GameMode mode,
-                         rtype::config::Difficulty difficulty, bool friendly_fire) {
+                         rtype::config::Difficulty difficulty, bool friendly_fire, uint8_t lives) {
     rtype::net::MessageSerializer serializer;
     rtype::net::CreateRoomData create_data(room_name, max_players, static_cast<uint8_t>(mode),
                                            static_cast<uint8_t>(difficulty),
-                                           friendly_fire ? static_cast<uint8_t>(1) : static_cast<uint8_t>(0));
+                                           friendly_fire ? static_cast<uint8_t>(1) : static_cast<uint8_t>(0), lives);
     rtype::net::Packet create_packet = serializer.serialize_create_room(create_data);
     std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(create_packet);
     udp_client_->send(packet_data);
@@ -802,6 +838,25 @@ void Client::leave_room() {
     }
 
     std::cout << "Left current room" << std::endl;
+}
+
+void Client::restart_session() {
+    // Send PlayerLeave to properly close the current session on server
+    if (connected_.load()) {
+        rtype::net::MessageSerializer serializer;
+        rtype::net::PlayerLeaveData leave_data(player_id_);
+        rtype::net::Packet leave_packet = serializer.serialize_player_leave(leave_data);
+        std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(leave_packet);
+        udp_client_->send(packet_data);
+    }
+
+    // Wait for server to process the leave
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // Full reconnect - recreate socket to clear all buffers
+    reconnect();
+
+    std::cout << "Session reset for restart" << std::endl;
 }
 
 void Client::send_heartbeat() {
