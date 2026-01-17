@@ -317,7 +317,25 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                 sf::Vector2f mouse_pos = renderer.get_window()->mapPixelToCoords(
                     sf::Vector2i(event.mouseButton.x, event.mouseButton.y), renderer.get_window()->getDefaultView());
 
-                if (renderer.is_game_over_back_to_menu_clicked(mouse_pos)) {
+                if (multiplayer_ && renderer.is_restart_vote_active()) {
+                    if (renderer.is_play_again_clicked(mouse_pos)) {
+                        if (client_) {
+                            client_->send_restart_vote(true);
+                        }
+                    } else if (renderer.is_game_over_back_to_menu_clicked(mouse_pos)) {
+                        if (client_) {
+                            client_->send_restart_vote(false);
+                            GameEngine::Registry& registry = client_->get_registry();
+                            std::mutex& registry_mutex = client_->get_registry_mutex();
+                            std::lock_guard<std::mutex> lock(registry_mutex);
+                            registry.clear();
+                        }
+                        game_over_ = false;
+                        all_players_dead_ = false;
+                        score_saved_ = false;
+                        state_manager.change_state(std::make_unique<MenuState>());
+                    }
+                } else if (renderer.is_game_over_back_to_menu_clicked(mouse_pos)) {
                     if (client_) {
                         GameEngine::Registry& registry = client_->get_registry();
                         std::mutex& registry_mutex = client_->get_registry_mutex();
@@ -434,6 +452,13 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
             }
         }
 
+        // If server sent restart vote status, it means all players are dead - force game over
+        if (multiplayer_ && renderer.is_restart_vote_active() && !game_over_) {
+            game_over_ = true;
+            all_players_dead_ = true;
+            spectator_choice_pending_ = false;
+        }
+
         // If player is dead OR entity removed in multiplayer, show choice dialog
         // BUT if all players are dead, show standard Game Over instead
         if (multiplayer_ && client.is_connected() && player_id != 0 && (!player_exists || player_dead) &&
@@ -507,6 +532,13 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
         }
 
         if (game_over_ && all_players_dead_) {
+            if (multiplayer_ && renderer.is_restart_triggered()) {
+                renderer.reset_game_state();
+                game_over_ = false;
+                all_players_dead_ = false;
+                score_saved_ = false;
+                max_score_reached_ = 0;
+            }
             return;
         }
 
@@ -744,6 +776,9 @@ void GameState::render(Renderer& renderer, Client& client) {
     // But IF all players are dead, force show game over
     if (game_over_ && !renderer.is_stage_cleared() && !spectator_choice_pending_) {
         renderer.draw_game_over(all_players_dead_);
+        if (multiplayer_ && all_players_dead_ && renderer.is_restart_vote_active()) {
+            renderer.draw_restart_vote_ui();
+        }
     }
 
     if (is_paused_) {
