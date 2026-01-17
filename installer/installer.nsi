@@ -90,12 +90,16 @@ DownloadSucceeded:
 
     Delete "$TEMP\dist.zip"
 
+    CopyFiles "$INSTDIR\scripts\setup_rtype_network.ps1" "$INSTDIR\setup_rtype_network.ps1"
+    nsExec::ExecToLog 'powershell -NoLogo -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\setup_rtype_network.ps1"'
+
     WriteUninstaller "$INSTDIR\Uninstall.exe"
 
     WriteRegStr HKCU "Software\R-TypeClone" "" "$INSTDIR"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\R-TypeClone" "DisplayName" "R-Type Clone"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\R-TypeClone" "UninstallString" "$INSTDIR\Uninstall.exe"
 SectionEnd
+
 
 Section "Raccourcis" SEC02
     CreateDirectory "$SMPROGRAMS\R-Type Clone"
