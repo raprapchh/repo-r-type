@@ -78,6 +78,8 @@ class GameState : public IState {
     void spawn_enemy_solo(GameEngine::Registry& registry);
     void spawn_player_projectile(GameEngine::Registry& registry, GameEngine::entity_t player_entity);
     void createFpsCounter(GameEngine::Registry& registry, float windowWidth);
+    void createLagometer(GameEngine::Registry& registry, float windowWidth);
+    GameEngine::entity_t lagometer_entity_ = 0;
     void createDevMetrics(GameEngine::Registry& registry, float windowWidth);
 
     // Spectator mode
