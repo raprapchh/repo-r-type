@@ -1,4 +1,4 @@
-; Installer for R-Type Clone (64 bits, OpenAL Soft)
+; Installer for R-Type Clone (64 bits)
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 
@@ -7,6 +7,9 @@ OutFile "R-Type-Installer.exe"
 InstallDir "$PROGRAMFILES64\R-TypeClone"
 InstallDirRegKey HKCU "Software\R-TypeClone" ""
 RequestExecutionLevel admin
+
+; Force 64-bit installation
+!include "x64.nsh"
 
 !ifndef DOWNLOAD_URL
     !define DOWNLOAD_URL "https://github.com/OWNER/REPO/releases/download/latest/dist.zip"
@@ -29,6 +32,10 @@ RequestExecutionLevel admin
 !insertmacro MUI_LANGUAGE "French"
 
 Section "Application" SEC01
+    ${If} ${RunningX64}
+        setRegView 64
+    ${EndIf}
+
     SetOutPath "$INSTDIR"
 
     ; --- VC++ Redistributable Check (64 bits) ---
@@ -48,17 +55,6 @@ Section "Application" SEC01
         ${EndIf}
     ${Else}
         DetailPrint "Visual C++ Redistributable est déjà installé."
-    ${EndIf}
-
-    ; --- OpenAL Soft 64 bits ---
-    DetailPrint "Téléchargement d'OpenAL Soft (64 bits)..."
-    ; Téléchargement direct de soft_oal.dll
-    inetc::get /caption "Téléchargement d'OpenAL Soft" /popup "Veuillez patienter..." "https://github.com/kcat/openal-soft/releases/download/1.23.1/soft_oal.dll" "$INSTDIR\OpenAL32.dll" /end
-    Pop $0
-    ${If} $0 == "OK"
-        DetailPrint "OpenAL Soft installé et renommé en OpenAL32.dll"
-    ${Else}
-        DetailPrint "Échec du téléchargement d'OpenAL Soft: $0"
     ${EndIf}
 
     ; --- Web installer: download release archive and extract ---
@@ -109,6 +105,10 @@ Section "Raccourcis" SEC02
 SectionEnd
 
 Section "Uninstall"
+    ${If} ${RunningX64}
+        setRegView 64
+    ${EndIf}
+
     RMDir /r "$INSTDIR"
 
     Delete "$SMPROGRAMS\R-Type Clone\R-Type Client.lnk"
@@ -120,6 +120,15 @@ Section "Uninstall"
     DeleteRegKey HKCU "Software\R-TypeClone"
     DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\R-TypeClone"
 SectionEnd
+
+Function .onInit
+    ${If} ${RunningX64}
+        setRegView 64
+    ${Else}
+        MessageBox MB_OK "Cette application nécessite un système Windows 64 bits."
+        Abort
+    ${EndIf}
+FunctionEnd
 
 Function .onInstSuccess
     MessageBox MB_OK "Installation de R-Type Clone terminée avec succès !"

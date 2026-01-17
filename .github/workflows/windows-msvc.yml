@@ -52,9 +52,12 @@ jobs:
             Copy-Item -Path $_.FullName -Destination dist -Force -ErrorAction SilentlyContinue
         }
 
-        # Explicitly check for openal32.dll in case it's in a specific SFML folder
-        Get-ChildItem -Path "build/_deps" -Filter "openal32.dll" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
-            Copy-Item -Path $_.FullName -Destination dist -Force -ErrorAction SilentlyContinue
+        # Explicitly ensure OpenAL32.dll is present (OpenAL Soft 64 bits)
+        # It should already be copied from vcpkg but let's be sure
+        if (-Not (Test-Path "dist/OpenAL32.dll")) {
+            Get-ChildItem -Path "build" -Filter "soft_oal.dll" -Recurse | ForEach-Object {
+                Copy-Item -Path $_.FullName -Destination "dist/OpenAL32.dll" -Force
+            }
         }
 
         mkdir dist/client
