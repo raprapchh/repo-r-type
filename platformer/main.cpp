@@ -22,6 +22,8 @@
 #include "systems/ProjectileSystem.hpp"
 #include "components/Weapon.hpp"
 #include "components/Projectile.hpp"
+#include "systems/MapGeneratorSystem.hpp"
+#include "components/TextDrawable.hpp"
 
 int main() {
     GameEngine::Registry registry;
@@ -89,6 +91,16 @@ int main() {
         textures["projectile"] = projectile_texture;
     }
 
+    sf::Texture hole_texture;
+    if (!hole_texture.loadFromFile("platformer/assets/hole@2x.png") &&
+        !hole_texture.loadFromFile("assets/hole@2x.png") &&
+        !hole_texture.loadFromFile("../platformer/assets/hole@2x.png") &&
+        !hole_texture.loadFromFile("../assets/hole@2x.png")) {
+        std::cerr << "Failed to load hole texture!" << std::endl;
+    } else {
+        textures["hole"] = hole_texture;
+    }
+
     auto renderer_impl = std::make_shared<rtype::rendering::SFMLRenderer>(window, textures);
     auto render_system = std::make_shared<rtype::ecs::RenderSystem>(renderer_impl, nullptr);
 
@@ -96,6 +108,7 @@ int main() {
     auto physics_system = std::make_shared<rtype::ecs::PlatformerPhysicsSystem>();
     auto weapon_system = std::make_shared<rtype::ecs::WeaponSystem>();
     auto projectile_system = std::make_shared<rtype::ecs::ProjectileSystem>();
+    auto map_generator_system = std::make_shared<rtype::ecs::MapGeneratorSystem>();
 
     auto player = registry.createEntity();
     registry.addComponent<rtype::ecs::component::Position>(player, 200.0f, 400.0f);
@@ -122,28 +135,13 @@ int main() {
     weapon.spawnOffsetX = 62.0f;
     weapon.spawnOffsetY = 0.0f;
 
-    struct PlatformConfig {
-        float x, y, width, height;
-    };
-
-    std::vector<PlatformConfig> level_layout = {
-        {0.0f, 550.0f, 800.0f, 50.0f},     {200.0f, 450.0f, 100.0f, 20.0f},   {500.0f, 350.0f, 100.0f, 20.0f},
-        {100.0f, 250.0f, 100.0f, 20.0f},   {600.0f, 150.0f, 100.0f, 20.0f},   {300.0f, 50.0f, 100.0f, 20.0f},
-        {100.0f, -50.0f, 100.0f, 20.0f},   {600.0f, -150.0f, 100.0f, 20.0f},  {350.0f, -250.0f, 100.0f, 20.0f},
-        {50.0f, -350.0f, 100.0f, 20.0f},   {550.0f, -450.0f, 100.0f, 20.0f},  {250.0f, -550.0f, 100.0f, 20.0f},
-        {700.0f, -650.0f, 100.0f, 20.0f},  {150.0f, -750.0f, 100.0f, 20.0f},  {450.0f, -850.0f, 100.0f, 20.0f},
-        {50.0f, -950.0f, 100.0f, 20.0f},   {600.0f, -1050.0f, 100.0f, 20.0f}, {300.0f, -1150.0f, 100.0f, 20.0f},
-        {100.0f, -1250.0f, 100.0f, 20.0f}, {500.0f, -1350.0f, 100.0f, 20.0f}, {200.0f, -1450.0f, 100.0f, 20.0f},
-        {650.0f, -1550.0f, 100.0f, 20.0f}, {400.0f, -1650.0f, 100.0f, 20.0f}};
-
-    for (const auto& config : level_layout) {
-        auto wall = registry.createEntity();
-        registry.addComponent<rtype::ecs::component::Position>(wall, config.x, config.y);
-        registry.addComponent<rtype::ecs::component::HitBox>(wall, config.width, config.height);
-        registry.addComponent<rtype::ecs::component::Collidable>(wall, rtype::ecs::component::CollisionLayer::Obstacle);
-        registry.addComponent<rtype::ecs::component::Drawable>(
-            wall, "green_platform", 0, 0, static_cast<int>(config.width), static_cast<int>(config.height));
-    }
+    auto start_plat = registry.createEntity();
+    registry.addComponent<rtype::ecs::component::Position>(start_plat, 150.0f, 550.0f);
+    registry.addComponent<rtype::ecs::component::HitBox>(start_plat, 500.0f, 20.0f);
+    registry.addComponent<rtype::ecs::component::Collidable>(start_plat,
+                                                             rtype::ecs::component::CollisionLayer::Obstacle);
+    registry.addComponent<rtype::ecs::component::Drawable>(start_plat, "green_platform", 0, 0, 500, 20);
+    registry.addComponent<rtype::ecs::component::Tag>(start_plat, "Platform");
 
     sf::Font font;
     if (!font.loadFromFile("client/fonts/Ethnocentric-Regular.otf") &&
@@ -153,6 +151,18 @@ int main() {
         std::cerr << "Failed to load font from any common path!" << std::endl;
         return 84;
     }
+
+    float start_y = 400.0f;
+    float max_height_y = start_y;
+    int current_score = 0;
+
+    auto score_entity = registry.createEntity();
+    registry.addComponent<rtype::ecs::component::Position>(score_entity, 10.0f, 10.0f);
+
+    sf::Text score_text("Score: 0", font, 30);
+    score_text.setFillColor(sf::Color::Black);
+    score_text.setPosition(10, 10);
+
     sf::Text lose_text("You Lost", font, 50);
     lose_text.setFillColor(sf::Color::Red);
 
@@ -252,12 +262,9 @@ int main() {
                 moving_horizontal = true;
             }
 
-            // Handle Up sprite
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
                 registry.getComponent<rtype::ecs::component::Drawable>(player).texture_name = "player_up";
             } else if (!moving_horizontal) {
-                // Revert to facing if not actively moving left/right and not holding up
-                // (Though if moving left/right, the above blocks handle the sprite)
                 registry.getComponent<rtype::ecs::component::Drawable>(player).texture_name = last_horizontal_facing;
             }
 
@@ -305,10 +312,19 @@ int main() {
                 registry.getComponent<rtype::ecs::component::Weapon>(player).isShooting = false;
             }
 
+            // Score Logic
+            auto& currentPlayerPos = registry.getComponent<rtype::ecs::component::Position>(player);
+            if (currentPlayerPos.y < max_height_y) {
+                max_height_y = currentPlayerPos.y;
+                current_score = static_cast<int>(start_y - max_height_y);
+                score_text.setString("Score: " + std::to_string(current_score));
+            }
+
             physics_system->update(registry, dt);
             movement_system->update(registry, dt);
             weapon_system->update(registry, dt);
             projectile_system->update(registry, dt);
+            map_generator_system->update(registry, view.getCenter().y);
 
             auto& pos = registry.getComponent<rtype::ecs::component::Position>(player);
             auto& hitbox = registry.getComponent<rtype::ecs::component::HitBox>(player);
@@ -317,6 +333,26 @@ int main() {
                 pos.x = -hitbox.width;
             } else if (pos.x < -hitbox.width) {
                 pos.x = 800;
+            }
+
+            auto hole_view =
+                registry
+                    .view<rtype::ecs::component::Tag, rtype::ecs::component::Position, rtype::ecs::component::HitBox>();
+            for (auto hole_entity : hole_view) {
+                auto& tag = registry.getComponent<rtype::ecs::component::Tag>(hole_entity);
+                if (tag.name == "Hole") {
+                    auto& holePos = registry.getComponent<rtype::ecs::component::Position>(hole_entity);
+                    auto& holeHitbox = registry.getComponent<rtype::ecs::component::HitBox>(hole_entity);
+
+                    float shrinkX = 60.0f;
+                    float shrinkY = 60.0f;
+
+                    if (pos.x < holePos.x + holeHitbox.width - shrinkX && pos.x + hitbox.width > holePos.x + shrinkX &&
+                        pos.y < holePos.y + holeHitbox.height - shrinkY &&
+                        pos.y + hitbox.height > holePos.y + shrinkY) {
+                        game_over = true;
+                    }
+                }
             }
 
             if (pos.y < view.getCenter().y) {
@@ -347,9 +383,19 @@ int main() {
                 window.draw(circle);
             }
         } else {
+            lose_text.setString("You Lost\nScore: " + std::to_string(current_score));
+            sf::FloatRect textRect = lose_text.getLocalBounds();
+            lose_text.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
+
             lose_text.setPosition(view.getCenter());
             window.draw(lose_text);
         }
+
+        if (!in_menu && !game_over) {
+            score_text.setPosition(view.getCenter().x - 390, view.getCenter().y - 290);
+            window.draw(score_text);
+        }
+
         renderer_impl->display();
     }
 
