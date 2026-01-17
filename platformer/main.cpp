@@ -23,6 +23,7 @@
 #include "components/Weapon.hpp"
 #include "components/Projectile.hpp"
 #include "systems/MapGeneratorSystem.hpp"
+#include "components/TextDrawable.hpp"
 
 int main() {
     GameEngine::Registry registry;
@@ -150,6 +151,18 @@ int main() {
         std::cerr << "Failed to load font from any common path!" << std::endl;
         return 84;
     }
+
+    float start_y = 400.0f;
+    float max_height_y = start_y;
+    int current_score = 0;
+
+    auto score_entity = registry.createEntity();
+    registry.addComponent<rtype::ecs::component::Position>(score_entity, 10.0f, 10.0f);
+
+    sf::Text score_text("Score: 0", font, 30);
+    score_text.setFillColor(sf::Color::Black);
+    score_text.setPosition(10, 10);
+
     sf::Text lose_text("You Lost", font, 50);
     lose_text.setFillColor(sf::Color::Red);
 
@@ -299,6 +312,14 @@ int main() {
                 registry.getComponent<rtype::ecs::component::Weapon>(player).isShooting = false;
             }
 
+            // Score Logic
+            auto& currentPlayerPos = registry.getComponent<rtype::ecs::component::Position>(player);
+            if (currentPlayerPos.y < max_height_y) {
+                max_height_y = currentPlayerPos.y;
+                current_score = static_cast<int>(start_y - max_height_y);
+                score_text.setString("Score: " + std::to_string(current_score));
+            }
+
             physics_system->update(registry, dt);
             movement_system->update(registry, dt);
             weapon_system->update(registry, dt);
@@ -362,9 +383,19 @@ int main() {
                 window.draw(circle);
             }
         } else {
+            lose_text.setString("You Lost\nScore: " + std::to_string(current_score));
+            sf::FloatRect textRect = lose_text.getLocalBounds();
+            lose_text.setOrigin(textRect.left + textRect.width / 2.0f, textRect.top + textRect.height / 2.0f);
+
             lose_text.setPosition(view.getCenter());
             window.draw(lose_text);
         }
+
+        if (!in_menu && !game_over) {
+            score_text.setPosition(view.getCenter().x - 390, view.getCenter().y - 290);
+            window.draw(score_text);
+        }
+
         renderer_impl->display();
     }
 
