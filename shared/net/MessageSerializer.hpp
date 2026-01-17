@@ -384,6 +384,42 @@ class MessageSerializer : public IMessageSerializer {
         data.yourPlayerId = deserializer.read<int8_t>();
         return data;
     }
+
+    Packet serialize_restart_vote(const RestartVoteData& data) override {
+        Serializer serializer;
+        serializer.write(data.player_id);
+        serializer.write(data.vote);
+        return Packet(static_cast<uint16_t>(MessageType::RestartVote), serializer.get_data());
+    }
+
+    RestartVoteData deserialize_restart_vote(const Packet& packet) override {
+        Deserializer deserializer(packet.body);
+        RestartVoteData data;
+        data.player_id = deserializer.read<uint32_t>();
+        data.vote = deserializer.read<uint8_t>();
+        return data;
+    }
+
+    Packet serialize_restart_vote_status(const RestartVoteStatusData& data) override {
+        Serializer serializer;
+        serializer.write(data.votes_play_again);
+        serializer.write(data.votes_quit);
+        serializer.write(data.total_players);
+        serializer.write(data.countdown_seconds);
+        serializer.write(data.restart_triggered);
+        return Packet(static_cast<uint16_t>(MessageType::RestartVoteStatus), serializer.get_data());
+    }
+
+    RestartVoteStatusData deserialize_restart_vote_status(const Packet& packet) override {
+        Deserializer deserializer(packet.body);
+        RestartVoteStatusData data;
+        data.votes_play_again = deserializer.read<uint8_t>();
+        data.votes_quit = deserializer.read<uint8_t>();
+        data.total_players = deserializer.read<uint8_t>();
+        data.countdown_seconds = deserializer.read<uint8_t>();
+        data.restart_triggered = deserializer.read<uint8_t>();
+        return data;
+    }
 };
 
 } // namespace rtype::net
