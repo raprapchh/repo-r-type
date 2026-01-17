@@ -29,8 +29,7 @@ R-Type is a recreation of the classic arcade game developed as part of the **Adv
 
 - **ECS Architecture** — Custom implementation for high performance
 - **Networked Multiplayer** — UDP with authoritative server model
-- **Spectator Mode** — Watch games without spawning a ship
-- **Developer Console** — Real-time FPS, Ping, and CPU metrics (F3)
+- **Lagometer** — Real-time network latency visualization (L key)
 - **SFML Rendering** — Graphics and audio
 - **C++20** — Modern language features
 
@@ -78,12 +77,11 @@ cd G-CPP-500-PAR-5-2-rtype-3
 
 ### Controls
 
-| Action           | Keys              | Description                      |
-| ---------------- | ----------------- | -------------------------------- |
-| Movement         | WASD / Arrows     | Move the spaceship               |
-| Shoot            | Space             | Fire a projectile                |
-| Dev Console      | F3                | Toggle FPS/Ping/CPU display      |
-| Spectator Camera | Left/Right Arrows | Switch camera target (spectator) |
+| Action    | Keys   | Description                  |
+| --------- | ------ | ---------------------------- |
+| Movement  | Arrows | Move the spaceship           |
+| Shoot     | Space  | Fire a projectile            |
+| Lagometer | L      | Toggle network latency graph |
 
 ---
 

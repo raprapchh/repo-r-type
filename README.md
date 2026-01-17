@@ -48,6 +48,10 @@ Before building the project, ensure you have the following installed:
 git clone git@github.com:EpitechPGE3-2025/G-CPP-500-PAR-5-2-rtype-3.git
 cd G-CPP-500-PAR-5-2-rtype-3
 
+# Setup vcpkg (if not already done by build.sh)
+git clone https://github.com/microsoft/vcpkg.git
+./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
 # Using the helper script (recommended)
 chmod +x ./build.sh
 ./build.sh
