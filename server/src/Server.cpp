@@ -1,36 +1,36 @@
 #include "Server.hpp"
-#include "../../shared/GameConstants.hpp"
-#include "../../ecs/include/components/PlayerName.hpp"
-#include "../shared/net/Protocol.hpp"
-#include "../shared/net/ProtocolAdapter.hpp"
-#include "../shared/net/MessageSerializer.hpp"
-#include "../include/BroadcastSystem.hpp"
-#include "../../ecs/include/systems/MovementSystem.hpp"
-#include "../../ecs/include/systems/BoundarySystem.hpp"
-#include "../../ecs/include/systems/CollisionSystem.hpp"
-#include "../../ecs/include/systems/WeaponSystem.hpp"
-#include "../../ecs/include/systems/SpawnSystem.hpp"
-#include "../../ecs/include/systems/MobSystem.hpp"
-#include "../../ecs/include/systems/ForcePodSystem.hpp"
-#include "../../ecs/include/systems/SpawnEffectSystem.hpp"
-#include "../../ecs/include/components/Position.hpp"
-#include "../../ecs/include/components/Velocity.hpp"
-#include "../../ecs/include/components/Weapon.hpp"
-#include "../../ecs/include/components/HitBox.hpp"
-#include "../../ecs/include/components/Health.hpp"
-#include "../../ecs/include/components/NetworkId.hpp"
-#include "../../ecs/include/components/EnemySpawner.hpp"
-#include "../../ecs/include/components/Score.hpp"
-#include "../../ecs/include/components/Tag.hpp"
-#include "../../ecs/include/components/Lives.hpp"
-#include "../../ecs/include/systems/ScoreSystem.hpp"
-#include "../../ecs/include/systems/LivesSystem.hpp"
-#include "../../ecs/include/systems/ProjectileSystem.hpp"
-#include "../../ecs/include/components/Projectile.hpp"
-#include "../../ecs/include/components/MapBounds.hpp"
-#include "../../ecs/include/components/CollisionLayer.hpp"
-#include "../../shared/utils/Logger.hpp"
-#include "../../shared/utils/GameConfig.hpp"
+#include "GameConstants.hpp"
+#include "components/PlayerName.hpp"
+#include "net/Protocol.hpp"
+#include "net/ProtocolAdapter.hpp"
+#include "net/MessageSerializer.hpp"
+#include "BroadcastSystem.hpp"
+#include "systems/MovementSystem.hpp"
+#include "systems/BoundarySystem.hpp"
+#include "systems/CollisionSystem.hpp"
+#include "systems/WeaponSystem.hpp"
+#include "systems/SpawnSystem.hpp"
+#include "systems/MobSystem.hpp"
+#include "systems/ForcePodSystem.hpp"
+#include "systems/SpawnEffectSystem.hpp"
+#include "components/Position.hpp"
+#include "components/Velocity.hpp"
+#include "components/Weapon.hpp"
+#include "components/HitBox.hpp"
+#include "components/Health.hpp"
+#include "components/NetworkId.hpp"
+#include "components/EnemySpawner.hpp"
+#include "components/Score.hpp"
+#include "components/Tag.hpp"
+#include "components/Lives.hpp"
+#include "systems/ScoreSystem.hpp"
+#include "systems/LivesSystem.hpp"
+#include "systems/ProjectileSystem.hpp"
+#include "components/Projectile.hpp"
+#include "components/MapBounds.hpp"
+#include "components/CollisionLayer.hpp"
+#include "utils/Logger.hpp"
+#include "utils/GameConfig.hpp"
 #include <unordered_set>
 
 namespace rtype::server {
@@ -221,7 +221,8 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
             room_name = "Room " + std::to_string(new_session_id);
 
         rtype::config::GameRules rules(static_cast<rtype::config::GameMode>(create_data.game_mode),
-                                       static_cast<rtype::config::Difficulty>(create_data.difficulty));
+                                       static_cast<rtype::config::Difficulty>(create_data.difficulty),
+                                       create_data.lives);
         if (create_data.friendly_fire != 0) {
             rules.friendly_fire_enabled = true;
         }
@@ -237,7 +238,8 @@ void Server::handle_client_message(const std::string& client_ip, uint16_t client
                           protocol_adapter_->serialize(message_serializer_->serialize_room_info(room_info)));
         Logger::instance().info("Created room '" + room_name + "' with id " + std::to_string(new_session_id) +
                                 " (mode=" + std::to_string(create_data.game_mode) +
-                                ", diff=" + std::to_string(create_data.difficulty) + ")");
+                                ", diff=" + std::to_string(create_data.difficulty) +
+                                ", lives=" + std::to_string(create_data.lives) + ")");
         return;
     }
 

@@ -266,19 +266,20 @@ struct CreateRoomData {
     uint8_t game_mode;     // 0=COOP, 1=PVP, 2=PVE
     uint8_t difficulty;    // 0=EASY, 1=NORMAL, 2=HARD
     uint8_t friendly_fire; // 0=disabled, 1=enabled
+    uint8_t lives;         // Number of lives (2-5), default 3
 
-    CreateRoomData() : max_players(4), game_mode(0), difficulty(1), friendly_fire(0) {
+    CreateRoomData() : max_players(4), game_mode(0), difficulty(1), friendly_fire(0), lives(3) {
         memset(room_name, 0, sizeof(room_name));
     }
 
     CreateRoomData(const std::string& name, uint8_t max)
-        : max_players(max), game_mode(0), difficulty(1), friendly_fire(0) {
+        : max_players(max), game_mode(0), difficulty(1), friendly_fire(0), lives(3) {
         memset(room_name, 0, sizeof(room_name));
         strncpy(room_name, name.c_str(), 31);
     }
 
-    CreateRoomData(const std::string& name, uint8_t max, uint8_t mode, uint8_t diff, uint8_t ff)
-        : max_players(max), game_mode(mode), difficulty(diff), friendly_fire(ff) {
+    CreateRoomData(const std::string& name, uint8_t max, uint8_t mode, uint8_t diff, uint8_t ff, uint8_t l = 3)
+        : max_players(max), game_mode(mode), difficulty(diff), friendly_fire(ff), lives(l) {
         memset(room_name, 0, sizeof(room_name));
         strncpy(room_name, name.c_str(), 31);
     }

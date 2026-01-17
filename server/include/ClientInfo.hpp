@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../ecs/include/Registry.hpp"
+#include "Registry.hpp"
 #include <chrono>
 #include <string>
 

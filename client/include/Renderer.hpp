@@ -7,7 +7,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "../../shared/net/MessageData.hpp"
+#include "net/MessageData.hpp"
 #include "AccessibilityManager.hpp"
 
 namespace rtype::client {
@@ -41,6 +41,8 @@ class Renderer {
     void handle_input();
     void update_entity(const Entity& entity);
     void remove_entity(uint32_t entity_id);
+    void clear_entities();
+    void reset_game_state();
     void update_game_state(const rtype::net::GameStateData& state);
     void spawn_entity(const Entity& entity);
     void update_animations(float delta_time);
@@ -50,8 +52,9 @@ class Renderer {
     void draw_entities();
     void draw_ui();
     void draw_background();
-    void draw_game_over(bool all_players_dead);
+    void draw_game_over(bool all_players_dead, bool is_solo = false);
     bool is_game_over_back_to_menu_clicked(const sf::Vector2f& mouse_pos) const;
+    bool is_game_over_restart_clicked(const sf::Vector2f& mouse_pos) const;
     void render_frame();
 
     sf::Vector2f get_player_position(uint32_t player_id) const;
@@ -86,6 +89,13 @@ class Renderer {
     void handle_resize(uint32_t width, uint32_t height);
     void set_charge_percentage(float percentage) {
         charge_percentage_ = percentage;
+    }
+    void set_laser_energy(float energy) {
+        laser_energy_ = energy;
+    }
+
+    void set_boss_active(bool active) {
+        boss_active_ = active;
     }
 
     std::unordered_map<std::string, sf::Texture>& get_textures() {
@@ -130,11 +140,15 @@ class Renderer {
     rtype::net::GameStateData game_state_;
     mutable sf::RectangleShape back_to_menu_button_;
     mutable sf::Text back_to_menu_text_;
+    mutable sf::RectangleShape restart_button_;
+    mutable sf::Text restart_text_;
     float charge_percentage_ = 0.0f;
+    float laser_energy_ = 0.0f;
     sf::Sprite charge_particle_sprite_;
     int charge_particle_frame_ = 0;
     float charge_particle_timer_ = 0.0f;
     AccessibilityManager accessibility_manager_;
+    bool boss_active_ = false;
 
     bool stage_cleared_ = false;
     bool game_finished_ = false;

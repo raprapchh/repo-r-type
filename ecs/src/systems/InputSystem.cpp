@@ -1,7 +1,8 @@
-#include "../../include/systems/InputSystem.hpp"
-#include "../../include/components/Controllable.hpp"
-#include "../../include/components/Velocity.hpp"
-#include "../../include/components/Tag.hpp"
+#include "systems/InputSystem.hpp"
+#include "components/Controllable.hpp"
+#include "components/Velocity.hpp"
+#include "components/Tag.hpp"
+#include "components/SpectatorComponent.hpp"
 
 namespace rtype::ecs {
 
@@ -14,6 +15,10 @@ void InputSystem::update(GameEngine::Registry& registry, double /* dt */) {
 
     view.each([this, &registry](const auto entity, component::Controllable& ctrl, component::Velocity& vel) {
         if (!ctrl.is_local_player) {
+            return;
+        }
+
+        if (registry.hasComponent<component::SpectatorComponent>(static_cast<size_t>(entity))) {
             return;
         }
 

@@ -1,10 +1,10 @@
-#include "../../include/systems/MobSystem.hpp"
-#include "../../include/components/ScreenMode.hpp"
-#include "../../include/components/Position.hpp"
-#include "../../include/components/Velocity.hpp"
-#include "../../include/components/Tag.hpp"
-#include "../../include/components/Projectile.hpp"
-#include "../../shared/utils/GameConfig.hpp"
+#include "systems/MobSystem.hpp"
+#include "components/ScreenMode.hpp"
+#include "components/Position.hpp"
+#include "components/Velocity.hpp"
+#include "components/Tag.hpp"
+#include "components/Projectile.hpp"
+#include "utils/GameConfig.hpp"
 #include <vector>
 
 namespace rtype::ecs {

@@ -1,10 +1,10 @@
-#include "../../include/systems/AudioSystem.hpp"
-#include "../../include/components/Sound.hpp"
-#include "../../include/components/AudioEvent.hpp"
-#include "../../include/components/Position.hpp"
-#include "../../include/components/Velocity.hpp"
-#include "../../include/components/Drawable.hpp"
-#include "../../include/components/Tag.hpp"
+#include "systems/AudioSystem.hpp"
+#include "components/Sound.hpp"
+#include "components/AudioEvent.hpp"
+#include "components/Position.hpp"
+#include "components/Velocity.hpp"
+#include "components/Drawable.hpp"
+#include "components/Tag.hpp"
 #include <iostream>
 #include <thread>
 #include <chrono>

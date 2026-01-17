@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../shared/ScoreData.hpp"
+#include "ScoreData.hpp"
 #include <string>
 #include <memory>
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../include/Registry.hpp"
-#include "../../shared/interfaces/ecs/ISystem.hpp"
+#include "Registry.hpp"
+#include "interfaces/ecs/ISystem.hpp"
 
 namespace rtype::ecs {
 

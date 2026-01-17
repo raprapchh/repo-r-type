@@ -27,15 +27,18 @@ struct GameRules {
     float enemy_speed_multiplier;
     float enemy_fire_rate_multiplier;
     float player_damage_multiplier;
+    uint8_t initial_lives;
 
     GameRules()
         : mode(GameMode::COOP), difficulty(Difficulty::NORMAL), friendly_fire_enabled(false), enemy_hp_multiplier(1.0f),
-          enemy_speed_multiplier(1.0f), enemy_fire_rate_multiplier(1.0f), player_damage_multiplier(1.0f) {
+          enemy_speed_multiplier(1.0f), enemy_fire_rate_multiplier(1.0f), player_damage_multiplier(1.0f),
+          initial_lives(3) {
     }
 
-    GameRules(GameMode m, Difficulty d)
+    GameRules(GameMode m, Difficulty d, uint8_t lives = 3)
         : mode(m), difficulty(d), friendly_fire_enabled(m == GameMode::PVP), enemy_hp_multiplier(1.0f),
-          enemy_speed_multiplier(1.0f), enemy_fire_rate_multiplier(1.0f), player_damage_multiplier(1.0f) {
+          enemy_speed_multiplier(1.0f), enemy_fire_rate_multiplier(1.0f), player_damage_multiplier(1.0f),
+          initial_lives(lives) {
         apply_difficulty_multipliers();
     }
 
