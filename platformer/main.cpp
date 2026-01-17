@@ -22,6 +22,7 @@
 #include "systems/ProjectileSystem.hpp"
 #include "components/Weapon.hpp"
 #include "components/Projectile.hpp"
+#include "systems/MapGeneratorSystem.hpp"
 
 int main() {
     GameEngine::Registry registry;
@@ -106,6 +107,7 @@ int main() {
     auto physics_system = std::make_shared<rtype::ecs::PlatformerPhysicsSystem>();
     auto weapon_system = std::make_shared<rtype::ecs::WeaponSystem>();
     auto projectile_system = std::make_shared<rtype::ecs::ProjectileSystem>();
+    auto map_generator_system = std::make_shared<rtype::ecs::MapGeneratorSystem>();
 
     auto player = registry.createEntity();
     registry.addComponent<rtype::ecs::component::Position>(player, 200.0f, 400.0f);
@@ -132,41 +134,13 @@ int main() {
     weapon.spawnOffsetX = 62.0f;
     weapon.spawnOffsetY = 0.0f;
 
-    struct PlatformConfig {
-        float x, y, width, height;
-    };
-
-    std::vector<PlatformConfig> level_layout = {
-        {0.0f, 550.0f, 800.0f, 50.0f},     {200.0f, 450.0f, 100.0f, 20.0f},   {500.0f, 350.0f, 100.0f, 20.0f},
-        {100.0f, 250.0f, 100.0f, 20.0f},   {600.0f, 150.0f, 100.0f, 20.0f},   {300.0f, 50.0f, 100.0f, 20.0f},
-        {100.0f, -50.0f, 100.0f, 20.0f},   {600.0f, -150.0f, 100.0f, 20.0f},  {350.0f, -250.0f, 100.0f, 20.0f},
-        {50.0f, -350.0f, 100.0f, 20.0f},   {550.0f, -450.0f, 100.0f, 20.0f},  {250.0f, -550.0f, 100.0f, 20.0f},
-        {700.0f, -650.0f, 100.0f, 20.0f},  {150.0f, -750.0f, 100.0f, 20.0f},  {450.0f, -850.0f, 100.0f, 20.0f},
-        {50.0f, -950.0f, 100.0f, 20.0f},   {600.0f, -1050.0f, 100.0f, 20.0f}, {300.0f, -1150.0f, 100.0f, 20.0f},
-        {100.0f, -1250.0f, 100.0f, 20.0f}, {500.0f, -1350.0f, 100.0f, 20.0f}, {200.0f, -1450.0f, 100.0f, 20.0f},
-        {650.0f, -1550.0f, 100.0f, 20.0f}, {400.0f, -1650.0f, 100.0f, 20.0f}};
-
-    for (const auto& config : level_layout) {
-        auto wall = registry.createEntity();
-        registry.addComponent<rtype::ecs::component::Position>(wall, config.x, config.y);
-        registry.addComponent<rtype::ecs::component::HitBox>(wall, config.width, config.height);
-        registry.addComponent<rtype::ecs::component::Collidable>(wall, rtype::ecs::component::CollisionLayer::Obstacle);
-        registry.addComponent<rtype::ecs::component::Drawable>(
-            wall, "green_platform", 0, 0, static_cast<int>(config.width), static_cast<int>(config.height));
-    }
-
-    std::vector<PlatformConfig> hole_layout = {
-        {350.0f, 300.0f, 60.0f, 60.0f},
-        {100.0f, -600.0f, 60.0f, 60.0f},
-    };
-
-    for (const auto& config : hole_layout) {
-        auto hole = registry.createEntity();
-        registry.addComponent<rtype::ecs::component::Position>(hole, config.x, config.y);
-        registry.addComponent<rtype::ecs::component::HitBox>(hole, config.width, config.height);
-        registry.addComponent<rtype::ecs::component::Drawable>(hole, "hole", 0, 0, 0, 0);
-        registry.addComponent<rtype::ecs::component::Tag>(hole, "Hole");
-    }
+    auto start_plat = registry.createEntity();
+    registry.addComponent<rtype::ecs::component::Position>(start_plat, 150.0f, 550.0f);
+    registry.addComponent<rtype::ecs::component::HitBox>(start_plat, 500.0f, 20.0f);
+    registry.addComponent<rtype::ecs::component::Collidable>(start_plat,
+                                                             rtype::ecs::component::CollisionLayer::Obstacle);
+    registry.addComponent<rtype::ecs::component::Drawable>(start_plat, "green_platform", 0, 0, 500, 20);
+    registry.addComponent<rtype::ecs::component::Tag>(start_plat, "Platform");
 
     sf::Font font;
     if (!font.loadFromFile("client/fonts/Ethnocentric-Regular.otf") &&
@@ -329,6 +303,7 @@ int main() {
             movement_system->update(registry, dt);
             weapon_system->update(registry, dt);
             projectile_system->update(registry, dt);
+            map_generator_system->update(registry, view.getCenter().y);
 
             auto& pos = registry.getComponent<rtype::ecs::component::Position>(player);
             auto& hitbox = registry.getComponent<rtype::ecs::component::HitBox>(player);
