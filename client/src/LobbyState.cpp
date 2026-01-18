@@ -420,9 +420,9 @@ void LobbyState::handle_input(Renderer& renderer, StateManager& state_manager) {
                         room_input_background_.setOutlineColor(sf::Color::Cyan);
                     } else if (game_mode_button_.getGlobalBounds().contains(mouse_pos)) {
                         int current = static_cast<int>(selected_game_mode_);
-                        current = (current + 1) % 3;
+                        current = (current + 1) % 2;
                         selected_game_mode_ = static_cast<rtype::config::GameMode>(current);
-                        const char* mode_names[] = {"COOP", "PVP", "PVE"};
+                        const char* mode_names[] = {"COOP", "PVP"};
                         game_mode_text_.setString(mode_names[current]);
                         if (selected_game_mode_ == rtype::config::GameMode::PVP) {
                             selected_friendly_fire_ = true;
