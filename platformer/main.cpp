@@ -197,6 +197,15 @@ int main() {
         std::cerr << "Failed to load play-on texture!" << std::endl;
     }
 
+    sf::Texture monster_texture;
+    if (!monster_texture.loadFromFile("platformer/assets/monster.png") &&
+        !monster_texture.loadFromFile("assets/monster.png") &&
+        !monster_texture.loadFromFile("../platformer/assets/monster.png") &&
+        !monster_texture.loadFromFile("../assets/monster.png")) {
+        std::cerr << "Failed to load monster texture!" << std::endl;
+    }
+    textures["monster"] = monster_texture;
+
     sf::Sprite play_sprite(play_texture);
     sf::FloatRect playRect = play_sprite.getLocalBounds();
     play_sprite.setOrigin(playRect.width / 2.0f, playRect.height / 2.0f);
@@ -312,7 +321,6 @@ int main() {
                 registry.getComponent<rtype::ecs::component::Weapon>(player).isShooting = false;
             }
 
-            // Score Logic
             auto& currentPlayerPos = registry.getComponent<rtype::ecs::component::Position>(player);
             if (currentPlayerPos.y < max_height_y) {
                 max_height_y = currentPlayerPos.y;
@@ -353,6 +361,50 @@ int main() {
                         game_over = true;
                     }
                 }
+            }
+
+            auto monster_view =
+                registry
+                    .view<rtype::ecs::component::Position, rtype::ecs::component::HitBox, rtype::ecs::component::Tag>();
+            auto projectile_view = registry.view<rtype::ecs::component::Position, rtype::ecs::component::HitBox,
+                                                 rtype::ecs::component::Projectile>();
+            std::vector<GameEngine::entity_t> monsters_to_destroy;
+            std::vector<GameEngine::entity_t> projectiles_to_destroy;
+
+            for (auto monster_entity : monster_view) {
+                auto& tag = registry.getComponent<rtype::ecs::component::Tag>(monster_entity);
+                if (tag.name == "Monster") {
+                    auto& monsterPos = registry.getComponent<rtype::ecs::component::Position>(monster_entity);
+                    auto& monsterHitbox = registry.getComponent<rtype::ecs::component::HitBox>(monster_entity);
+
+                    if (pos.x < monsterPos.x + monsterHitbox.width && pos.x + hitbox.width > monsterPos.x &&
+                        pos.y < monsterPos.y + monsterHitbox.height && pos.y + hitbox.height > monsterPos.y) {
+                        game_over = true;
+                    }
+
+                    for (auto projectile_entity : projectile_view) {
+                        auto& projPos = registry.getComponent<rtype::ecs::component::Position>(projectile_entity);
+                        auto& projHitbox = registry.getComponent<rtype::ecs::component::HitBox>(projectile_entity);
+
+                        if (projPos.x < monsterPos.x + monsterHitbox.width &&
+                            projPos.x + projHitbox.width > monsterPos.x &&
+                            projPos.y < monsterPos.y + monsterHitbox.height &&
+                            projPos.y + projHitbox.height > monsterPos.y) {
+
+                            monsters_to_destroy.push_back(static_cast<GameEngine::entity_t>(monster_entity));
+                            projectiles_to_destroy.push_back(static_cast<GameEngine::entity_t>(projectile_entity));
+                        }
+                    }
+                }
+            }
+
+            for (auto entity : monsters_to_destroy) {
+                if (registry.isValid(entity))
+                    registry.destroyEntity(entity);
+            }
+            for (auto entity : projectiles_to_destroy) {
+                if (registry.isValid(entity))
+                    registry.destroyEntity(entity);
             }
 
             if (pos.y < view.getCenter().y) {
