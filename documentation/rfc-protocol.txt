@@ -1,0 +1,313 @@
+Internet-Draft                  R-Type Protocol              January 2026
+Expires: July 2026                                   Ajamtroye (Author)
+                                                      Independent Developer
+
+
+                The RTYPE Binary Protocol (RBP)
+               draft-ajamtroye-rtype-protocol-00
+
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as “work in progress”.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as document
+   authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents  
+   (https://trustee.ietf.org/license-info) in effect on the date of
+   publication of this document.
+
+Abstract
+
+   This document specifies the RTYPE Binary Protocol (RBP), a compact,
+   low-latency, UDP-based binary protocol designed for real-time
+   multiplayer game communication. RBP provides a fixed packet header,
+   variable-length payloads, and a set of message formats used to
+   synchronize players, entities, and game state in fast-paced gameplay
+   environments. This document defines packet layouts, message types,
+   serialization rules, error handling, and security considerations.
+
+Table of Contents
+
+   1.  Introduction
+   2.  Requirements Language
+   3.  Protocol Overview
+   4.  Transport Layer Requirements
+   5.  Packet Format
+   6.  Message Types
+       6.1.  PlayerJoin (1)
+       6.2.  PlayerMove (2)
+       6.3.  PlayerShoot (3)
+       6.4.  PlayerLeave (4)
+       6.5.  EntitySpawn (5)
+       6.6.  EntityMove (6)
+       6.7.  EntityDestroy (7)
+       6.8.  GameStart (8)
+       6.9.  GameState (9)
+       6.10. Ping (10)
+       6.11. Pong (11)
+       6.12. MapResize (12)
+   7.  Reliability and Loss Handling
+   8.  Serialization Rules
+   9.  Configuration Integration
+   10. Example Traces
+   11. Error Handling
+   12. Security Considerations
+   13. IANA Considerations
+   14. References
+   Appendix A. Quick Reference Tables
+   Appendix B. Future Enhancements
+   Author’s Address
+
+
+1.  Introduction
+
+   The RTYPE Binary Protocol (RBP) is a lightweight binary messaging
+   system transported over UDP. It is intended for real-time multiplayer
+   game environments requiring minimal latency, minimal overhead, and
+   simple parsing. RBP does not attempt to provide reliable transmission
+   or ordering; rather, it assumes a game networking model in which
+   updates are frequent and short-lived, and the server is
+   authoritative.
+
+   The protocol defines a single packet header format and a series of
+   OpCodes representing messages exchanged between clients and servers.
+
+2.  Requirements Language
+
+   The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”,
+   “SHOULD”, “SHOULD NOT”, “RECOMMENDED”, “NOT RECOMMENDED”, “MAY”, and
+   “OPTIONAL” in this document are to be interpreted as described in
+   BCP 14 [RFC2119].
+
+3.  Protocol Overview
+
+   RBP is a binary protocol with a fixed 4-byte header followed by a
+   variable-length payload. Messages correspond to operations including
+   player movement, entity updates, game state updates, and other
+   gameplay interactions. Clients send updates frequently (e.g., 30–60
+   Hz), while servers broadcast authoritative state.
+
+   RBP prioritizes:
+   * Low latency
+   * Compact encoding
+   * Predictable message structure
+   * Tightly packed serialization
+
+4.  Transport Layer Requirements
+
+   RBP MUST be transported over UDP. No reliability or ordering is
+   provided at the transport layer.
+
+   Implementations MUST tolerate:
+   * packet loss
+   * duplication
+   * out-of-order delivery
+
+   Port numbers are implementation-defined; defaults MAY be provided by
+   the application.
+
+5.  Packet Format
+
+   Every RBP packet begins with:
+
+       0                   1                   2                   3
+       +-------------------+-------------------+-------------------+---+
+       |   Message Type    |        Payload Size (bytes)           |
+       +-------------------+-------------------+-------------------+---+
+
+   Message Type:
+      A 16-bit unsigned integer identifying the OpCode.
+
+   Payload Size:
+      A 16-bit unsigned integer specifying the size of the following
+      payload.
+
+   Following the header, Payload Size bytes of message-specific binary
+   content MUST be present.
+
+   Maximum packet size MUST NOT exceed 1024 bytes.
+
+6.  Message Types
+
+   RBP defines the following OpCodes:
+
+     1 PlayerJoin        7 EntityDestroy     11 Pong
+     2 PlayerMove        8 GameStart         12 MapResize
+     3 PlayerShoot       9 GameState
+     4 PlayerLeave      10 Ping
+     5 EntitySpawn
+     6 EntityMove
+
+   Implementations MUST reject packets with undefined OpCodes.
+
+   All numeric values MUST be serialized little-endian.
+
+6.1.  PlayerJoin (1)
+   Purpose: Register or rejoin a player.
+   Direction: Bidirectional.
+
+   Payload:
+       0–3  player_id (uint32_t)
+
+   A client joining for the first time MUST set player_id = 0.
+
+6.2.  PlayerMove (2)
+   Purpose: Update player position and velocity.
+   Payload (20 bytes):
+       0–3   player_id
+       4–7   position_x
+       8–11  position_y
+       12–15 velocity_x
+       16–19 velocity_y
+
+   This message MAY be sent frequently (e.g., 30–60 Hz).
+
+6.3.  PlayerShoot (3)
+   Purpose: Weapon firing event.
+   Payload (22 bytes total):
+       player_id (4)
+       weapon_type (2)
+       position_x (4)
+       position_y (4)
+       direction_x (4)
+       direction_y (4)
+
+6.4.  PlayerLeave (4)
+   Purpose: Player disconnection.
+   Payload:
+       player_id (4)
+
+6.5.  EntitySpawn (5)
+   Creates a game entity.
+   Payload (24 bytes):
+       entity_id (4)
+       entity_type (2)
+       sub_type (2)
+       position_x (4)
+       position_y (4)
+       velocity_x (4)
+       velocity_y (4)
+
+6.6.  EntityMove (6)
+   Updates entity movement.
+   Payload (20 bytes):
+       entity_id (4)
+       position_x (4)
+       position_y (4)
+       velocity_x (4)
+       velocity_y (4)
+
+6.7.  EntityDestroy (7)
+   Removes an entity.
+   Payload (5 bytes):
+       entity_id (4)
+       reason (1)
+
+6.8.  GameStart (8)
+   Announces game start.
+   Payload (12 bytes):
+       session_id (4)
+       level_id (2)
+       player_count (1)
+       difficulty (1)
+       timestamp (4)
+
+6.9.  GameState (9)
+   Broadcasts game progress.
+   Payload (16 bytes):
+       game_time (4)
+       wave_number (2)
+       enemies_remaining (2)
+       score (4)
+       game_state (1)
+       lives (1)
+       padding (2)
+
+6.10. Ping (10)
+   Latency probe.
+   Payload:
+       timestamp (uint64)
+
+6.11. Pong (11)
+   Response to Ping.
+   Payload:
+       timestamp (uint64)
+
+6.12. MapResize (12)
+   Viewport change.
+   Payload (8 bytes):
+       width (float)
+       height (float)
+
+
+7.  Reliability and Loss Handling
+
+   RBP provides no built-in reliability. Lost messages MUST NOT be
+   retransmitted. Implementations SHOULD use periodic GameState messages
+   to restore sync. Duplicate messages MUST be safely ignored. Movement
+   messages SHOULD use extrapolation when updates are missed.
+
+8.  Serialization Rules
+
+   All fields MUST be packed in the exact order defined.
+
+   No padding MAY be inserted.
+
+   All floating-point values MUST use IEEE 754.
+
+   Deserializers MUST validate:
+      * minimum size
+      * payload_size correctness
+      * OpCode validity
+
+9.  Configuration Integration
+
+   Configuration files (e.g., JSON) MAY define frequency, timeouts, and
+   entity rules, but MUST NOT change the binary encoding.
+
+10. Example Traces
+
+   Complete gameplay sequence is provided in the Appendix.
+
+11. Error Handling
+
+   Invalid packets MUST be dropped silently or logged.  
+   Packets with mismatched payload sizes MUST be discarded.  
+   Undefined OpCodes MUST be rejected.
+
+12. Security Considerations
+
+   RBP provides:
+      * no authentication  
+      * no encryption  
+      * no integrity validation beyond payload size
+
+   Implementations SHOULD deploy RBP over trusted networks or use VPN or
+   DTLS.
+
+13. IANA Considerations
+
+   This document contains no IANA actions.
+
+14. References
+
+   RFC768, RFC2119, IEEE 754 Standard.
+
+Appendix A. Quick Reference
+Appendix B. Future Enhancements

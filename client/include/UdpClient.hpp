@@ -36,6 +36,7 @@ class UdpClient {
     asio::io_context& io_context_;
     std::unique_ptr<asio::ip::udp::socket> socket_;
     asio::ip::udp::endpoint server_endpoint_;
+    asio::ip::udp::endpoint remote_endpoint_;
     std::vector<uint8_t> recv_buffer_;
     message_callback handler_;
     std::atomic<bool> running_;

@@ -31,8 +31,10 @@
 #include "components/FpsCounter.hpp"
 #include "components/PingStats.hpp"
 #include "components/CpuStats.hpp"
+#include "components/LagometerComponent.hpp"
 #include "systems/PingSystem.hpp"
 #include "systems/CpuMetricSystem.hpp"
+#include "systems/LagometerSystem.hpp"
 #include "components/SpectatorComponent.hpp"
 #include "systems/SpectatorSystem.hpp"
 #include <iostream>
@@ -54,6 +56,8 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
     score_saved_ = false;
     initial_player_count_ = 0;
     max_score_reached_ = 0;
+
+    renderer.reset_game_state();
 
     spectator_system_ = std::make_shared<rtype::ecs::SpectatorSystem>();
 
@@ -106,6 +110,7 @@ void GameState::on_enter(Renderer& renderer, Client& client) {
         sf::Vector2u windowSize = renderer.get_window_size();
         createFpsCounter(registry, static_cast<float>(windowSize.x));
         createDevMetrics(registry, static_cast<float>(windowSize.x));
+        createLagometer(registry, static_cast<float>(windowSize.x));
     }
 
     client.get_audio_system().startBackgroundMusic();
@@ -115,13 +120,15 @@ void GameState::on_exit(Renderer& renderer, Client& client) {
     // Reset spectator state logic
     has_chosen_spectate_ = false;
     spectator_choice_pending_ = false;
-    (void)renderer;
-    (void)client;
+
+    // Reset renderer state to avoid leftover visuals on restart
+    renderer.reset_game_state();
 
     if (client_) {
         client_->get_audio_system().stopBackgroundMusic();
     }
 
+    (void)client;
     client_ = nullptr;
 }
 
@@ -233,6 +240,19 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                     dev_tools_system.setTogglePressed(true);
                     dev_tools_system.update(registry, 0.0);
                 }
+            } else if (event.key.code == sf::Keyboard::L) {
+                if (multiplayer_ && client_) {
+                    GameEngine::Registry& registry = client_->get_registry();
+                    std::mutex& registry_mutex = client_->get_registry_mutex();
+                    std::lock_guard<std::mutex> lock(registry_mutex);
+
+                    auto view = registry.view<rtype::ecs::component::LagometerComponent>();
+                    for (auto entity : view) {
+                        auto& lagometer = registry.getComponent<rtype::ecs::component::LagometerComponent>(
+                            static_cast<GameEngine::entity_t>(entity));
+                        lagometer.visible = !lagometer.visible;
+                    }
+                }
             }
         } else if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
             // Handle spectator choice dialog clicks FIRST
@@ -317,12 +337,38 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
                 sf::Vector2f mouse_pos = renderer.get_window()->mapPixelToCoords(
                     sf::Vector2i(event.mouseButton.x, event.mouseButton.y), renderer.get_window()->getDefaultView());
 
-                if (renderer.is_game_over_back_to_menu_clicked(mouse_pos)) {
+                // Multiplayer: Handle restart vote system
+                if (multiplayer_ && renderer.is_restart_vote_active()) {
+                    if (renderer.is_play_again_clicked(mouse_pos)) {
+                        if (client_) {
+                            client_->send_restart_vote(true);
+                        }
+                    } else if (renderer.is_game_over_back_to_menu_clicked(mouse_pos)) {
+                        if (client_) {
+                            client_->send_restart_vote(false);
+                            GameEngine::Registry& registry = client_->get_registry();
+                            std::mutex& registry_mutex = client_->get_registry_mutex();
+                            std::lock_guard<std::mutex> lock(registry_mutex);
+                            registry.clear();
+                        }
+                        game_over_ = false;
+                        all_players_dead_ = false;
+                        score_saved_ = false;
+                        state_manager.change_state(std::make_unique<MenuState>());
+                    }
+                    // Solo: Handle direct restart
+                } else if (!multiplayer_ && renderer.is_game_over_restart_clicked(mouse_pos)) {
                     if (client_) {
-                        GameEngine::Registry& registry = client_->get_registry();
-                        std::mutex& registry_mutex = client_->get_registry_mutex();
-                        std::lock_guard<std::mutex> lock(registry_mutex);
-                        registry.clear();
+                        client_->restart_session();
+                    }
+                    game_over_ = false;
+                    all_players_dead_ = false;
+                    score_saved_ = false;
+                    state_manager.change_state(std::make_unique<GameState>(false, solo_difficulty_, solo_lives_));
+                    // Both modes: Handle back to menu
+                } else if (renderer.is_game_over_back_to_menu_clicked(mouse_pos)) {
+                    if (client_) {
+                        client_->leave_room();
                     }
                     game_over_ = false;
                     all_players_dead_ = false;
@@ -346,7 +392,7 @@ void GameState::handle_input(Renderer& renderer, StateManager& state_manager) {
         }
     }
 
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::R)) {
+    if (renderer.get_window() && renderer.get_window()->hasFocus() && sf::Keyboard::isKeyPressed(sf::Keyboard::R)) {
         is_firing_laser_ = true;
     } else {
         is_firing_laser_ = false;
@@ -434,6 +480,13 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
             }
         }
 
+        // If server sent restart vote status, it means all players are dead - force game over
+        if (multiplayer_ && renderer.is_restart_vote_active() && !game_over_) {
+            game_over_ = true;
+            all_players_dead_ = true;
+            spectator_choice_pending_ = false;
+        }
+
         // If player is dead OR entity removed in multiplayer, show choice dialog
         // BUT if all players are dead, show standard Game Over instead
         if (multiplayer_ && client.is_connected() && player_id != 0 && (!player_exists || player_dead) &&
@@ -507,6 +560,15 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
         }
 
         if (game_over_ && all_players_dead_) {
+            if (multiplayer_ && renderer.is_restart_triggered()) {
+                renderer.reset_game_state();
+                game_over_ = false;
+                all_players_dead_ = false;
+                score_saved_ = false;
+                max_score_reached_ = 0;
+                has_chosen_spectate_ = false;
+                spectator_choice_pending_ = false;
+            }
             return;
         }
 
@@ -560,22 +622,24 @@ void GameState::update(Renderer& renderer, Client& client, StateManager& state_m
                 }
                 shoot_requested_ = false;
             }
+        }
 
-            // Send ping if requested by PingSystem
-            if (multiplayer_ && client.is_connected()) {
-                auto ping_view = registry.view<rtype::ecs::component::PingStats>();
-                for (auto entity : ping_view) {
-                    auto& stats = registry.getComponent<rtype::ecs::component::PingStats>(entity);
-                    if (stats.pingRequested) {
-                        auto now = std::chrono::steady_clock::now();
-                        uint64_t timestamp =
-                            std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
-                        client.send_ping(timestamp);
-                        stats.pingRequested = false;
-                    }
+        // Send ping if requested by PingSystem (always, regardless of focus or game state)
+        if (multiplayer_ && client.is_connected()) {
+            auto ping_view = registry.view<rtype::ecs::component::PingStats>();
+            for (auto entity : ping_view) {
+                auto& stats = registry.getComponent<rtype::ecs::component::PingStats>(entity);
+                if (stats.pingRequested) {
+                    auto now = std::chrono::steady_clock::now();
+                    uint64_t timestamp =
+                        std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
+                    client.send_ping(timestamp);
+                    stats.pingRequested = false;
                 }
             }
-        } else {
+        }
+
+        if (!window_has_focus || game_over_) {
             auto controllable_view =
                 registry.view<rtype::ecs::component::Controllable, rtype::ecs::component::Velocity>();
             for (auto entity : controllable_view) {
@@ -622,6 +686,11 @@ void GameState::render(Renderer& renderer, Client& client) {
 
         rtype::ecs::RenderSystem render_system(sfml_renderer, &renderer.get_accessibility_manager());
         render_system.update(registry, 0.016f);
+
+        if (multiplayer_) {
+            rtype::ecs::LagometerSystem lagometer_system;
+            lagometer_system.update(registry, 0.016, *renderer.get_window());
+        }
 
         if (is_charging_) {
             auto view = registry.view<rtype::ecs::component::NetworkId, rtype::ecs::component::Position>();
@@ -673,7 +742,7 @@ void GameState::render(Renderer& renderer, Client& client) {
 
     // Only show game over if victory screen is NOT displayed
     if (game_over_ && !renderer.is_stage_cleared()) {
-        renderer.draw_game_over(all_players_dead_);
+        renderer.draw_game_over(all_players_dead_, !multiplayer_);
     }
 
     if (is_paused_) {
@@ -743,7 +812,12 @@ void GameState::render(Renderer& renderer, Client& client) {
     // Only show game over if victory screen is NOT displayed AND NOT in spectator choice
     // But IF all players are dead, force show game over
     if (game_over_ && !renderer.is_stage_cleared() && !spectator_choice_pending_) {
-        renderer.draw_game_over(all_players_dead_);
+        // Draw game over: show restart button only in solo mode (!multiplayer_)
+        renderer.draw_game_over(all_players_dead_, !multiplayer_);
+        // Multiplayer: show restart vote UI when all players are dead
+        if (multiplayer_ && all_players_dead_ && renderer.is_restart_vote_active()) {
+            renderer.draw_restart_vote_ui();
+        }
     }
 
     if (is_paused_) {
@@ -868,7 +942,7 @@ void GameState::setup_spectator_ui() {
     spectator_title_text_.setFillColor(sf::Color::Red);
 
     spectator_continue_button_.setSize(sf::Vector2f(400, 60));
-    spectator_continue_button_.setFillColor(sf::Color(50, 50, 150)); // Default blue-ish
+    spectator_continue_button_.setFillColor(sf::Color(70, 130, 180)); // Same blue as Play Again button
     spectator_continue_button_.setOutlineColor(sf::Color::White);
     spectator_continue_button_.setOutlineThickness(2);
 
@@ -1006,6 +1080,18 @@ void GameState::createDevMetrics(GameEngine::Registry& registry, float windowWid
     registry.addComponent<rtype::ecs::component::CpuStats>(cpu_entity);
     registry.addComponent<rtype::ecs::component::TextDrawable>(cpu_entity, dev_font_, "CPU: -- ms", 20,
                                                                sf::Color::Green);
+}
+
+void GameState::createLagometer(GameEngine::Registry& registry, float windowWidth) {
+    (void)windowWidth;
+    lagometer_entity_ = registry.createEntity();
+
+    float x = 20.0f;
+    float y = 600.0f;
+
+    registry.addComponent<rtype::ecs::component::Position>(lagometer_entity_, x, y);
+    registry.addComponent<rtype::ecs::component::UITag>(lagometer_entity_);
+    registry.addComponent<rtype::ecs::component::LagometerComponent>(lagometer_entity_);
 }
 
 } // namespace rtype::client

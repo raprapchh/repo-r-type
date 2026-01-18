@@ -2,7 +2,9 @@ name: Windows MSVC Build
 
 on:
   push:
-    tags: [ "v*" ]
+    tags:
+      - 'v*'
+  workflow_dispatch: {}
   pull_request:
     branches: [ "main", "dev" ]
 
@@ -11,6 +13,7 @@ permissions:
 
 jobs:
   build:
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
 
     steps:
@@ -36,12 +39,34 @@ jobs:
         cp bin/windows/r-type_client.exe dist/
         cp bin/windows/r-type_server.exe dist/
 
-        # Copy runtime DLLs from vcpkg installed location (build-local or global)
+        # Copy runtime DLLs from vcpkg
         if (Test-Path "build/vcpkg_installed/x64-windows/bin") {
           Copy-Item -Path "build/vcpkg_installed/x64-windows/bin/*.dll" -Destination dist -Force -ErrorAction SilentlyContinue
         } elseif (Test-Path "C:\\vcpkg\\installed\\x64-windows\\bin") {
           Copy-Item -Path "C:\\vcpkg\\installed\\x64-windows\\bin\\*.dll" -Destination dist -Force -ErrorAction SilentlyContinue
         }
+
+        # Copy runtime DLLs from build directory (e.g. SFML dependencies from FetchContent)
+        # Search recursively for any DLLs that might have been downloaded or built
+        Get-ChildItem -Path "build" -Filter "*.dll" -Recurse | ForEach-Object {
+            Copy-Item -Path $_.FullName -Destination dist -Force -ErrorAction SilentlyContinue
+        }
+
+        # --- FORCE OPENAL SOFT 64-BIT AUTOMATION ---
+        # 1. Remove any existing OpenAL DLLs to avoid 32/64 bit confusion
+        Remove-Item -Path "dist/OpenAL32.dll", "dist/soft_oal.dll" -Force -ErrorAction SilentlyContinue
+
+        # 2. Download the official 64-bit binary to be 100% sure we have Win64 version
+        Write-Host "Downloading official OpenAL Soft 64-bit..."
+        $oalVersion = "1.23.1"
+        $oalUrl = "https://github.com/kcat/openal-soft/releases/download/$oalVersion/openal-soft-$oalVersion-bin.zip"
+        Invoke-WebRequest -Uri $oalUrl -OutFile "openal.zip"
+        Expand-Archive -Path "openal.zip" -DestinationPath "openal_temp" -Force
+        Copy-Item -Path "openal_temp/openal-soft-$oalVersion-bin/bin/Win64/soft_oal.dll" -Destination "dist/OpenAL32.dll" -Force
+        Remove-Item -Path "openal.zip", "openal_temp" -Recurse -Force
+        
+        Write-Host "OpenAL32.dll (64-bit) forced in dist."
+        # -------------------------------------------
 
         mkdir dist/client
         cp -r client/assets dist/client/
@@ -61,28 +86,69 @@ jobs:
         name: r-type-windows-binaries
         path: dist/
 
-#    - name: Install NSIS
-#      run: choco install nsis -y
-#      shell: pwsh
-#
-#    - name: Reload environment
-#      run: refreshenv
-#      shell: pwsh
-#
-#    - name: Build Installer (NSIS)
-#      run: |
-#        & 'C:\Program Files (x86)\NSIS\makensis.exe' "/DVERSION=${{ github.ref_name }}" 'installer/installer.nsi'
-#      shell: pwsh
-#
-#    - name: Move Installer to dist
-#      run: |
-#        if (Test-Path 'R-Type-Installer.exe') {
-#          if (-Not (Test-Path 'dist')) { New-Item -ItemType Directory -Path 'dist' | Out-Null }
-#          Move-Item 'R-Type-Installer.exe' -Destination 'dist'
-#        } else {
-#          Write-Host 'R-Type-Installer.exe not found; skipping move.'
-#        }
-#      shell: pwsh
+    - name: Install NSIS
+      run: choco install nsis -y
+      shell: pwsh
+
+    - name: Install INetC plugin
+      run: |
+        $url = "https://github.com/DigitalMediaServer/NSIS-INetC-plugin/releases/download/v1.0.5.7/InetC.zip"
+        $tempZip = "$env:TEMP\InetC.zip"
+        $nsisPlugins = "C:\Program Files (x86)\NSIS\Plugins"
+
+        # Créer les dossiers x86-unicode et x86-ansi si absents
+        foreach ($sub in @("x86-unicode","x86-ansi")) {
+            $path = Join-Path $nsisPlugins $sub
+            if (-Not (Test-Path $path)) { New-Item -ItemType Directory -Path $path | Out-Null }
+        }
+
+        # Télécharger le zip
+        Invoke-WebRequest -Uri $url -OutFile $tempZip
+
+        # Extraire directement les DLL dans les bons dossiers
+        Expand-Archive -LiteralPath $tempZip -DestinationPath $env:TEMP\InetC -Force
+        Copy-Item -Path "$env:TEMP\InetC\x86-unicode\InetC.dll" -Destination "$nsisPlugins\x86-unicode\" -Force
+        Copy-Item -Path "$env:TEMP\InetC\x86-ansi\InetC.dll" -Destination "$nsisPlugins\x86-ansi\" -Force
+
+        # Nettoyer temporaire
+        Remove-Item -Path $tempZip -Force
+        Remove-Item -Path "$env:TEMP\InetC" -Recurse -Force
+
+        Write-Host "INetC.dll installed successfully!"
+      shell: pwsh
+  
+    - name: Reload environment
+      run: refreshenv
+      shell: pwsh
+
+    - name: Build Installer (NSIS)
+      run: |
+        $downloadUrl = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/dist.zip"
+        $nsis = 'C:\Program Files (x86)\NSIS\makensis.exe'
+        & $nsis "/DVERSION=${{ github.ref_name }}" "/DDOWNLOAD_URL=$downloadUrl" 'installer/installer.nsi'
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "NSIS failed to build the installer!"
+          exit 1
+        }
+      shell: pwsh
+
+    - name: Move Installer to dist
+      run: |
+        $installer = 'R-Type-Installer.exe'
+        if (-Not (Test-Path $installer)) {
+          if (Test-Path "installer\$installer") {
+            $installer = "installer\$installer"
+          }
+        }
+
+        if (Test-Path $installer) {
+          if (-Not (Test-Path 'dist')) { New-Item -ItemType Directory -Path 'dist' | Out-Null }
+          Move-Item $installer -Destination 'dist'
+          Write-Host "Moved $installer to dist"
+        } else {
+          Write-Host 'R-Type-Installer.exe not found in root or installer/ directory.'
+        }
+      shell: pwsh
 
     - name: Validate artifacts (move zero-byte files)
       run: |
@@ -110,10 +176,13 @@ jobs:
       run: |
         if (-Not (Test-Path 'dist')) { Write-Host 'dist not found'; exit 1 }
         Remove-Item -Force -ErrorAction SilentlyContinue dist.zip
-        $files = Get-ChildItem -Path dist -Recurse -File | Where-Object { $_.Length -gt 0 }
-        if ($files.Count -eq 0) { Write-Host 'No non-empty files to archive'; exit 1 }
-        $paths = $files | ForEach-Object { $_.FullName }
-        Compress-Archive -Path $paths -DestinationPath dist.zip -Force
+        
+        # We use a temporary directory to build the zip to avoid including dist.zip itself if it was there
+        # and to ensure the structure inside the zip starts at the root of dist/
+        Push-Location dist
+        Compress-Archive -Path * -DestinationPath ..\dist.zip -Force
+        Pop-Location
+        
         Get-Item dist.zip | Select-Object FullName,@{Name='SizeMB';Expression={[math]::Round($_.Length/1MB,3)}} | Format-Table -AutoSize
       shell: pwsh
 
@@ -127,12 +196,28 @@ jobs:
         else { Write-Host 'bin/windows not found' }
       shell: pwsh
 
+    - name: Prepare release files
+      run: |
+        $installer = 'R-Type-Installer.exe'
+        if (-Not (Test-Path $installer)) {
+          if (Test-Path "dist/$installer") {
+            Copy-Item "dist/$installer" $installer -Force
+          } elseif (Test-Path "installer/$installer") {
+            Copy-Item "installer/$installer" $installer -Force
+          } else {
+            Write-Error "R-Type-Installer.exe not found in root, dist/, or installer/!"
+            exit 1
+          }
+        }
+        Write-Host "Ready to release: $installer"
+      shell: pwsh
+
     - name: Release
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1
       with:
         files: |
           dist.zip
-#          dist\R-Type-Installer.exe
+          R-Type-Installer.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

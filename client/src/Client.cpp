@@ -115,6 +115,43 @@ void Client::run() {
     }
 }
 
+void Client::reconnect() {
+    // Stop existing connections
+    if (io_context_) {
+        io_context_->stop();
+    }
+
+    if (network_thread_ && network_thread_->joinable()) {
+        network_thread_->join();
+    }
+
+    if (udp_client_) {
+        udp_client_->stop();
+    }
+
+    // Clear all state
+    connected_ = false;
+    session_id_ = 0;
+    player_id_ = 0;
+    network_system_.set_player_id(0);
+    network_system_.clear_packet_queue();
+
+    {
+        std::lock_guard<std::mutex> lock(registry_mutex_);
+        registry_.clear();
+    }
+
+    // Recreate io_context and UDP client
+    io_context_ = std::make_unique<asio::io_context>();
+    udp_client_ = std::make_unique<UdpClient>(*io_context_, host_, port_);
+    udp_client_->set_message_handler(
+        [this](const asio::error_code& error, std::size_t bytes_transferred, const std::vector<uint8_t>& data) {
+            handle_udp_receive(error, bytes_transferred, data);
+        });
+
+    std::cout << "Client reconnected - ready for new session" << std::endl;
+}
+
 void Client::handle_udp_receive(const asio::error_code& error, std::size_t bytes_transferred,
                                 const std::vector<uint8_t>& data) {
     (void)bytes_transferred;
@@ -527,14 +564,14 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             if (rtt_ms < 0)
                 rtt_ms = 0.0f;
 
-            // Update PingStats component (non-blocking)
-            if (registry_mutex_.try_lock()) {
+            // Update PingStats component
+            {
+                std::lock_guard<std::mutex> lock(registry_mutex_);
                 auto view = registry_.view<rtype::ecs::component::PingStats>();
                 for (auto entity : view) {
                     auto& stats = registry_.getComponent<rtype::ecs::component::PingStats>(entity);
                     stats.lastPingMs = rtt_ms;
                 }
-                registry_mutex_.unlock();
             }
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing Pong packet: " << e.what() << std::endl;
@@ -598,6 +635,15 @@ void Client::handle_server_message(const std::vector<uint8_t>& data) {
             }
         } catch (const std::exception& e) {
             std::cerr << "Error deserializing LobbyUpdate packet: " << e.what() << std::endl;
+        }
+        break;
+    }
+    case rtype::net::MessageType::RestartVoteStatus: {
+        try {
+            auto status_data = serializer.deserialize_restart_vote_status(packet);
+            renderer_.update_restart_vote_status(status_data);
+        } catch (const std::exception& e) {
+            std::cerr << "Error deserializing RestartVoteStatus packet: " << e.what() << std::endl;
         }
         break;
     }
@@ -667,6 +713,16 @@ void Client::send_ping(uint64_t timestamp) {
     rtype::net::PingPongData ping_data(timestamp);
     rtype::net::Packet ping_packet = serializer.serialize_ping(ping_data);
     std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(ping_packet);
+    udp_client_->send(packet_data);
+}
+
+void Client::send_restart_vote(bool play_again) {
+    if (!connected_.load())
+        return;
+    rtype::net::MessageSerializer serializer;
+    rtype::net::RestartVoteData vote_data(player_id_, play_again ? 1 : 0);
+    rtype::net::Packet vote_packet = serializer.serialize_restart_vote(vote_data);
+    std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(vote_packet);
     udp_client_->send(packet_data);
 }
 
@@ -801,6 +857,25 @@ void Client::leave_room() {
     }
 
     std::cout << "Left current room" << std::endl;
+}
+
+void Client::restart_session() {
+    // Send PlayerLeave to properly close the current session on server
+    if (connected_.load()) {
+        rtype::net::MessageSerializer serializer;
+        rtype::net::PlayerLeaveData leave_data(player_id_);
+        rtype::net::Packet leave_packet = serializer.serialize_player_leave(leave_data);
+        std::vector<uint8_t> packet_data = rtype::net::ProtocolAdapter().serialize(leave_packet);
+        udp_client_->send(packet_data);
+    }
+
+    // Wait for server to process the leave
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // Full reconnect - recreate socket to clear all buffers
+    reconnect();
+
+    std::cout << "Session reset for restart" << std::endl;
 }
 
 void Client::send_heartbeat() {

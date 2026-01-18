@@ -37,83 +37,88 @@ Before building the project, ensure you have the following installed:
 - **Git**
 
 > **Note:** This project is **self-contained**. All dependencies (SFML, Asio, Catch2) are managed automatically via **vcpkg** and **FetchContent**. No manual library installation is required.
+>
+> **However**, some system-level tools are required for vcpkg to build dependencies (specifically `alsa`):
+>
+> - **Fedora/RedHat**: `sudo dnf install autoconf libtool`
+> - **Debian/Ubuntu**: `sudo apt install autoconf libtool`
+> - **Arch Linux**: `sudo pacman -S autoconf automake libtool`
+> - **Alpine**: `apk add autoconf automake libtool`
 
 <br>
 
-## 🏗️ Installation & Compilation
+## 🏗️ Quick Start
 
-1. **Clone the repository:**
+### 1. Clone and Build for Linux
 
-   ```bash
-   git clone git@github.com:EpitechPGE3-2025/G-CPP-500-PAR-5-2-rtype-3.git
-   cd G-CPP-500-PAR-5-2-rtype-3
-   ```
+```bash
+git clone git@github.com:EpitechPGE3-2025/G-CPP-500-PAR-5-2-rtype-3.git
+cd G-CPP-500-PAR-5-2-rtype-3
 
-2. **Build the project:**
-   We provide a helper script to automate the build process.
+# Setup vcpkg (if not already done by build.sh)
+git clone https://github.com/microsoft/vcpkg.git
+./vcpkg/bootstrap-vcpkg.sh -disableMetrics
 
-   ```bash
-   chmod +x ./build.sh
-   ./build.sh
-   ```
+# Using the helper script (recommended)
+chmod +x ./build.sh
+./build.sh
 
-   _Alternatively, to build manually without the script:_
-
-   ```bash
-   # 1. Setup vcpkg (if not already done by build.sh)
-   git clone https://github.com/microsoft/vcpkg.git
-   ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
-
-   # 2. Configure and build
-   cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake
-   cmake --build build --parallel
-   ```
-
-3. **Clean the project:**
-
-   ```bash
-   chmod +x ./clean.sh
-   ./clean.sh
-   ```
-
-<br>
+# Or manually with CMake
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build build --parallel
+```
 
 ## 🎮 Usage
 
 After building, the binaries are located in `./bin/linux/`.
 
-### 1. Start the Server
-
-The server manages the game state and synchronization. Run it first.
+### 2. Run the Game
 
 ```bash
-./bin/linux/r-type_server [port]
+# Start the server
+./bin/linux/r-type_server [PORT]
+
+# Start the client (in another terminal)
+./bin/linux/r-type_client [IP] [PORT]
 ```
 
-_(Default port is 4242)_
+### 3. Run the Installer for Windows
 
-### 2. Start the Client
+First Download the Installer in the last release
 
-Launch the client to connect to the server.
+Execute it in Admin mode
 
-```bash
-./bin/linux/r-type_client [ip] [port]
+And you should be connected to wifi in private mode (In wifi configs)
+
+### 4. Run the Game on Windows
+
+Usually the binaries are installed in `C:\Program\R-Type\`
+
+you can then start the server .exe
+
+for the client you might want to use PowerShell if you want to play with another pc,
+otherwise you can use the client.exe in the same folder as the server.exe
+
+```powershell
+# Start the client (in PowerShell)
+.\r-type_client.exe [IP] [PORT]
 ```
-
-- **ip**: The IP address of the server (default: `127.0.0.1` or `localhost`).
-- **port**: The port the server is listening on (default: `4242`).
 
 <br>
 
 ## 🕹️ Controls
 
-| Action         | Key (AZERTY) | Key (QWERTY) | Key (Arrows) | description              |
-| :------------- | :----------: | :----------: | :----------: | :----------------------- |
-| **Move Up**    |     `Z`      |     `W`      |     `↑`      | Move spaceship up        |
-| **Move Down**  |     `S`      |     `S`      |     `↓`      | Move spaceship down      |
-| **Move Left**  |     `Q`      |     `A`      |     `←`      | Move spaceship left      |
-| **Move Right** |     `D`      |     `D`      |     `→`      | Move spaceship right     |
-| **Shoot**      |   `Space`    |   `Space`    |   `Space`    | Fire standard projectile |
+| Action          |   Key   | Description                 |
+| :-------------- | :-----: | :-------------------------- |
+| **Move Up**     |   `↑`   | Move spaceship up           |
+| **Move Down**   |   `↓`   | Move spaceship down         |
+| **Move Left**   |   `←`   | Move spaceship left         |
+| **Move Right**  |   `→`   | Move spaceship right        |
+| **Shoot**       | `Space` | Fire standard projectile    |
+| **Dev Console** |  `F3`   | Toggle FPS/Ping/CPU metrics |
+| **Lagometer**   |   `L`   | Toggle Lagometer            |
+
+> **Note:** You can customize your controls in the **Settings** menu from the main menu.
 
 <br>
 
@@ -122,7 +127,7 @@ Launch the client to connect to the server.
 The codebase is modularized for clarity and scalability:
 
 - **`server/`**: Handles game logic, authoritative state, and UDP communication.
-- **`client/`**: manages rendering (SFML), input handling, and interpolation.
+- **`client/`**: Manages rendering (SFML), input handling, and interpolation.
 - **`ecs/`**: The core Entity Component System library (Entities, Components, Systems).
 - **`shared/`**: Common resources, network protocols, and data structures.
 - **`config/`**: JSON configuration files for game balancing.

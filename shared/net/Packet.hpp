@@ -6,10 +6,12 @@
 
 namespace rtype::net {
 
+#pragma pack(push, 1)
 struct PacketHeader {
     uint16_t message_type;
     uint16_t payload_size;
 };
+#pragma pack(pop)
 
 struct Packet {
     PacketHeader header;
@@ -37,8 +39,9 @@ struct Packet {
         Packet pkt;
         if (data.size() >= sizeof(PacketHeader)) {
             std::memcpy(&pkt.header, data.data(), sizeof(PacketHeader));
-            if (data.size() > sizeof(PacketHeader)) {
-                pkt.body.assign(data.begin() + sizeof(PacketHeader), data.end());
+            if (pkt.header.payload_size > 0 && data.size() >= sizeof(PacketHeader) + pkt.header.payload_size) {
+                pkt.body.assign(data.begin() + sizeof(PacketHeader),
+                                data.begin() + sizeof(PacketHeader) + pkt.header.payload_size);
             }
         }
         return pkt;

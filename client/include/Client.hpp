@@ -30,12 +30,14 @@ class Client {
 
     void connect();
     void disconnect();
+    void reconnect();
     void run();
     void update(double dt);
 
     void send_move(float vx, float vy);
     void send_shoot(int32_t x, int32_t y, int chargeLevel = 0);
     void send_ping(uint64_t timestamp);
+    void send_restart_vote(bool play_again);
 
     bool is_connected() const {
         return connected_.load();
@@ -66,6 +68,7 @@ class Client {
     void send_player_name_update(const std::string& name);
     void send_chat_message(const std::string& message);
     void leave_room();
+    void restart_session();
     void set_offline_ids(uint32_t session_id, uint32_t player_id) {
         session_id_ = session_id;
         player_id_ = player_id;
