@@ -29,11 +29,21 @@ void UdpClient::start_receive() {
     }
     running_ = true;
     remote_endpoint_ = asio::ip::udp::endpoint();
-    socket_->async_receive_from(asio::buffer(recv_buffer_), remote_endpoint_,
-                                [this](const asio::error_code& error, std::size_t bytes_transferred) {
-                                    handle_receive(error, bytes_transferred);
-                                });
+    try {
+        socket_->async_receive_from(
+            asio::buffer(recv_buffer_), remote_endpoint_,
+            [this](const asio::error_code& error, std::size_t bytes_transferred) {
+                handle_receive(error, bytes_transferred);
+            }
+        );
+    } catch (const std::exception& e) {
+        std::cerr << "[WARNING] async_receive_from failed: " << e.what() << std::endl;
+        if (running_) {
+            io_context_.post([this] { start_receive(); });
+        }
+    }
 }
+
 
 void UdpClient::send(const std::vector<uint8_t>& data) {
     if (!socket_ || !socket_->is_open()) {
@@ -63,12 +73,6 @@ void UdpClient::set_message_handler(message_callback handler) {
 }
 
 void UdpClient::handle_receive(const asio::error_code& error, std::size_t bytes_transferred) {
-    std::cout << "[DEBUG] UdpClient initialized" << std::endl;
-    std::cout << "[DEBUG] Starting async_receive_from" << std::endl;
-    std::cout << "[DEBUG] Packet from: "
-            << remote_endpoint_.address().to_string()
-            << ":" << remote_endpoint_.port()
-            << " (" << bytes_transferred << " bytes)" << std::endl;
     if (!error) {
         if (bytes_transferred == 0) {
             std::cerr << "[WARNING] Received empty packet, ignoring." << std::endl;
