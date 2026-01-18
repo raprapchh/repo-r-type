@@ -37,6 +37,13 @@ Before building the project, ensure you have the following installed:
 - **Git**
 
 > **Note:** This project is **self-contained**. All dependencies (SFML, Asio, Catch2) are managed automatically via **vcpkg** and **FetchContent**. No manual library installation is required.
+>
+> **However**, some system-level tools are required for vcpkg to build dependencies (specifically `alsa`):
+>
+> - **Fedora/RedHat**: `sudo dnf install autoconf libtool`
+> - **Debian/Ubuntu**: `sudo apt install autoconf libtool`
+> - **Arch Linux**: `sudo pacman -S autoconf automake libtool`
+> - **Alpine**: `apk add autoconf automake libtool`
 
 <br>
 
