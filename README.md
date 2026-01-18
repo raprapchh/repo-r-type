@@ -49,7 +49,7 @@ Before building the project, ensure you have the following installed:
 
 ## 🏗️ Quick Start
 
-### 1. Clone and Build
+### 1. Clone and Build for Linux
 
 ```bash
 git clone git@github.com:EpitechPGE3-2025/G-CPP-500-PAR-5-2-rtype-3.git
@@ -76,10 +76,32 @@ After building, the binaries are located in `./bin/linux/`.
 
 ```bash
 # Start the server
-./bin/linux/r-type_server 4242
+./bin/linux/r-type_server [PORT]
 
 # Start the client (in another terminal)
-./bin/linux/r-type_client 127.0.0.1 4242
+./bin/linux/r-type_client [IP] [PORT]
+```
+
+### 3. Run the Installer for Windows
+
+First Download the Installer in the last release
+
+Execute it in Admin mode
+
+And you should be connected to wifi in private mode (In wifi configs)
+
+### 4. Run the Game on Windows
+
+Usually the binaries are installed in `C:\Program\R-Type\`
+
+you can then start the server .exe
+
+for the client you might want to use PowerShell if you want to play with another pc,
+otherwise you can use the client.exe in the same folder as the server.exe
+
+```powershell
+# Start the client (in PowerShell)
+.\r-type_client.exe [IP] [PORT]
 ```
 
 <br>
