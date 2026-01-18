@@ -63,10 +63,20 @@ void UdpClient::set_message_handler(message_callback handler) {
 }
 
 void UdpClient::handle_receive(const asio::error_code& error, std::size_t bytes_transferred) {
+    std::cout << "[DEBUG] UdpClient initialized" << std::endl;
+    std::cout << "[DEBUG] Starting async_receive_from" << std::endl;
+    std::cout << "[DEBUG] Packet from: "
+            << remote_endpoint_.address().to_string()
+            << ":" << remote_endpoint_.port()
+            << " (" << bytes_transferred << " bytes)" << std::endl;
     if (!error) {
-        std::vector<uint8_t> received_data(recv_buffer_.begin(), recv_buffer_.begin() + bytes_transferred);
-        if (handler_) {
-            handler_(error, bytes_transferred, received_data);
+        if (bytes_transferred == 0) {
+            std::cerr << "[WARNING] Received empty packet, ignoring." << std::endl;
+        } else {
+            std::vector<uint8_t> received_data(recv_buffer_.begin(), recv_buffer_.begin() + bytes_transferred);
+            if (handler_) {
+                handler_(error, bytes_transferred, received_data);
+            }
         }
         if (running_) {
             start_receive();
@@ -75,6 +85,9 @@ void UdpClient::handle_receive(const asio::error_code& error, std::size_t bytes_
         std::cerr << "UdpClient receive error: " << error.message() << std::endl;
         if (handler_) {
             handler_(error, bytes_transferred, {});
+        }
+        if (running_) {
+            start_receive();
         }
     }
 }
