@@ -14,7 +14,7 @@ UdpClient::UdpClient(asio::io_context& io_context, const std::string& host, uint
 
         asio::ip::udp::resolver resolver(io_context_);
         server_endpoint_ = *resolver.resolve(asio::ip::udp::v4(), host, std::to_string(port)).begin();
-        
+
         socket_->open(asio::ip::udp::v4());
         // Bind the socket to a local endpoint. Port 0 means the OS will choose a port.
         socket_->bind(asio::ip::udp::endpoint(asio::ip::udp::v4(), 0));
@@ -37,14 +37,11 @@ void UdpClient::start_receive() {
     }
     running_ = true;
     remote_endpoint_ = asio::ip::udp::endpoint();
-    socket_->async_receive_from(
-        asio::buffer(recv_buffer_), remote_endpoint_,
-        [this](const asio::error_code& error, std::size_t bytes_transferred) {
-            handle_receive(error, bytes_transferred);
-        }
-    );
+    socket_->async_receive_from(asio::buffer(recv_buffer_), remote_endpoint_,
+                                [this](const asio::error_code& error, std::size_t bytes_transferred) {
+                                    handle_receive(error, bytes_transferred);
+                                });
 }
-
 
 void UdpClient::send(const std::vector<uint8_t>& data) {
     if (!socket_ || !socket_->is_open()) {
