@@ -59,6 +59,15 @@ void MapGeneratorSystem::update(GameEngine::Registry& registry, float view_cente
                 registry.addComponent<component::Drawable>(hole, "hole", 0, 0, 0, 0);
                 registry.addComponent<component::Tag>(hole, "Hole");
             }
+        } else if (std::rand() % 100 < 10) {
+            float monster_x = new_x + 20.0f + static_cast<float>(std::rand() % 60);
+
+            auto monster = registry.createEntity();
+            registry.addComponent<component::Position>(monster, monster_x, new_y - 50.0f);
+            registry.addComponent<component::HitBox>(monster, 50.0f, 50.0f);
+            registry.addComponent<component::Drawable>(monster, "monster", 0, 0, 0, 0, 0.15f, 0.15f);
+            registry.addComponent<component::Tag>(monster, "Monster");
+            registry.addComponent<component::Collidable>(monster, component::CollisionLayer::Enemy);
         }
 
         _last_platform_y = new_y;
