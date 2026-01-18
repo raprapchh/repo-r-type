@@ -14,9 +14,13 @@ UdpClient::UdpClient(asio::io_context& io_context, const std::string& host, uint
 
         asio::ip::udp::resolver resolver(io_context_);
         server_endpoint_ = *resolver.resolve(asio::ip::udp::v4(), host, std::to_string(port)).begin();
+        
         socket_->open(asio::ip::udp::v4());
+        // Bind the socket to a local endpoint. Port 0 means the OS will choose a port.
+        socket_->bind(asio::ip::udp::endpoint(asio::ip::udp::v4(), 0));
 
         recv_buffer_.resize(1024);
+        std::cout << "UdpClient initialized and bound to local port: " << socket_->local_endpoint().port() << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "UdpClient initialization error: " << e.what() << std::endl;
     }
@@ -71,29 +75,27 @@ void UdpClient::set_message_handler(message_callback handler) {
 
 void UdpClient::handle_receive(const asio::error_code& error, std::size_t bytes_transferred) {
     if (!running_) {
+        std::cout << "handle_receive called but client is not running." << std::endl;
         return;
     }
 
     if (error) {
 #ifdef _WIN32
         if (error.value() == WSAECONNRESET) {
-            // On Windows, this error can happen for UDP sockets when a previous
-            // send operation resulted in an ICMP "Port Unreachable" message.
-            // It's often safe to ignore this and continue receiving.
+            std::cout << "[DEBUG] WSAECONNRESET received, ignoring and continuing." << std::endl;
             start_receive();
             return;
         }
 #endif
         if (error == asio::error::operation_aborted) {
-            // Operation was aborted, usually because the socket is being closed.
+            std::cout << "[DEBUG] Operation aborted." << std::endl;
             return;
         }
 
-        std::cerr << "UdpClient receive error: " << error.message() << std::endl;
+        std::cerr << "UdpClient receive error: " << error.message() << " (code: " << error.value() << ")" << std::endl;
         if (handler_) {
             handler_(error, bytes_transferred, {});
         }
-        // Attempt to continue listening.
         start_receive();
         return;
     }
@@ -107,7 +109,6 @@ void UdpClient::handle_receive(const asio::error_code& error, std::size_t bytes_
         std::cerr << "[WARNING] Received empty packet, ignoring." << std::endl;
     }
 
-    // Continue listening for the next packet.
     start_receive();
 }
 
