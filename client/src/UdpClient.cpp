@@ -28,7 +28,8 @@ void UdpClient::start_receive() {
         return;
     }
     running_ = true;
-    socket_->async_receive_from(asio::buffer(recv_buffer_), server_endpoint_,
+    remote_endpoint_ = asio::ip::udp::endpoint();
+    socket_->async_receive_from(asio::buffer(recv_buffer_), remote_endpoint_,
                                 [this](const asio::error_code& error, std::size_t bytes_transferred) {
                                     handle_receive(error, bytes_transferred);
                                 });
